@@ -1,9 +1,7 @@
-cat > .gitignore <<'EOF'
 # Python
 __pycache__/
 *.py[cod]
 *.sqlite3
-.env
 .venv/
 venv/
 .pytest_cache/
@@ -26,6 +24,7 @@ yarn-error.log*
 .env
 .env.local
 .env.*.local
+backend/.env
 
 # IDE
 .vscode/
@@ -34,4 +33,3 @@ yarn-error.log*
 # OS
 .DS_Store
 Thumbs.db
-EOF
