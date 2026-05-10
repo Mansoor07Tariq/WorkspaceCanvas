@@ -105,6 +105,7 @@ Detailed notes for each feature and setup step are in the `docs/` folder:
 | [004-docker-dev-setup.md](docs/004-docker-dev-setup.md) | Docker setup for local development |
 | [005-ci-quality-gates.md](docs/005-ci-quality-gates.md) | GitHub Actions CI — lint, format, test, build |
 | [006-pre-commit-hooks.md](docs/006-pre-commit-hooks.md) | Pre-commit hooks — local lint and format checks before every commit |
+| [007-api-foundation.md](docs/007-api-foundation.md) | API foundation — DRF, CORS, OpenAPI schema, Swagger UI |
 
 ## Local Development
 
