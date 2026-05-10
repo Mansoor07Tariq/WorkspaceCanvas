@@ -106,6 +106,30 @@ Detailed notes for each feature and setup step are in the `docs/` folder:
 | [005-ci-quality-gates.md](docs/005-ci-quality-gates.md) | GitHub Actions CI — lint, format, test, build |
 | [006-pre-commit-hooks.md](docs/006-pre-commit-hooks.md) | Pre-commit hooks — local lint and format checks before every commit |
 | [007-api-foundation.md](docs/007-api-foundation.md) | API foundation — DRF, CORS, OpenAPI schema, Swagger UI |
+| [008-developer-commands.md](docs/008-developer-commands.md) | Makefile — developer commands reference |
+
+## Common Commands
+
+All commands run from the repository root. See [docs/008-developer-commands.md](docs/008-developer-commands.md) for the full reference.
+
+```bash
+make help                   # list all commands
+
+make backend                # run Django dev server
+make frontend               # run Vite dev server
+
+make backend-docker-build   # build backend Docker image
+make backend-docker-up      # start backend + PostgreSQL in background
+make backend-docker-serve   # start backend + PostgreSQL with logs in terminal
+make backend-docker-down    # stop backend Docker services
+
+make frontend-docker-build  # build frontend Docker image
+make frontend-docker-up     # start frontend in background
+make frontend-docker-serve  # start frontend with logs in terminal
+make frontend-docker-down   # stop frontend Docker services
+
+make ci                     # run all lint, format, test, and build checks locally
+```
 
 ## Local Development
 
