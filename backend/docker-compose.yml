@@ -1,0 +1,36 @@
+services:
+  db:
+    image: postgres:16
+    container_name: workspacecanvas-postgres
+    environment:
+      POSTGRES_DB: workspacecanvas
+      POSTGRES_USER: workspacecanvas
+      POSTGRES_PASSWORD: workspacecanvas
+    ports:
+      - "5432:5432"
+    volumes:
+      - workspacecanvas_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U workspacecanvas -d workspacecanvas"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: .
+    container_name: workspacecanvas-backend
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    env_file:
+      - ./.env
+    environment:
+      POSTGRES_HOST: db
+    entrypoint: /app/entrypoint.sh
+
+volumes:
+  workspacecanvas_postgres_data:
