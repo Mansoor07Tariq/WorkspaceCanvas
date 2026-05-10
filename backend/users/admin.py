@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 
-from .models import User
+from .models import EmailVerificationToken, User
 
 
 @admin.register(User)
@@ -59,3 +59,11 @@ class CustomUserAdmin(UserAdmin):
             },
         ),
     )
+
+
+@admin.register(EmailVerificationToken)
+class EmailVerificationTokenAdmin(admin.ModelAdmin):
+    list_display = ["user", "token", "created_at", "expires_at", "used_at"]
+    list_filter = ["used_at", "expires_at", "created_at"]
+    search_fields = ["user__email"]
+    readonly_fields = ["token", "created_at", "used_at"]
