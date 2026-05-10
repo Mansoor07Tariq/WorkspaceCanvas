@@ -137,7 +137,7 @@ backend-format-check:
 	cd backend && $(CURDIR)/$(RUFF) format --check .
 
 backend-test:
-	cd backend && $(CURDIR)/$(PYTEST)
+	cd backend && POSTGRES_HOST=localhost $(CURDIR)/$(PYTEST)
 
 # ─── Frontend quality ───────────────────────────────────────────────────────────
 
