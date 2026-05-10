@@ -2,7 +2,11 @@
 set -e
 
 echo "Waiting for PostgreSQL..."
-until pg_isready -h "${POSTGRES_HOST:-localhost}" -p "${POSTGRES_PORT:-5432}" -U "${POSTGRES_USER:-workspacecanvas}"; do
+until pg_isready \
+  -h "${POSTGRES_HOST:-localhost}" \
+  -p "${POSTGRES_PORT:-5432}" \
+  -U "${POSTGRES_USER:-workspacecanvas}" \
+  -d "${POSTGRES_DB:-workspacecanvas}"; do
   sleep 1
 done
 echo "PostgreSQL is ready."
