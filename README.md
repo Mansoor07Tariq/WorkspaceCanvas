@@ -70,9 +70,16 @@ WorkspaceCanvas/
     config/
     entrypoint.sh
     Dockerfile
+    docker-compose.yml
     manage.py
     requirements.txt
     .env.example
+
+  docs/
+    001-project-setup.md
+    002-postgres-config.md
+    003-accounts-foundation.md
+    004-docker-dev-setup.md
 
   frontend/
     public/
@@ -82,10 +89,20 @@ WorkspaceCanvas/
     package.json
     vite.config.ts
 
-  docker-compose.yml
   README.md
   .gitignore
 ```
+
+## Documentation
+
+Detailed notes for each feature and setup step are in the `docs/` folder:
+
+| Doc | Description |
+|---|---|
+| [001-project-setup.md](docs/001-project-setup.md) | Initial repo structure, frontend and backend setup |
+| [002-postgres-config.md](docs/002-postgres-config.md) | PostgreSQL configuration via environment variables |
+| [003-accounts-foundation.md](docs/003-accounts-foundation.md) | Organization, Membership, and Invitation models |
+| [004-docker-dev-setup.md](docs/004-docker-dev-setup.md) | Docker setup for local development |
 
 ## Local Development
 
