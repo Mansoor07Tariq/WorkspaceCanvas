@@ -103,6 +103,7 @@ Detailed notes for each feature and setup step are in the `docs/` folder:
 | [002-postgres-config.md](docs/002-postgres-config.md) | PostgreSQL configuration via environment variables |
 | [003-accounts-foundation.md](docs/003-accounts-foundation.md) | Organization, Membership, and Invitation models |
 | [004-docker-dev-setup.md](docs/004-docker-dev-setup.md) | Docker setup for local development |
+| [005-ci-quality-gates.md](docs/005-ci-quality-gates.md) | GitHub Actions CI — lint, format, test, build |
 
 ## Local Development
 
