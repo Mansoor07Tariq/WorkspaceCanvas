@@ -1,10 +1,13 @@
-from django.contrib.auth import authenticate, get_user_model
+from django.contrib.auth import authenticate
+from django.contrib.auth.password_validation import (
+    validate_password as django_validate_password,
+)
 from rest_framework import serializers
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from accounts.models import Membership
 
-User = get_user_model()
+from .models import User
 
 
 class MembershipInlineSerializer(serializers.ModelSerializer):
@@ -115,3 +118,36 @@ class EmailTokenObtainPairSerializer(serializers.Serializer):
 
 class LogoutSerializer(serializers.Serializer):
     refresh = serializers.CharField()
+
+
+class SignupSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True, min_length=8)
+    full_name = serializers.CharField(max_length=255, required=False, allow_blank=True)
+
+    def validate_password(self, value):
+        django_validate_password(value)
+        return value
+
+    def validate_email(self, value):
+        if User.objects.filter(email__iexact=value).exists():
+            raise serializers.ValidationError("A user with this email already exists.")
+        return value.lower()
+
+    def create(self, validated_data):
+        email = validated_data["email"]
+        return User.objects.create_user(
+            username=email,
+            email=email,
+            password=validated_data["password"],
+            full_name=validated_data.get("full_name", ""),
+            preferred_auth_provider=User.AuthProvider.EMAIL,
+        )
+
+
+class EmailVerificationSerializer(serializers.Serializer):
+    token = serializers.UUIDField()
+
+
+class ResendEmailVerificationSerializer(serializers.Serializer):
+    email = serializers.EmailField()

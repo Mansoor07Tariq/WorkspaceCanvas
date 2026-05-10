@@ -163,6 +163,20 @@ SIMPLE_JWT = {
 }
 
 
+# Email
+
+EMAIL_BACKEND = os.environ.get(
+    "EMAIL_BACKEND",
+    "django.core.mail.backends.console.EmailBackend",
+)
+DEFAULT_FROM_EMAIL = os.environ.get(
+    "DEFAULT_FROM_EMAIL",
+    "WorkspaceCanvas <noreply@workspacecanvas.local>",
+)
+
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173")
+
+
 # drf-spectacular
 
 SPECTACULAR_SETTINGS = {

@@ -16,6 +16,8 @@ Currently completed:
 - PostgreSQL database configured via environment variables
 - `accounts` app with Organization, Membership, and Invitation models
 - Docker setup for local development
+- JWT email/password login, refresh, verify, logout, current user endpoint
+- Signup endpoint with email verification flow (console email backend in dev)
 
 Upcoming work:
 
@@ -110,6 +112,7 @@ Detailed notes for each feature and setup step are in the `docs/` folder:
 | [009-users-and-approval-foundation.md](docs/009-users-and-approval-foundation.md) | Custom User model, organization approval flow, Django admin actions |
 | [010-auth-identity-foundation.md](docs/010-auth-identity-foundation.md) | Auth identity fields — email verification, MFA flags, auth provider |
 | [011-jwt-login-foundation.md](docs/011-jwt-login-foundation.md) | JWT email/password login, refresh, verify, logout, current user endpoint |
+| [012-signup-email-verification.md](docs/012-signup-email-verification.md) | Signup endpoint, EmailVerificationToken model, email verification and resend flows |
 
 ## Common Commands
 
