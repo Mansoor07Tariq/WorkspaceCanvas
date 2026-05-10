@@ -10,10 +10,22 @@ class Organization(models.Model):
         COMPANY = "company", "Company"
         COWORKING_SPACE = "coworking_space", "Co-working Space"
 
+    class Status(models.TextChoices):
+        DRAFT = "draft", "Draft"
+        PENDING_APPROVAL = "pending_approval", "Pending Approval"
+        ACTIVE = "active", "Active"
+        REJECTED = "rejected", "Rejected"
+        SUSPENDED = "suspended", "Suspended"
+
     name = models.CharField(max_length=255)
     slug = models.SlugField(max_length=255, unique=True)
     organization_type = models.CharField(max_length=50, choices=OrgType.choices)
     allowed_email_domain = models.CharField(max_length=255, blank=True)
+    status = models.CharField(
+        max_length=50,
+        choices=Status.choices,
+        default=Status.DRAFT,
+    )
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -24,6 +36,14 @@ class Organization(models.Model):
     def __str__(self) -> str:
         return self.name
 
+    @property
+    def is_approved(self) -> bool:
+        return self.status == self.Status.ACTIVE
+
+    @property
+    def is_pending_approval(self) -> bool:
+        return self.status == self.Status.PENDING_APPROVAL
+
 
 class Membership(models.Model):
     class Role(models.TextChoices):
@@ -32,6 +52,7 @@ class Membership(models.Model):
         MEMBER = "member", "Member"
 
     class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
         ACTIVE = "active", "Active"
         DISABLED = "disabled", "Disabled"
 
@@ -47,7 +68,7 @@ class Membership(models.Model):
     )
     role = models.CharField(max_length=50, choices=Role.choices, default=Role.MEMBER)
     status = models.CharField(
-        max_length=50, choices=Status.choices, default=Status.ACTIVE
+        max_length=50, choices=Status.choices, default=Status.PENDING
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -63,6 +84,13 @@ class Membership(models.Model):
 
     def __str__(self) -> str:
         return f"{self.user.email} - {self.organization.name} - {self.role}"
+
+    @property
+    def has_active_access(self) -> bool:
+        return (
+            self.status == self.Status.ACTIVE
+            and self.organization.status == Organization.Status.ACTIVE
+        )
 
 
 class Invitation(models.Model):

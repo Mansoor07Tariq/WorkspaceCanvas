@@ -36,8 +36,11 @@ INSTALLED_APPS = [
     "django_filters",
     "drf_spectacular",
     # Local apps
+    "users",
     "accounts",
 ]
+
+AUTH_USER_MODEL = "users.User"
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -117,6 +120,9 @@ USE_TZ = True
 # Static files
 
 STATIC_URL = "static/"
+
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
 
 # Default primary key field type
 
