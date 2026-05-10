@@ -1,0 +1,36 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+        exclude: tsconfig.*\.json$
+      - id: check-added-large-files
+      - id: check-merge-conflict
+      - id: debug-statements
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.12
+    hooks:
+      - id: ruff
+        files: ^backend/
+      - id: ruff-format
+        files: ^backend/
+
+  - repo: local
+    hooks:
+      - id: frontend-eslint
+        name: Frontend ESLint
+        language: system
+        entry: bash -c "cd frontend && npm run lint"
+        pass_filenames: false
+        files: ^frontend/
+
+      - id: frontend-prettier-check
+        name: Frontend Prettier check
+        language: system
+        entry: bash -c "cd frontend && npm run format:check"
+        pass_filenames: false
+        files: ^frontend/
