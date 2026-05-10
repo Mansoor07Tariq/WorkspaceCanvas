@@ -46,7 +46,9 @@ class Membership(models.Model):
         related_name="memberships",
     )
     role = models.CharField(max_length=50, choices=Role.choices, default=Role.MEMBER)
-    status = models.CharField(max_length=50, choices=Status.choices, default=Status.ACTIVE)
+    status = models.CharField(
+        max_length=50, choices=Status.choices, default=Status.ACTIVE
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -82,7 +84,9 @@ class Invitation(models.Model):
     )
     email = models.EmailField()
     role = models.CharField(max_length=50, choices=Role.choices, default=Role.MEMBER)
-    status = models.CharField(max_length=50, choices=Status.choices, default=Status.PENDING)
+    status = models.CharField(
+        max_length=50, choices=Status.choices, default=Status.PENDING
+    )
     token = models.UUIDField(unique=True, default=uuid.uuid4, editable=False)
     invited_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
