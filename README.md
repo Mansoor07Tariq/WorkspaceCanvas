@@ -108,6 +108,7 @@ Detailed notes for each feature and setup step are in the `docs/` folder:
 | [007-api-foundation.md](docs/007-api-foundation.md) | API foundation — DRF, CORS, OpenAPI schema, Swagger UI |
 | [008-developer-commands.md](docs/008-developer-commands.md) | Makefile — developer commands reference |
 | [009-users-and-approval-foundation.md](docs/009-users-and-approval-foundation.md) | Custom User model, organization approval flow, Django admin actions |
+| [010-auth-identity-foundation.md](docs/010-auth-identity-foundation.md) | Auth identity fields — email verification, MFA flags, auth provider |
 
 ## Common Commands
 

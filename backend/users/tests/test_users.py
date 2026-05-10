@@ -4,6 +4,15 @@ from django.contrib.auth import get_user_model
 User = get_user_model()
 
 
+@pytest.fixture
+def user(db):
+    return User.objects.create_user(
+        username="testuser",
+        email="test@example.com",
+        password="securepass123",
+    )
+
+
 @pytest.mark.django_db
 def test_custom_user_can_be_created():
     user = User.objects.create_user(
@@ -31,12 +40,7 @@ def test_email_must_be_unique():
 
 
 @pytest.mark.django_db
-def test_str_returns_email():
-    user = User.objects.create_user(
-        username="testuser",
-        email="test@example.com",
-        password="pass123",
-    )
+def test_str_returns_email(user):
     assert str(user) == "test@example.com"
 
 
@@ -60,10 +64,65 @@ def test_user_supports_profile_fields():
 
 
 @pytest.mark.django_db
-def test_default_is_profile_completed_is_false():
-    user = User.objects.create_user(
-        username="testuser",
-        email="test@example.com",
-        password="pass123",
-    )
+def test_default_is_profile_completed_is_false(user):
     assert user.is_profile_completed is False
+
+
+# --- Auth identity field defaults ---
+
+
+@pytest.mark.django_db
+def test_email_verified_is_false_by_default(user):
+    assert user.email_verified is False
+
+
+@pytest.mark.django_db
+def test_mfa_enabled_is_false_by_default(user):
+    assert user.mfa_enabled is False
+
+
+@pytest.mark.django_db
+def test_has_verified_identity_false_by_default(user):
+    assert user.has_verified_identity is False
+
+
+@pytest.mark.django_db
+def test_requires_mfa_false_by_default(user):
+    assert user.requires_mfa is False
+
+
+@pytest.mark.django_db
+def test_requires_mfa_true_when_mfa_enabled(user):
+    user.mfa_enabled = True
+    user.save(update_fields=["mfa_enabled"])
+    user.refresh_from_db()
+    assert user.requires_mfa is True
+
+
+@pytest.mark.django_db
+def test_mark_email_verified_sets_flag(user):
+    user.mark_email_verified()
+    user.refresh_from_db()
+    assert user.email_verified is True
+
+
+@pytest.mark.django_db
+def test_mark_email_verified_sets_timestamp(user):
+    user.mark_email_verified()
+    user.refresh_from_db()
+    assert user.email_verified_at is not None
+
+
+@pytest.mark.django_db
+def test_has_verified_identity_true_after_verification(user):
+    user.mark_email_verified()
+    assert user.has_verified_identity is True
+
+
+@pytest.mark.django_db
+def test_preferred_auth_provider_accepts_valid_choices(user):
+    for provider in ["email", "google", "microsoft"]:
+        user.preferred_auth_provider = provider
+        user.save(update_fields=["preferred_auth_provider"])
+        user.refresh_from_db()
+        assert user.preferred_auth_provider == provider

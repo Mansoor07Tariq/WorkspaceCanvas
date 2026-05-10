@@ -11,6 +11,7 @@ htmlcov/
 # Django
 staticfiles/
 media/
+backend/media/
 
 # Node
 node_modules/
