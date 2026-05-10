@@ -30,12 +30,18 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    # Third-party
+    "rest_framework",
+    "corsheaders",
+    "django_filters",
+    "drf_spectacular",
     # Local apps
     "accounts",
 ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -115,3 +121,30 @@ STATIC_URL = "static/"
 # Default primary key field type
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+
+# CORS
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+
+
+# Django REST Framework
+
+REST_FRAMEWORK = {
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "DEFAULT_FILTER_BACKENDS": [
+        "django_filters.rest_framework.DjangoFilterBackend",
+    ],
+}
+
+
+# drf-spectacular
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "WorkspaceCanvas API",
+    "DESCRIPTION": "API for WorkspaceCanvas office maps, desk booking, events, awards, and workplace engagement.",  # noqa: E501
+    "VERSION": "1.0.0",
+}
