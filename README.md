@@ -109,6 +109,7 @@ Detailed notes for each feature and setup step are in the `docs/` folder:
 | [008-developer-commands.md](docs/008-developer-commands.md) | Makefile — developer commands reference |
 | [009-users-and-approval-foundation.md](docs/009-users-and-approval-foundation.md) | Custom User model, organization approval flow, Django admin actions |
 | [010-auth-identity-foundation.md](docs/010-auth-identity-foundation.md) | Auth identity fields — email verification, MFA flags, auth provider |
+| [011-jwt-login-foundation.md](docs/011-jwt-login-foundation.md) | JWT email/password login, refresh, verify, logout, current user endpoint |
 
 ## Common Commands
 
