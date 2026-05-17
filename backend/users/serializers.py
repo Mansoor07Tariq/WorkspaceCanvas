@@ -2,12 +2,15 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import (
     validate_password as django_validate_password,
 )
+from django.db import transaction
+from django.utils import timezone
 from rest_framework import serializers
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from accounts.models import Membership
 
 from .models import User
+from .social_auth import SocialAuthError, verify_google_token, verify_microsoft_token
 
 
 class MembershipInlineSerializer(serializers.ModelSerializer):
@@ -151,3 +154,84 @@ class EmailVerificationSerializer(serializers.Serializer):
 
 class ResendEmailVerificationSerializer(serializers.Serializer):
     email = serializers.EmailField()
+
+
+class SocialAuthSerializer(serializers.Serializer):
+    provider = serializers.ChoiceField(choices=["google", "microsoft"])
+    access_token = serializers.CharField(required=False, allow_blank=True)
+    id_token = serializers.CharField(required=False, allow_blank=True)
+
+    def validate(self, data):
+        provider = data["provider"]
+        access_token = data.get("access_token") or None
+        id_token = data.get("id_token") or None
+
+        if not access_token and not id_token:
+            # Raised as SocialAuthError so the view can return {detail, code}
+            raise SocialAuthError(
+                "Either access_token or id_token is required.",
+                code="missing_token",
+            )
+
+        # SocialAuthError propagates to the view — DRF only catches ValidationError
+        if provider == "google":
+            identity = verify_google_token(access_token=access_token, id_token=id_token)
+        else:
+            identity = verify_microsoft_token(
+                access_token=access_token, id_token=id_token
+            )
+
+        user = self._find_or_create_user(identity, self.context.get("request"))
+        refresh = RefreshToken.for_user(user)
+        return {
+            "access": str(refresh.access_token),
+            "refresh": str(refresh),
+            "email": user.email,
+            "email_verified": user.email_verified,
+            "preferred_auth_provider": user.preferred_auth_provider,
+        }
+
+    @staticmethod
+    def _find_or_create_user(identity: dict, request) -> User:
+        email = identity["email"]
+        provider = identity["provider"]
+        provider_verified = identity["email_verified"]
+
+        with transaction.atomic():
+            try:
+                user = User.objects.select_for_update().get(email__iexact=email)
+                update_fields = []
+                if provider_verified and not user.email_verified:
+                    user.email_verified = True
+                    user.email_verified_at = timezone.now()
+                    update_fields += ["email_verified", "email_verified_at"]
+                if not user.preferred_auth_provider:
+                    user.preferred_auth_provider = provider
+                    update_fields.append("preferred_auth_provider")
+                if update_fields:
+                    user.save(update_fields=update_fields)
+            except User.DoesNotExist:
+                now = timezone.now()
+                user = User.objects.create_user(
+                    username=email,
+                    email=email,
+                    password=None,
+                    full_name=identity.get("full_name", ""),
+                    preferred_auth_provider=provider,
+                    email_verified=provider_verified,
+                    email_verified_at=now if provider_verified else None,
+                )
+
+        ip = _get_client_ip(request) if request else None
+        if ip:
+            user.last_login_ip = ip
+            user.save(update_fields=["last_login_ip"])
+
+        return user
+
+
+def _get_client_ip(request) -> str:
+    forwarded = request.META.get("HTTP_X_FORWARDED_FOR")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.META.get("REMOTE_ADDR", "")

@@ -7,6 +7,7 @@ from .views import (
     LogoutView,
     ResendEmailVerificationView,
     SignupView,
+    SocialAuthView,
     VerifyEmailView,
 )
 
@@ -23,4 +24,5 @@ urlpatterns = [
     path("token/verify/", TokenVerifyView.as_view(), name="token-verify"),
     path("logout/", LogoutView.as_view(), name="auth-logout"),
     path("me/", CurrentUserView.as_view(), name="auth-me"),
+    path("social/", SocialAuthView.as_view(), name="auth-social"),
 ]

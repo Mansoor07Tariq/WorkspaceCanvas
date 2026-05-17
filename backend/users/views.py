@@ -20,7 +20,9 @@ from .serializers import (
     LogoutSerializer,
     ResendEmailVerificationSerializer,
     SignupSerializer,
+    SocialAuthSerializer,
 )
+from .social_auth import SocialAuthError
 
 
 class EmailTokenObtainPairView(APIView):
@@ -184,3 +186,36 @@ class ResendEmailVerificationView(APIView):
             token = EmailVerificationToken.create_for_user(user)
             send_email_verification(user, token)
         return Response({"detail": _GENERIC})
+
+
+class SocialAuthView(APIView):
+    permission_classes = [AllowAny]
+
+    @extend_schema(
+        request=SocialAuthSerializer,
+        responses={
+            200: {
+                "type": "object",
+                "properties": {
+                    "access": {"type": "string"},
+                    "refresh": {"type": "string"},
+                    "email": {"type": "string"},
+                    "email_verified": {"type": "boolean"},
+                    "preferred_auth_provider": {"type": "string"},
+                },
+            }
+        },
+        summary="Authenticate with a Google or Microsoft provider token",
+    )
+    def post(self, request: Request) -> Response:
+        serializer = SocialAuthSerializer(
+            data=request.data, context={"request": request}
+        )
+        try:
+            serializer.is_valid(raise_exception=True)
+        except SocialAuthError as exc:
+            return Response(
+                {"detail": exc.message, "code": exc.code},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response(serializer.validated_data, status=status.HTTP_200_OK)
