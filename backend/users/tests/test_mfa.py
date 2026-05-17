@@ -332,7 +332,7 @@ def test_disable_requires_correct_password(
         format="json",
     )
     assert resp.status_code == 400
-    assert resp.data["code"] == "identity_verification_failed"
+    assert resp.data["code"][0] == "identity_verification_failed"
 
 
 @pytest.mark.django_db
@@ -410,7 +410,7 @@ def test_regen_requires_identity_proof(
 ):
     resp = auth_client.post(REGEN_URL, {"token": confirmed_valid_token}, format="json")
     assert resp.status_code == 400
-    assert resp.data["code"] == "identity_verification_failed"
+    assert resp.data["code"][0] == "identity_verification_failed"
 
 
 @pytest.mark.django_db
@@ -538,7 +538,7 @@ def test_social_disable_wrong_email_rejected(
             format="json",
         )
     assert resp.status_code == 400
-    assert resp.data["code"] == "identity_verification_failed"
+    assert resp.data["code"][0] == "identity_verification_failed"
 
 
 @pytest.mark.django_db
@@ -561,7 +561,7 @@ def test_social_disable_unverified_email_rejected(
             format="json",
         )
     assert resp.status_code == 400
-    assert resp.data["code"] == "identity_verification_failed"
+    assert resp.data["code"][0] == "identity_verification_failed"
 
 
 @pytest.mark.django_db
@@ -648,7 +648,7 @@ def test_social_regen_wrong_email_rejected(
             format="json",
         )
     assert resp.status_code == 400
-    assert resp.data["code"] == "identity_verification_failed"
+    assert resp.data["code"][0] == "identity_verification_failed"
 
 
 @pytest.mark.django_db
