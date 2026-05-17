@@ -1,6 +1,13 @@
 from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView, TokenVerifyView
 
+from .mfa_views import (
+    MFAConfirmView,
+    MFADisableView,
+    MFASetupView,
+    MFAStatusView,
+    RecoveryCodeRegenerateView,
+)
 from .views import (
     CurrentUserView,
     EmailTokenObtainPairView,
@@ -25,4 +32,13 @@ urlpatterns = [
     path("logout/", LogoutView.as_view(), name="auth-logout"),
     path("me/", CurrentUserView.as_view(), name="auth-me"),
     path("social/", SocialAuthView.as_view(), name="auth-social"),
+    path("mfa/status/", MFAStatusView.as_view(), name="mfa-status"),
+    path("mfa/setup/", MFASetupView.as_view(), name="mfa-setup"),
+    path("mfa/confirm/", MFAConfirmView.as_view(), name="mfa-confirm"),
+    path("mfa/disable/", MFADisableView.as_view(), name="mfa-disable"),
+    path(
+        "mfa/recovery-codes/regenerate/",
+        RecoveryCodeRegenerateView.as_view(),
+        name="mfa-recovery-codes-regenerate",
+    ),
 ]

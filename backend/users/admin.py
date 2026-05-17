@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 
-from .models import EmailVerificationToken, User
+from .models import EmailVerificationToken, RecoveryCode, User, UserMFADevice
 
 
 @admin.register(User)
@@ -67,3 +67,19 @@ class EmailVerificationTokenAdmin(admin.ModelAdmin):
     list_filter = ["used_at", "expires_at", "created_at"]
     search_fields = ["user__email"]
     readonly_fields = ["token", "created_at", "used_at"]
+
+
+@admin.register(UserMFADevice)
+class UserMFADeviceAdmin(admin.ModelAdmin):
+    list_display = ["user", "confirmed_at", "created_at", "updated_at"]
+    list_filter = ["confirmed_at", "created_at"]
+    search_fields = ["user__email"]
+    readonly_fields = ["created_at", "updated_at", "confirmed_at"]
+
+
+@admin.register(RecoveryCode)
+class RecoveryCodeAdmin(admin.ModelAdmin):
+    list_display = ["user", "used_at", "created_at"]
+    list_filter = ["used_at", "created_at"]
+    search_fields = ["user__email"]
+    readonly_fields = ["code_hash", "used_at", "created_at"]

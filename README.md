@@ -115,6 +115,7 @@ Detailed notes for each feature and setup step are in the `docs/` folder:
 | [011-jwt-login-foundation.md](docs/011-jwt-login-foundation.md) | JWT email/password login, refresh, verify, logout, current user endpoint |
 | [012-signup-email-verification.md](docs/012-signup-email-verification.md) | Signup endpoint, EmailVerificationToken model, email verification and resend flows |
 | [013-social-auth-foundation.md](docs/013-social-auth-foundation.md) | Google and Microsoft social login — provider token verification, user find-or-create, WorkspaceCanvas JWT response |
+| [014-mfa-foundation.md](docs/014-mfa-foundation.md) | MFA foundation — TOTP device setup, confirm, disable, and recovery code management |
 
 ## Common Commands
 
