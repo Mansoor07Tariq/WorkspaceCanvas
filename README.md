@@ -18,6 +18,7 @@ Currently completed:
 - Docker setup for local development
 - JWT email/password login, refresh, verify, logout, current user endpoint
 - Signup endpoint with email verification flow (console email backend in dev)
+- Google and Microsoft social login — verifies provider tokens, finds or creates users, returns WorkspaceCanvas JWT tokens
 
 Upcoming work:
 
@@ -113,6 +114,7 @@ Detailed notes for each feature and setup step are in the `docs/` folder:
 | [010-auth-identity-foundation.md](docs/010-auth-identity-foundation.md) | Auth identity fields — email verification, MFA flags, auth provider |
 | [011-jwt-login-foundation.md](docs/011-jwt-login-foundation.md) | JWT email/password login, refresh, verify, logout, current user endpoint |
 | [012-signup-email-verification.md](docs/012-signup-email-verification.md) | Signup endpoint, EmailVerificationToken model, email verification and resend flows |
+| [013-social-auth-foundation.md](docs/013-social-auth-foundation.md) | Google and Microsoft social login — provider token verification, user find-or-create, WorkspaceCanvas JWT response |
 
 ## Common Commands
 
