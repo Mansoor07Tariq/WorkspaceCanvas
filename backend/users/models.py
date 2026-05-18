@@ -184,3 +184,58 @@ class RecoveryCode(models.Model):
             raw_codes.append(raw)
             cls.objects.create(user=user, code_hash=make_password(raw))
         return raw_codes
+
+
+class MFALoginChallenge(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="mfa_login_challenges",
+    )
+    challenge_id = models.UUIDField(unique=True, default=uuid.uuid4, editable=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    used_at = models.DateTimeField(null=True, blank=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return f"MFA challenge for {self.user.email}"
+
+    @property
+    def is_used(self) -> bool:
+        return self.used_at is not None
+
+    @property
+    def is_expired(self) -> bool:
+        return timezone.now() > self.expires_at
+
+    @property
+    def is_valid(self) -> bool:
+        return not self.is_used and not self.is_expired
+
+    def mark_used(self) -> None:
+        self.used_at = timezone.now()
+        self.save(update_fields=["used_at"])
+
+    @classmethod
+    def create_for_user(cls, user: "User", *, request=None) -> "MFALoginChallenge":
+        ip = None
+        user_agent = ""
+        if request:
+            forwarded = request.META.get("HTTP_X_FORWARDED_FOR")
+            if forwarded:
+                ip = forwarded.split(",")[0].strip()
+            else:
+                ip = request.META.get("REMOTE_ADDR")
+            user_agent = request.META.get("HTTP_USER_AGENT", "")
+        lifetime = timedelta(minutes=settings.MFA_CHALLENGE_LIFETIME_MINUTES)
+        return cls.objects.create(
+            user=user,
+            expires_at=timezone.now() + lifetime,
+            ip_address=ip or None,
+            user_agent=user_agent,
+        )

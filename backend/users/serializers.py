@@ -9,8 +9,16 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from accounts.models import Membership
 
-from .models import User
+from .models import MFALoginChallenge, User
 from .social_auth import SocialAuthError, verify_google_token, verify_microsoft_token
+
+
+def build_jwt_response_for_user(user: User) -> dict:
+    refresh = RefreshToken.for_user(user)
+    return {
+        "access": str(refresh.access_token),
+        "refresh": str(refresh),
+    }
 
 
 class MembershipInlineSerializer(serializers.ModelSerializer):
@@ -105,11 +113,17 @@ class EmailTokenObtainPairSerializer(serializers.Serializer):
         if update_fields:
             authenticated_user.save(update_fields=update_fields)
 
-        refresh = RefreshToken.for_user(authenticated_user)
-        return {
-            "access": str(refresh.access_token),
-            "refresh": str(refresh),
-        }
+        if authenticated_user.mfa_enabled:
+            challenge = MFALoginChallenge.create_for_user(
+                authenticated_user, request=request
+            )
+            return {
+                "mfa_required": True,
+                "challenge_id": str(challenge.challenge_id),
+                "detail": "MFA verification required.",
+            }
+
+        return build_jwt_response_for_user(authenticated_user)
 
     @staticmethod
     def _get_client_ip(request) -> str:
@@ -181,11 +195,21 @@ class SocialAuthSerializer(serializers.Serializer):
                 access_token=access_token, id_token=id_token
             )
 
-        user = self._find_or_create_user(identity, self.context.get("request"))
-        refresh = RefreshToken.for_user(user)
+        request = self.context.get("request")
+        user = self._find_or_create_user(identity, request)
+
+        if user.mfa_enabled:
+            challenge = MFALoginChallenge.create_for_user(user, request=request)
+            return {
+                "mfa_required": True,
+                "challenge_id": str(challenge.challenge_id),
+                "detail": "MFA verification required.",
+                "email": user.email,
+                "preferred_auth_provider": user.preferred_auth_provider,
+            }
+
         return {
-            "access": str(refresh.access_token),
-            "refresh": str(refresh),
+            **build_jwt_response_for_user(user),
             "email": user.email,
             "email_verified": user.email_verified,
             "preferred_auth_provider": user.preferred_auth_provider,

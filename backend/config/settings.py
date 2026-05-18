@@ -221,6 +221,9 @@ MFA_ISSUER_NAME = os.environ.get("MFA_ISSUER_NAME", "WorkspaceCanvas")
 MFA_TOTP_INTERVAL = int(os.environ.get("MFA_TOTP_INTERVAL", "30"))
 MFA_TOTP_DIGITS = int(os.environ.get("MFA_TOTP_DIGITS", "6"))
 MFA_RECOVERY_CODE_COUNT = int(os.environ.get("MFA_RECOVERY_CODE_COUNT", "10"))
+MFA_CHALLENGE_LIFETIME_MINUTES = int(
+    os.environ.get("MFA_CHALLENGE_LIFETIME_MINUTES", "5")
+)
 
 
 # drf-spectacular

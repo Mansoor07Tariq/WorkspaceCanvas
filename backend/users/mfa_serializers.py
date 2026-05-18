@@ -1,8 +1,9 @@
 from django.conf import settings
 from rest_framework import serializers
 
-from .models import RecoveryCode, User, UserMFADevice
+from .models import MFALoginChallenge, RecoveryCode, User, UserMFADevice
 from .reauth import verify_reauth_for_user
+from .serializers import build_jwt_response_for_user
 
 _IDENTITY_FAILED = {
     "detail": "Identity verification failed.",
@@ -143,6 +144,64 @@ class RecoveryCodeRegenerateSerializer(serializers.Serializer):
         return RecoveryCode.generate_codes_for_user(
             user, settings.MFA_RECOVERY_CODE_COUNT
         )
+
+
+class MFALoginChallengeVerifySerializer(serializers.Serializer):
+    challenge_id = serializers.UUIDField()
+    token = serializers.CharField(min_length=6, max_length=6, required=False)
+    recovery_code = serializers.CharField(required=False)
+
+    def validate(self, data):
+        try:
+            challenge = MFALoginChallenge.objects.select_related("user").get(
+                challenge_id=data["challenge_id"]
+            )
+        except MFALoginChallenge.DoesNotExist:
+            raise serializers.ValidationError(
+                {"detail": "Invalid MFA challenge.", "code": "invalid_mfa_challenge"}
+            )
+
+        if challenge.is_used:
+            raise serializers.ValidationError(
+                {
+                    "detail": "MFA challenge has already been used.",
+                    "code": "used_mfa_challenge",
+                }
+            )
+
+        if challenge.is_expired:
+            raise serializers.ValidationError(
+                {
+                    "detail": "MFA challenge has expired.",
+                    "code": "expired_mfa_challenge",
+                }
+            )
+
+        token = data.get("token") or ""
+        recovery_code = data.get("recovery_code") or ""
+
+        if not token and not recovery_code:
+            raise serializers.ValidationError(
+                {
+                    "detail": "MFA token or recovery code is required.",
+                    "code": "missing_mfa_proof",
+                }
+            )
+
+        if not _verify_mfa_proof(
+            challenge.user, token=token, recovery_code=recovery_code
+        ):
+            raise serializers.ValidationError(
+                {"detail": "Invalid MFA proof.", "code": "invalid_mfa_proof"}
+            )
+
+        data["challenge"] = challenge
+        return data
+
+    def save(self) -> dict:
+        challenge: MFALoginChallenge = self.validated_data["challenge"]
+        challenge.mark_used()
+        return build_jwt_response_for_user(challenge.user)
 
 
 def _verify_mfa_proof(user: User, *, token: str, recovery_code: str) -> bool:
