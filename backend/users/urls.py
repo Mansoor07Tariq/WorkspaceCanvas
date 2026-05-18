@@ -4,6 +4,7 @@ from rest_framework_simplejwt.views import TokenRefreshView, TokenVerifyView
 from .mfa_views import (
     MFAConfirmView,
     MFADisableView,
+    MFALoginChallengeVerifyView,
     MFASetupView,
     MFAStatusView,
     RecoveryCodeRegenerateView,
@@ -40,5 +41,10 @@ urlpatterns = [
         "mfa/recovery-codes/regenerate/",
         RecoveryCodeRegenerateView.as_view(),
         name="mfa-recovery-codes-regenerate",
+    ),
+    path(
+        "mfa/challenge/verify/",
+        MFALoginChallengeVerifyView.as_view(),
+        name="mfa-challenge-verify",
     ),
 ]

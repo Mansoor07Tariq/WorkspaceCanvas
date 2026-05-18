@@ -2,7 +2,7 @@ import pyotp
 from django.conf import settings
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -10,6 +10,7 @@ from rest_framework.views import APIView
 from .mfa_serializers import (
     MFAConfirmSerializer,
     MFADisableSerializer,
+    MFALoginChallengeVerifySerializer,
     MFAStatusSerializer,
     RecoveryCodeRegenerateSerializer,
 )
@@ -162,3 +163,28 @@ class RecoveryCodeRegenerateView(APIView):
         raw_codes = serializer.save()
         _msg = "Recovery codes regenerated. Store them safely — not shown again."
         return Response({"detail": _msg, "recovery_codes": raw_codes})
+
+
+class MFALoginChallengeVerifyView(APIView):
+    permission_classes = [AllowAny]
+
+    @extend_schema(
+        request=MFALoginChallengeVerifySerializer,
+        responses={
+            200: {
+                "type": "object",
+                "properties": {
+                    "access": {"type": "string"},
+                    "refresh": {"type": "string"},
+                },
+            }
+        },
+        summary=(
+            "Verify an MFA challenge after primary login — "
+            "returns full JWT tokens on success"
+        ),
+    )
+    def post(self, request: Request) -> Response:
+        serializer = MFALoginChallengeVerifySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        return Response(serializer.save(), status=status.HTTP_200_OK)

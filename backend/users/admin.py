@@ -1,7 +1,13 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 
-from .models import EmailVerificationToken, RecoveryCode, User, UserMFADevice
+from .models import (
+    EmailVerificationToken,
+    MFALoginChallenge,
+    RecoveryCode,
+    User,
+    UserMFADevice,
+)
 
 
 @admin.register(User)
@@ -83,3 +89,25 @@ class RecoveryCodeAdmin(admin.ModelAdmin):
     list_filter = ["used_at", "created_at"]
     search_fields = ["user__email"]
     readonly_fields = ["code_hash", "used_at", "created_at"]
+
+
+@admin.register(MFALoginChallenge)
+class MFALoginChallengeAdmin(admin.ModelAdmin):
+    list_display = [
+        "user",
+        "challenge_id",
+        "created_at",
+        "expires_at",
+        "used_at",
+        "ip_address",
+    ]
+    list_filter = ["used_at", "expires_at", "created_at"]
+    search_fields = ["user__email", "user__username", "challenge_id"]
+    readonly_fields = [
+        "challenge_id",
+        "created_at",
+        "expires_at",
+        "used_at",
+        "ip_address",
+        "user_agent",
+    ]
