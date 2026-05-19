@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { isMfaRequiredResponse, isLoginSuccessResponse } from "../authUtils";
-import type { LoginResponse } from "../types";
+import { isMfaRequiredResponse, isLoginSuccessResponse } from "../utils/authUtils";
+import type { LoginResponse } from "../types/auth.types";
 
 const successResponse: LoginResponse = {
   access: "eyJhbGciOiJIUzI1NiJ9.access",

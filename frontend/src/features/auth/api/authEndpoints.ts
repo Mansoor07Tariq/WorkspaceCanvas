@@ -1,0 +1,16 @@
+export const AUTH_ENDPOINTS = {
+  signup: "/api/auth/signup/",
+  verifyEmail: "/api/auth/verify-email/",
+  resendVerification: "/api/auth/resend-verification/",
+  login: "/api/auth/token/",
+  refreshToken: "/api/auth/token/refresh/",
+  logout: "/api/auth/logout/",
+  me: "/api/auth/me/",
+  social: "/api/auth/social/",
+  mfaStatus: "/api/auth/mfa/status/",
+  mfaSetup: "/api/auth/mfa/setup/",
+  mfaConfirm: "/api/auth/mfa/confirm/",
+  mfaDisable: "/api/auth/mfa/disable/",
+  mfaRecoveryCodesRegenerate: "/api/auth/mfa/recovery-codes/regenerate/",
+  mfaChallengeVerify: "/api/auth/mfa/challenge/verify/",
+} as const;
