@@ -1,4 +1,4 @@
-import type { LoginResponse, LoginSuccessResponse, MfaRequiredResponse } from "./types";
+import type { LoginResponse, LoginSuccessResponse, MfaRequiredResponse } from "../types/auth.types";
 
 export function isMfaRequiredResponse(response: LoginResponse): response is MfaRequiredResponse {
   return "mfa_required" in response;

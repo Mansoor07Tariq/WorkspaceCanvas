@@ -1,7 +1,23 @@
-import { describe, it, expect, vi, beforeEach, beforeAll, afterAll } from "vitest";
-import { apiRequest, ApiError } from "../apiClient";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { api, apiRequest, ApiError } from "../api/apiClient";
 
-const BASE_URL = "http://localhost:8000";
+vi.mock("../../config/env", () => ({
+  API_BASE_URL: "http://localhost:8000",
+}));
+
+// vi.hoisted ensures this is created before the factory below runs (vi.mock is hoisted).
+const mockGetToken = vi.hoisted(() =>
+  vi.fn<() => string | null>().mockReturnValue("stored-access-token")
+);
+
+vi.mock("../tokenStorage", () => ({
+  tokenStorage: {
+    getAccessToken: mockGetToken,
+  },
+}));
+
+const fetchMock = vi.fn<typeof fetch>();
+vi.stubGlobal("fetch", fetchMock);
 
 function makeResponse(status: number, body: unknown): Response {
   return {
@@ -12,106 +28,48 @@ function makeResponse(status: number, body: unknown): Response {
 }
 
 describe("apiRequest", () => {
-  const fetchMock = vi.fn<typeof fetch>();
-
-  beforeAll(() => {
-    vi.stubEnv("VITE_API_BASE_URL", BASE_URL);
-    vi.stubGlobal("fetch", fetchMock);
-  });
-
-  afterAll(() => {
-    vi.unstubAllEnvs();
-    vi.unstubAllGlobals();
-  });
-
   beforeEach(() => {
     fetchMock.mockReset();
   });
 
-  it("constructs the full URL from base URL and path", async () => {
+  it("constructs the full URL from API_BASE_URL and path", async () => {
     fetchMock.mockResolvedValueOnce(makeResponse(200, {}));
     await apiRequest("/api/auth/me/");
-    expect(fetchMock).toHaveBeenCalledWith(`${BASE_URL}/api/auth/me/`, expect.any(Object));
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:8000/api/auth/me/",
+      expect.any(Object)
+    );
   });
 
-  it("includes Content-Type: application/json by default", async () => {
-    fetchMock.mockResolvedValueOnce(makeResponse(200, {}));
-    await apiRequest("/api/auth/me/");
-    const [, options] = fetchMock.mock.calls[0];
-    expect((options as RequestInit).headers).toMatchObject({
-      "Content-Type": "application/json",
-    });
-  });
-
-  it("merges caller-provided headers with the default Content-Type", async () => {
-    fetchMock.mockResolvedValueOnce(makeResponse(200, {}));
-    await apiRequest("/api/auth/me/", {
-      headers: { Authorization: "Bearer tok" },
-    });
-    const [, options] = fetchMock.mock.calls[0];
-    expect((options as RequestInit).headers).toMatchObject({
-      "Content-Type": "application/json",
-      Authorization: "Bearer tok",
-    });
-  });
-
-  it("returns parsed JSON body on 200", async () => {
+  it("returns parsed JSON on 200", async () => {
     const body = { access: "abc", refresh: "xyz" };
     fetchMock.mockResolvedValueOnce(makeResponse(200, body));
-    const result = await apiRequest<typeof body>("/api/auth/token/");
-    expect(result).toEqual(body);
+    expect(await apiRequest<typeof body>("/api/auth/token/")).toEqual(body);
   });
 
   it("returns undefined on 204", async () => {
     fetchMock.mockResolvedValueOnce(makeResponse(204, null));
-    const result = await apiRequest<void>("/api/auth/logout/");
-    expect(result).toBeUndefined();
+    expect(await apiRequest<void>("/api/auth/logout/")).toBeUndefined();
   });
 
-  it("passes method and body through to fetch", async () => {
-    fetchMock.mockResolvedValueOnce(makeResponse(200, {}));
-    const payload = JSON.stringify({ email: "a@b.com", password: "pass" });
-    await apiRequest("/api/auth/token/", { method: "POST", body: payload });
-    const [, options] = fetchMock.mock.calls[0];
-    expect((options as RequestInit).method).toBe("POST");
-    expect((options as RequestInit).body).toBe(payload);
-  });
-
-  it("throws ApiError when the response is not ok", async () => {
-    fetchMock.mockResolvedValueOnce(makeResponse(400, { detail: "Bad request" }));
+  it("throws ApiError on non-OK response", async () => {
+    fetchMock.mockResolvedValueOnce(makeResponse(400, { detail: "Bad" }));
     await expect(apiRequest("/api/auth/token/")).rejects.toThrow(ApiError);
   });
 
-  it("ApiError carries the HTTP status code", async () => {
-    fetchMock.mockResolvedValueOnce(makeResponse(401, { detail: "Unauthorized" }));
+  it("ApiError carries the HTTP status and parsed body", async () => {
+    const body = { detail: "Not found." };
+    fetchMock.mockResolvedValueOnce(makeResponse(404, body));
     try {
       await apiRequest("/api/auth/me/");
     } catch (err) {
-      expect(err).toBeInstanceOf(ApiError);
-      expect((err as ApiError).status).toBe(401);
-    }
-  });
-
-  it("ApiError carries the parsed response body", async () => {
-    const errorBody = { detail: "Invalid credentials." };
-    fetchMock.mockResolvedValueOnce(makeResponse(400, errorBody));
-    try {
-      await apiRequest("/api/auth/token/");
-    } catch (err) {
-      expect((err as ApiError).data).toEqual(errorBody);
-    }
-  });
-
-  it("ApiError has name 'ApiError'", async () => {
-    fetchMock.mockResolvedValueOnce(makeResponse(403, {}));
-    try {
-      await apiRequest("/api/auth/me/");
-    } catch (err) {
+      expect((err as ApiError).status).toBe(404);
+      expect((err as ApiError).data).toEqual(body);
       expect((err as ApiError).name).toBe("ApiError");
     }
   });
 
-  it("ApiError.data is null when error response body is not valid JSON", async () => {
+  it("ApiError.data is null when response body is not valid JSON", async () => {
     fetchMock.mockResolvedValueOnce({
       ok: false,
       status: 500,
@@ -122,5 +80,102 @@ describe("apiRequest", () => {
     } catch (err) {
       expect((err as ApiError).data).toBeNull();
     }
+  });
+});
+
+describe("api.get", () => {
+  beforeEach(() => {
+    fetchMock.mockReset();
+    mockGetToken.mockReturnValue("stored-access-token");
+  });
+
+  it("attaches Authorization header by default (auth: true)", async () => {
+    fetchMock.mockResolvedValueOnce(makeResponse(200, {}));
+    await api.get("/api/auth/me/");
+    const [, options] = fetchMock.mock.calls[0];
+    expect((options as RequestInit).headers).toMatchObject({
+      Authorization: "Bearer stored-access-token",
+    });
+  });
+
+  it("does not attach Authorization header when auth: false", async () => {
+    fetchMock.mockResolvedValueOnce(makeResponse(200, {}));
+    await api.get("/api/auth/me/", { auth: false });
+    const [, options] = fetchMock.mock.calls[0];
+    expect((options as RequestInit).headers).not.toHaveProperty("Authorization");
+  });
+
+  it("does not attach Authorization header when stored token is null", async () => {
+    mockGetToken.mockReturnValueOnce(null);
+    fetchMock.mockResolvedValueOnce(makeResponse(200, {}));
+    await api.get("/api/auth/me/");
+    const [, options] = fetchMock.mock.calls[0];
+    expect((options as RequestInit).headers).not.toHaveProperty("Authorization");
+  });
+
+  it("merges caller-provided headers", async () => {
+    fetchMock.mockResolvedValueOnce(makeResponse(200, {}));
+    await api.get("/api/auth/me/", { headers: { "X-Custom": "value" } });
+    const [, options] = fetchMock.mock.calls[0];
+    expect((options as RequestInit).headers).toMatchObject({ "X-Custom": "value" });
+  });
+});
+
+describe("api.post", () => {
+  beforeEach(() => {
+    fetchMock.mockReset();
+    mockGetToken.mockReturnValue("stored-access-token");
+  });
+
+  it("sends POST method", async () => {
+    fetchMock.mockResolvedValueOnce(makeResponse(200, {}));
+    await api.post("/api/auth/token/", { email: "a@b.com" }, { auth: false });
+    const [, options] = fetchMock.mock.calls[0];
+    expect((options as RequestInit).method).toBe("POST");
+  });
+
+  it("automatically stringifies body to JSON", async () => {
+    fetchMock.mockResolvedValueOnce(makeResponse(200, {}));
+    const body = { email: "a@b.com", password: "pass" };
+    await api.post("/api/auth/token/", body, { auth: false });
+    const [, options] = fetchMock.mock.calls[0];
+    expect((options as RequestInit).body).toBe(JSON.stringify(body));
+  });
+
+  it("sets Content-Type: application/json when body is provided", async () => {
+    fetchMock.mockResolvedValueOnce(makeResponse(200, {}));
+    await api.post("/api/auth/token/", { email: "a@b.com" }, { auth: false });
+    const [, options] = fetchMock.mock.calls[0];
+    expect((options as RequestInit).headers).toMatchObject({
+      "Content-Type": "application/json",
+    });
+  });
+
+  it("does not set Content-Type when no body is provided", async () => {
+    fetchMock.mockResolvedValueOnce(makeResponse(200, {}));
+    await api.post("/api/auth/mfa/setup/");
+    const [, options] = fetchMock.mock.calls[0];
+    expect((options as RequestInit).headers).not.toHaveProperty("Content-Type");
+  });
+
+  it("attaches Authorization header by default", async () => {
+    fetchMock.mockResolvedValueOnce(makeResponse(200, {}));
+    await api.post("/api/auth/mfa/confirm/", { token: "123456" });
+    const [, options] = fetchMock.mock.calls[0];
+    expect((options as RequestInit).headers).toMatchObject({
+      Authorization: "Bearer stored-access-token",
+    });
+  });
+
+  it("skips Authorization header when auth: false", async () => {
+    fetchMock.mockResolvedValueOnce(makeResponse(200, {}));
+    await api.post("/api/auth/token/", { email: "a@b.com" }, { auth: false });
+    const [, options] = fetchMock.mock.calls[0];
+    expect((options as RequestInit).headers).not.toHaveProperty("Authorization");
+  });
+
+  it("returns undefined on 204", async () => {
+    fetchMock.mockResolvedValueOnce(makeResponse(204, null));
+    expect(await api.post("/api/auth/logout/", { refresh: "tok" })).toBeUndefined();
   });
 });
