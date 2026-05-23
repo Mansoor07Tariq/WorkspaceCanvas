@@ -1,13 +1,18 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { SignupPage } from "@/features/auth";
+import { SignupPage, LoginPage, MfaChallengePlaceholderPage } from "@/features/auth";
+import { AppPlaceholderPage } from "@/app/pages/AppPlaceholderPage";
 import { ROUTES } from "@/routes/paths";
 
 export function AppRouter() {
   return (
     <BrowserRouter>
       <Routes>
+        <Route path={ROUTES.login} element={<LoginPage />} />
         <Route path={ROUTES.signup} element={<SignupPage />} />
-        <Route path="*" element={<Navigate to={ROUTES.signup} replace />} />
+        <Route path={ROUTES.mfaChallenge} element={<MfaChallengePlaceholderPage />} />
+        <Route path={ROUTES.app} element={<AppPlaceholderPage />} />
+        <Route path="/" element={<Navigate to={ROUTES.login} replace />} />
+        <Route path="*" element={<Navigate to={ROUTES.login} replace />} />
       </Routes>
     </BrowserRouter>
   );
