@@ -119,6 +119,7 @@ Detailed notes for each feature and setup step are in the `docs/` folder:
 | [015-mfa-login-enforcement.md](docs/015-mfa-login-enforcement.md) | MFA login enforcement — challenge-based MFA gate on email and social login |
 | [016-frontend-auth-api-foundation.md](docs/016-frontend-auth-api-foundation.md) | Frontend auth API foundation — TypeScript types, token storage, fetch wrapper, and auth API functions |
 | [017-frontend-architecture-foundation.md](docs/017-frontend-architecture-foundation.md) | Frontend architecture foundation — DRY API layer, centralized endpoints and env, scalable folder structure |
+| [018-signup-ui.md](docs/018-signup-ui.md) | Signup UI — first auth screen with form, client-side validation, API integration, success/error states |
 
 ## Common Commands
 
