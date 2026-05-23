@@ -1,3 +1,4 @@
+import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -53,6 +54,19 @@ describe("VerifyEmailPage — verifying state", () => {
     mockVerifyEmail.mockImplementation(() => new Promise(() => {}));
     renderWithToken("some-token");
     expect(screen.getByText(en.auth.verifyEmail.verifyingMessage)).toBeInTheDocument();
+  });
+
+  it("calls verifyEmail exactly once even in React StrictMode", async () => {
+    mockVerifyEmail.mockResolvedValue({ detail: "Email verified." });
+    render(
+      <React.StrictMode>
+        <MemoryRouter initialEntries={[`${ROUTES.verifyEmail}?token=strict-token`]}>
+          <VerifyEmailPage />
+        </MemoryRouter>
+      </React.StrictMode>
+    );
+    await screen.findByText(en.auth.verifyEmail.successMessage);
+    expect(mockVerifyEmail).toHaveBeenCalledTimes(1);
   });
 });
 
