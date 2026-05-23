@@ -8,6 +8,18 @@ export const en = {
       password: "Password",
       confirmPassword: "Confirm password",
     },
+    login: {
+      title: "Sign in to your account",
+      subtitle: "Welcome back. Enter your details to continue.",
+      submit: "Sign in",
+      noAccount: "Don't have an account?",
+      createAccount: "Create one",
+      signedInTitle: "You're signed in",
+      signedInMessage: "This placeholder will become the WorkspaceCanvas dashboard.",
+      mfaRequiredTitle: "MFA verification required",
+      mfaRequiredMessage:
+        "We received your MFA challenge. The verification screen will be added next.",
+    },
     signup: {
       title: "Create your account",
       subtitle: "We'll send a verification link to your email.",

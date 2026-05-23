@@ -5,36 +5,10 @@ export const authCardContentSx: SxProps<Theme> = {
   "&:last-child": { pb: 4 },
 };
 
-export const signupHeaderSx: SxProps<Theme> = {
-  textAlign: "center",
-  mb: 3,
-};
-
-export const signupBrandSx: SxProps<Theme> = {
-  fontWeight: 900,
-  letterSpacing: -0.5,
-  color: "primary.main",
-};
-
-export const signupTitleSx: SxProps<Theme> = {
-  mt: 1,
-};
-
-export const signupSubtitleSx: SxProps<Theme> = {
-  color: "text.secondary",
-  mt: 0.5,
-};
-
-export const signupFormSx: SxProps<Theme> = {
+export const authFormSx: SxProps<Theme> = {
   display: "flex",
   flexDirection: "column",
   gap: 2,
-};
-
-export const signupFooterSx: SxProps<Theme> = {
-  textAlign: "center",
-  color: "text.secondary",
-  mt: 3,
 };
 
 export const signupSuccessBoxSx: SxProps<Theme> = {
