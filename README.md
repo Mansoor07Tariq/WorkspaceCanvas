@@ -12,6 +12,7 @@ Currently completed:
 
 - React + TypeScript frontend setup
 - Tailwind CSS setup
+- Material UI (MUI 9) with shared theme and component system
 - Django backend project setup with `config` app (settings, URLs, WSGI/ASGI)
 - PostgreSQL database configured via environment variables
 - `accounts` app with Organization, Membership, and Invitation models
@@ -39,10 +40,11 @@ Upcoming work:
 - TypeScript
 - Vite
 - Tailwind CSS
+- Material UI (MUI 9)
+- React Router
 
 Planned frontend additions:
 
-- React Router
 - TanStack Query
 - Zustand
 - React Hook Form
@@ -119,6 +121,8 @@ Detailed notes for each feature and setup step are in the `docs/` folder:
 | [015-mfa-login-enforcement.md](docs/015-mfa-login-enforcement.md) | MFA login enforcement — challenge-based MFA gate on email and social login |
 | [016-frontend-auth-api-foundation.md](docs/016-frontend-auth-api-foundation.md) | Frontend auth API foundation — TypeScript types, token storage, fetch wrapper, and auth API functions |
 | [017-frontend-architecture-foundation.md](docs/017-frontend-architecture-foundation.md) | Frontend architecture foundation — DRY API layer, centralized endpoints and env, scalable folder structure |
+| [018-signup-ui.md](docs/018-signup-ui.md) | Signup UI — first auth screen with form, client-side validation, API integration, success/error states |
+| [019-frontend-ui-system-foundation.md](docs/019-frontend-ui-system-foundation.md) | Frontend UI system — MUI 9, shared theme, AppThemeProvider, auth component refactor |
 
 ## Common Commands
 

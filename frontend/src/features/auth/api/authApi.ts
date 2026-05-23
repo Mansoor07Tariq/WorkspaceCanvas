@@ -1,4 +1,4 @@
-import { api } from "../../../lib/api/apiClient";
+import { api } from "@/lib/api/apiClient";
 import { AUTH_ENDPOINTS } from "./authEndpoints";
 import type {
   CurrentUser,
