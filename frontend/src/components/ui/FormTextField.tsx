@@ -11,6 +11,9 @@ interface Props {
   disabled?: boolean;
   autoComplete?: string;
   placeholder?: string;
+  inputMode?: React.HTMLAttributes<HTMLInputElement>["inputMode"];
+  autoFocus?: boolean;
+  maxLength?: number;
 }
 
 export function FormTextField({
@@ -23,6 +26,9 @@ export function FormTextField({
   disabled,
   autoComplete,
   placeholder,
+  inputMode,
+  autoFocus,
+  maxLength,
 }: Props) {
   return (
     <TextField
@@ -36,8 +42,13 @@ export function FormTextField({
       disabled={disabled}
       autoComplete={autoComplete}
       placeholder={placeholder}
+      autoFocus={autoFocus}
       slotProps={{
         formHelperText: error ? { role: "alert" } : {},
+        htmlInput: {
+          ...(inputMode !== undefined ? { inputMode } : {}),
+          ...(maxLength !== undefined ? { maxLength } : {}),
+        },
       }}
     />
   );
