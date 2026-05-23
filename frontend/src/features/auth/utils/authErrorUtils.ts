@@ -2,6 +2,7 @@ import { ApiError } from "@/lib/api/apiError";
 import type { SignupFieldErrors } from "../types/signup.types";
 import type { LoginFieldErrors } from "../types/login.types";
 import type { MfaChallengeFieldErrors } from "../types/mfaChallenge.types";
+import type { ResendVerificationFieldErrors } from "../types/emailVerification.types";
 
 function getFirstError(value: unknown): string | undefined {
   if (Array.isArray(value) && value.length > 0) return String(value[0]);
@@ -43,5 +44,17 @@ export function extractMfaChallengeFieldErrors(error: unknown): MfaChallengeFiel
   if (token !== undefined) result.token = token;
   const recoveryCode = getFirstError(data.recovery_code);
   if (recoveryCode !== undefined) result.recovery_code = recoveryCode;
+  return result;
+}
+
+export function extractResendVerificationFieldErrors(
+  error: unknown
+): ResendVerificationFieldErrors {
+  if (!(error instanceof ApiError)) return {};
+  if (typeof error.data !== "object" || error.data === null) return {};
+  const data = error.data as Record<string, unknown>;
+  const result: ResendVerificationFieldErrors = {};
+  const email = getFirstError(data.email);
+  if (email !== undefined) result.email = email;
   return result;
 }

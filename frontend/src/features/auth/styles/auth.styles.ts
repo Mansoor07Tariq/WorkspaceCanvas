@@ -45,3 +45,19 @@ export const mfaToggleSx: SxProps<Theme> = {
   mt: 1,
   textAlign: "center",
 };
+
+export const verifyEmailCenterSx: SxProps<Theme> = {
+  textAlign: "center",
+  py: 1,
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  gap: 2,
+};
+
+export const verifyEmailResendSectionSx: SxProps<Theme> = {
+  mt: 3,
+  pt: 3,
+  borderTop: "1px solid",
+  borderColor: "divider",
+};

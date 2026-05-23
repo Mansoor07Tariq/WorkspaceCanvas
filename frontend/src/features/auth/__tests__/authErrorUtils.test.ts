@@ -3,6 +3,7 @@ import {
   extractSignupFieldErrors,
   extractLoginFieldErrors,
   extractMfaChallengeFieldErrors,
+  extractResendVerificationFieldErrors,
 } from "../utils/authErrorUtils";
 import { ApiError } from "@/lib/api/apiError";
 
@@ -119,5 +120,29 @@ describe("extractMfaChallengeFieldErrors", () => {
   it("returns empty object when no matching fields are present", () => {
     const err = new ApiError(400, { detail: "MFA challenge expired." });
     expect(extractMfaChallengeFieldErrors(err)).toEqual({});
+  });
+});
+
+describe("extractResendVerificationFieldErrors", () => {
+  it("extracts email error from ApiError", () => {
+    const err = new ApiError(400, { email: ["Enter a valid email address."] });
+    expect(extractResendVerificationFieldErrors(err).email).toBe("Enter a valid email address.");
+  });
+
+  it("returns empty object for a non-ApiError", () => {
+    expect(extractResendVerificationFieldErrors(new Error("network failure"))).toEqual({});
+  });
+
+  it("returns empty object when ApiError data is not an object", () => {
+    expect(extractResendVerificationFieldErrors(new ApiError(500, "internal error"))).toEqual({});
+  });
+
+  it("returns empty object when ApiError data is null", () => {
+    expect(extractResendVerificationFieldErrors(new ApiError(500, null))).toEqual({});
+  });
+
+  it("returns empty object when no matching fields are present", () => {
+    const err = new ApiError(400, { detail: "Something went wrong." });
+    expect(extractResendVerificationFieldErrors(err)).toEqual({});
   });
 });
