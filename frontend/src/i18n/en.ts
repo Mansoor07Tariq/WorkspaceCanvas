@@ -69,6 +69,18 @@ export const en = {
       verificationRequired: "You need to verify your email before you can sign in.",
       backToSignIn: "Back to sign in",
     },
+    social: {
+      orDivider: "or",
+      continueWithGoogle: "Continue with Google",
+      continueWithMicrosoft: "Continue with Microsoft",
+      loadingGoogle: "Connecting to Google...",
+      loadingMicrosoft: "Connecting to Microsoft...",
+      googleError: "Google sign-in failed. Please try again.",
+      microsoftError: "Microsoft sign-in failed. Please try again.",
+      googleUnavailable: "Google login is not configured.",
+      microsoftUnavailable: "Microsoft login is not configured.",
+      popupClosed: "Login was cancelled.",
+    },
     validation: {
       fullNameMaxLength: "Full name must be 255 characters or fewer.",
       emailRequired: "Email is required.",

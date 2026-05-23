@@ -61,3 +61,16 @@ export const verifyEmailResendSectionSx: SxProps<Theme> = {
   borderTop: "1px solid",
   borderColor: "divider",
 };
+
+export const socialButtonsSx: SxProps<Theme> = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 1.5,
+  mt: 2,
+};
+
+export const socialProviderIconSx: SxProps<Theme> = {
+  width: 18,
+  height: 18,
+  display: "block",
+};

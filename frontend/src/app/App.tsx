@@ -1,10 +1,13 @@
+import { AuthProviderSetup } from "./providers/AuthProviderSetup";
 import { AppThemeProvider } from "./providers/AppThemeProvider";
 import { AppRouter } from "./router/AppRouter";
 
 export default function App() {
   return (
-    <AppThemeProvider>
-      <AppRouter />
-    </AppThemeProvider>
+    <AuthProviderSetup>
+      <AppThemeProvider>
+        <AppRouter />
+      </AppThemeProvider>
+    </AuthProviderSetup>
   );
 }

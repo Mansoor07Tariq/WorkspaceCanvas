@@ -16,6 +16,22 @@ vi.mock("react-router-dom", async () => {
   return { ...actual, useNavigate: () => mockNavigate };
 });
 
+vi.mock("@react-oauth/google", () => ({
+  useGoogleLogin: vi.fn(() => vi.fn()),
+  GoogleOAuthProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+
+vi.mock("@azure/msal-react", () => ({
+  useMsal: vi.fn(() => ({ instance: { loginPopup: vi.fn() } })),
+  MsalProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+
+vi.mock("../social/socialConfig", () => ({
+  msalInstance: {},
+  isGoogleConfigured: true,
+  isMicrosoftConfigured: true,
+}));
+
 vi.mock("../api/authApi", () => ({
   login: vi.fn(),
 }));

@@ -10,7 +10,9 @@ import { ErrorAlert } from "@/components/feedback/ErrorAlert";
 import { ROUTES } from "@/routes/paths";
 import { AuthCard } from "../components/AuthCard";
 import { AuthPageShell } from "../components/AuthPageShell";
+import { SocialLoginButtons } from "../components/SocialLoginButtons";
 import { useSignupForm } from "../hooks/useSignupForm";
+import { useSocialLogin } from "../hooks/useSocialLogin";
 import {
   authFormSx,
   signupSuccessBoxSx,
@@ -23,6 +25,9 @@ import {
 
 export function SignupPage() {
   const { fields, setField, fieldErrors, submission, handleSubmit } = useSignupForm();
+  const social = useSocialLogin();
+
+  const isLoading = submission.loading || social.loadingProvider !== undefined;
 
   if (submission.success) {
     return (
@@ -79,7 +84,7 @@ export function SignupPage() {
           value={fields.fullName}
           onChange={(e) => setField("fullName", e.target.value)}
           error={fieldErrors.full_name}
-          disabled={submission.loading}
+          disabled={isLoading}
           autoComplete="name"
           placeholder={en.auth.fields.fullNamePlaceholder}
         />
@@ -90,7 +95,7 @@ export function SignupPage() {
           value={fields.email}
           onChange={(e) => setField("email", e.target.value)}
           error={fieldErrors.email}
-          disabled={submission.loading}
+          disabled={isLoading}
           autoComplete="email"
           placeholder={en.auth.fields.emailPlaceholder}
         />
@@ -100,7 +105,7 @@ export function SignupPage() {
           value={fields.password}
           onChange={(e) => setField("password", e.target.value)}
           error={fieldErrors.password}
-          disabled={submission.loading}
+          disabled={isLoading}
           autoComplete="new-password"
         />
         <PasswordField
@@ -109,11 +114,27 @@ export function SignupPage() {
           value={fields.confirmPassword}
           onChange={(e) => setField("confirmPassword", e.target.value)}
           error={fieldErrors.confirmPassword}
-          disabled={submission.loading}
+          disabled={isLoading}
           autoComplete="new-password"
         />
-        <LoadingButton loading={submission.loading}>{en.auth.signup.submit}</LoadingButton>
+        <LoadingButton loading={submission.loading} disabled={isLoading}>
+          {en.auth.signup.submit}
+        </LoadingButton>
       </Box>
+      <SocialLoginButtons
+        isGoogleConfigured={social.isGoogleConfigured}
+        isMicrosoftConfigured={social.isMicrosoftConfigured}
+        onGoogleStart={social.startGoogleFlow}
+        onGoogleToken={social.handleGoogleToken}
+        onGoogleError={social.handleGoogleError}
+        onGoogleUnavailable={social.handleGoogleUnavailable}
+        onMicrosoftStart={social.startMicrosoftFlow}
+        onMicrosoftToken={social.handleMicrosoftToken}
+        onMicrosoftError={social.handleMicrosoftError}
+        onMicrosoftUnavailable={social.handleMicrosoftUnavailable}
+        loadingProvider={social.loadingProvider}
+        generalError={social.generalError}
+      />
     </AuthPageShell>
   );
 }
