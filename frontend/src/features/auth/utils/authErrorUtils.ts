@@ -1,4 +1,4 @@
-import { ApiError } from "../../../lib/api/apiError";
+import { ApiError } from "@/lib/api/apiError";
 import type { SignupFieldErrors } from "../types/signup.types";
 
 function getFirstError(value: unknown): string | undefined {

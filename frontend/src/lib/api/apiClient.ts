@@ -1,5 +1,5 @@
-import { API_BASE_URL } from "../../config/env";
-import { tokenStorage } from "../tokenStorage";
+import { API_BASE_URL } from "@/config/env";
+import { tokenStorage } from "@/lib/tokenStorage";
 import { ApiError } from "./apiError";
 import type { RequestOptions } from "./types";
 

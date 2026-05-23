@@ -5,6 +5,7 @@ import { MemoryRouter } from "react-router-dom";
 import { SignupPage } from "../pages/SignupPage";
 import { signup } from "../api/authApi";
 import { ApiError } from "../../../lib/api/apiError";
+import { en } from "@/i18n/en";
 
 vi.mock("../api/authApi", () => ({
   signup: vi.fn(),
@@ -27,10 +28,10 @@ describe("SignupPage", () => {
 
   it("renders full name, email, password, and confirm password fields", () => {
     renderSignupPage();
-    expect(screen.getByLabelText("Full name")).toBeInTheDocument();
-    expect(screen.getByLabelText("Email")).toBeInTheDocument();
-    expect(screen.getByLabelText("Password")).toBeInTheDocument();
-    expect(screen.getByLabelText("Confirm password")).toBeInTheDocument();
+    expect(screen.getByLabelText(en.auth.fields.fullName)).toBeInTheDocument();
+    expect(screen.getByLabelText(en.auth.fields.email)).toBeInTheDocument();
+    expect(screen.getByLabelText(en.auth.fields.password)).toBeInTheDocument();
+    expect(screen.getByLabelText(en.auth.fields.confirmPassword)).toBeInTheDocument();
   });
 
   it("renders a submit button", () => {
@@ -42,27 +43,27 @@ describe("SignupPage", () => {
     const user = userEvent.setup();
     renderSignupPage();
     await user.click(screen.getByRole("button", { name: /create account/i }));
-    expect(await screen.findByText("Email is required.")).toBeInTheDocument();
+    expect(await screen.findByText(en.auth.validation.emailRequired)).toBeInTheDocument();
   });
 
   it("shows password mismatch error", async () => {
     const user = userEvent.setup();
     renderSignupPage();
-    await user.type(screen.getByLabelText("Email"), "test@example.com");
-    await user.type(screen.getByLabelText("Password"), "password123");
-    await user.type(screen.getByLabelText("Confirm password"), "different!");
+    await user.type(screen.getByLabelText(en.auth.fields.email), "test@example.com");
+    await user.type(screen.getByLabelText(en.auth.fields.password), "password123");
+    await user.type(screen.getByLabelText(en.auth.fields.confirmPassword), "different!");
     await user.click(screen.getByRole("button", { name: /create account/i }));
-    expect(await screen.findByText("Passwords do not match.")).toBeInTheDocument();
+    expect(await screen.findByText(en.auth.validation.passwordMismatch)).toBeInTheDocument();
   });
 
   it("calls signup with the correct payload on valid submit", async () => {
     mockSignup.mockResolvedValueOnce({ detail: "Please verify your email." });
     const user = userEvent.setup();
     renderSignupPage();
-    await user.type(screen.getByLabelText("Full name"), "Jane Smith");
-    await user.type(screen.getByLabelText("Email"), "jane@example.com");
-    await user.type(screen.getByLabelText("Password"), "password123");
-    await user.type(screen.getByLabelText("Confirm password"), "password123");
+    await user.type(screen.getByLabelText(en.auth.fields.fullName), "Jane Smith");
+    await user.type(screen.getByLabelText(en.auth.fields.email), "jane@example.com");
+    await user.type(screen.getByLabelText(en.auth.fields.password), "password123");
+    await user.type(screen.getByLabelText(en.auth.fields.confirmPassword), "password123");
     await user.click(screen.getByRole("button", { name: /create account/i }));
     await waitFor(() => {
       expect(mockSignup).toHaveBeenCalledWith({
@@ -77,11 +78,11 @@ describe("SignupPage", () => {
     mockSignup.mockResolvedValueOnce({ detail: "Please verify your email." });
     const user = userEvent.setup();
     renderSignupPage();
-    await user.type(screen.getByLabelText("Email"), "jane@example.com");
-    await user.type(screen.getByLabelText("Password"), "password123");
-    await user.type(screen.getByLabelText("Confirm password"), "password123");
+    await user.type(screen.getByLabelText(en.auth.fields.email), "jane@example.com");
+    await user.type(screen.getByLabelText(en.auth.fields.password), "password123");
+    await user.type(screen.getByLabelText(en.auth.fields.confirmPassword), "password123");
     await user.click(screen.getByRole("button", { name: /create account/i }));
-    expect(await screen.findByText("Check your email")).toBeInTheDocument();
+    expect(await screen.findByText(en.auth.signup.successTitle)).toBeInTheDocument();
     expect(screen.getByText("jane@example.com")).toBeInTheDocument();
   });
 
@@ -91,9 +92,9 @@ describe("SignupPage", () => {
     );
     const user = userEvent.setup();
     renderSignupPage();
-    await user.type(screen.getByLabelText("Email"), "taken@example.com");
-    await user.type(screen.getByLabelText("Password"), "password123");
-    await user.type(screen.getByLabelText("Confirm password"), "password123");
+    await user.type(screen.getByLabelText(en.auth.fields.email), "taken@example.com");
+    await user.type(screen.getByLabelText(en.auth.fields.password), "password123");
+    await user.type(screen.getByLabelText(en.auth.fields.confirmPassword), "password123");
     await user.click(screen.getByRole("button", { name: /create account/i }));
     expect(await screen.findByText("A user with this email already exists.")).toBeInTheDocument();
   });
@@ -102,9 +103,9 @@ describe("SignupPage", () => {
     mockSignup.mockImplementation(() => new Promise(() => {}));
     const user = userEvent.setup();
     renderSignupPage();
-    await user.type(screen.getByLabelText("Email"), "jane@example.com");
-    await user.type(screen.getByLabelText("Password"), "password123");
-    await user.type(screen.getByLabelText("Confirm password"), "password123");
+    await user.type(screen.getByLabelText(en.auth.fields.email), "jane@example.com");
+    await user.type(screen.getByLabelText(en.auth.fields.password), "password123");
+    await user.type(screen.getByLabelText(en.auth.fields.confirmPassword), "password123");
     await user.click(screen.getByRole("button", { name: /create account/i }));
     await waitFor(() => {
       expect(screen.getByRole("button", { name: /create account/i })).toBeDisabled();

@@ -1,5 +1,5 @@
 import { ApiError } from "./apiError";
-import { en } from "../../i18n/en";
+import { en } from "@/i18n/en";
 
 export function getApiErrorMessage(error: unknown): string {
   if (error instanceof ApiError && typeof error.data === "object" && error.data !== null) {

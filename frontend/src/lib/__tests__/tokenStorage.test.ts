@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { tokenStorage } from "../tokenStorage";
+import { tokenStorage } from "@/lib/tokenStorage";
 
 const ACCESS_KEY = "workspacecanvas.accessToken";
 const REFRESH_KEY = "workspacecanvas.refreshToken";

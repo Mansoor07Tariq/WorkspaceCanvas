@@ -1,7 +1,6 @@
-import { en } from "../../../i18n/en";
+import { en } from "@/i18n/en";
+import { isValidEmail } from "@/lib/validation";
 import type { SignupFieldErrors } from "../types/signup.types";
-
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function validateSignupForm(
   fullName: string,
@@ -12,7 +11,7 @@ export function validateSignupForm(
   if (fullName.length > 255) errors.full_name = en.auth.validation.fullNameMaxLength;
   if (!email.trim()) {
     errors.email = en.auth.validation.emailRequired;
-  } else if (!EMAIL_REGEX.test(email)) {
+  } else if (!isValidEmail(email)) {
     errors.email = en.auth.validation.invalidEmail;
   }
   if (!password) {

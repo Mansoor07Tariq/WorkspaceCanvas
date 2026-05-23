@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { api, apiRequest, ApiError } from "../api/apiClient";
+import { api, apiRequest, ApiError } from "@/lib/api/apiClient";
 
-vi.mock("../../config/env", () => ({
+vi.mock("@/config/env", () => ({
   API_BASE_URL: "http://localhost:8000",
 }));
 
@@ -10,7 +10,7 @@ const mockGetToken = vi.hoisted(() =>
   vi.fn<() => string | null>().mockReturnValue("stored-access-token")
 );
 
-vi.mock("../tokenStorage", () => ({
+vi.mock("@/lib/tokenStorage", () => ({
   tokenStorage: {
     getAccessToken: mockGetToken,
   },

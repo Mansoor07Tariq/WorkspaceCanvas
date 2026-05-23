@@ -1,5 +1,13 @@
 export const en = {
   auth: {
+    fields: {
+      fullName: "Full name",
+      fullNamePlaceholder: "Jane Smith",
+      email: "Email",
+      emailPlaceholder: "jane@example.com",
+      password: "Password",
+      confirmPassword: "Confirm password",
+    },
     signup: {
       title: "Create your account",
       subtitle: "We'll send a verification link to your email.",

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { extractSignupFieldErrors } from "../utils/authErrorUtils";
-import { ApiError } from "../../../lib/api/apiError";
+import { ApiError } from "@/lib/api/apiError";
 
 describe("extractSignupFieldErrors", () => {
   it("extracts email error from ApiError", () => {

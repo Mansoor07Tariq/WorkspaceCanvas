@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { api } from "../../../lib/api/apiClient";
+import { api } from "@/lib/api/apiClient";
 import { AUTH_ENDPOINTS } from "../api/authEndpoints";
 import {
   login,
@@ -18,7 +18,7 @@ import {
   getCurrentUser,
 } from "../api/authApi";
 
-vi.mock("../../../lib/api/apiClient", () => ({
+vi.mock("@/lib/api/apiClient", () => ({
   api: {
     get: vi.fn(),
     post: vi.fn(),
