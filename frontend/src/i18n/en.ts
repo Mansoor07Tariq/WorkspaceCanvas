@@ -20,6 +20,24 @@ export const en = {
       mfaRequiredMessage:
         "We received your MFA challenge. The verification screen will be added next.",
     },
+    verifyEmail: {
+      title: "Verify your email",
+      subtitle: "We are checking your verification link.",
+      verifyingTitle: "Verifying your email",
+      verifyingMessage: "Please wait while we verify your email address.",
+      successTitle: "Email verified",
+      successMessage: "Your email address has been verified successfully. You can now sign in.",
+      errorTitle: "Verification failed",
+      missingTokenMessage:
+        "This verification link is missing a token. Please use the link from your email.",
+      expiredOrInvalidMessage: "This verification link is invalid or has expired.",
+      backToLogin: "Back to login",
+      goToLogin: "Go to login",
+      resendTitle: "Need a new link?",
+      resendSubtitle: "Enter your email and we will send another verification link.",
+      resendSubmit: "Resend verification email",
+      resendSuccess: "If that email is registered and unverified, a new link has been sent.",
+    },
     mfaChallenge: {
       title: "Verify your identity",
       subtitle: "Enter the 6-digit code from your authenticator app.",
