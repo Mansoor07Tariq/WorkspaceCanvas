@@ -1,25 +1,56 @@
-import { API_BASE_URL } from "@/config/env";
 import { tokenStorage } from "@/lib/tokenStorage";
+import { sessionEvents } from "@/lib/sessionEvents";
+import { refreshStoredTokens } from "@/features/auth/utils/sessionRefresh";
 import { ApiError } from "./apiError";
+import { apiRequest } from "./rawRequest";
 import type { RequestOptions } from "./types";
 
-// Low-level fetch wrapper — callers supply the full RequestInit.
-export async function apiRequest<TResponse>(
+// These endpoints are public auth calls that must never trigger a refresh retry.
+// Includes the refresh endpoint itself to prevent recursive loops.
+const NO_REFRESH_PATHS = new Set([
+  "/api/auth/token/",
+  "/api/auth/signup/",
+  "/api/auth/verify-email/",
+  "/api/auth/resend-verification/",
+  "/api/auth/token/refresh/",
+  "/api/auth/logout/",
+  "/api/auth/social/",
+  "/api/auth/mfa/challenge/verify/",
+]);
+
+async function executeWithRetry<TResponse>(
   path: string,
-  init: RequestInit = {}
+  buildInit: () => RequestInit,
+  requiresAuth: boolean
 ): Promise<TResponse> {
-  const response = await fetch(`${API_BASE_URL}${path}`, init);
+  try {
+    return await apiRequest<TResponse>(path, buildInit());
+  } catch (err: unknown) {
+    if (
+      !requiresAuth ||
+      !(err instanceof ApiError) ||
+      err.status !== 401 ||
+      NO_REFRESH_PATHS.has(path)
+    ) {
+      throw err;
+    }
 
-  if (!response.ok) {
-    const data = await response.json().catch(() => null);
-    throw new ApiError(response.status, data);
+    const refreshed = await refreshStoredTokens();
+    if (!refreshed) {
+      sessionEvents.emitSessionExpired();
+      throw err;
+    }
+
+    // Retry once — buildInit() re-reads tokenStorage so it picks up the new access token.
+    try {
+      return await apiRequest<TResponse>(path, buildInit());
+    } catch (retryErr: unknown) {
+      if (retryErr instanceof ApiError && retryErr.status === 401) {
+        sessionEvents.emitSessionExpired();
+      }
+      throw retryErr;
+    }
   }
-
-  if (response.status === 204) {
-    return undefined as TResponse;
-  }
-
-  return response.json() as Promise<TResponse>;
 }
 
 function buildHeaders(options: RequestOptions, hasBody: boolean): Record<string, string> {
@@ -29,9 +60,6 @@ function buildHeaders(options: RequestOptions, hasBody: boolean): Record<string,
     headers["Content-Type"] = "application/json";
   }
 
-  // auth defaults to true — skip only when explicitly set to false.
-  // TODO: replace direct tokenStorage call with a configurable getter
-  //       when AuthContext / Zustand is added in a later PR.
   if (options.auth !== false) {
     const token = tokenStorage.getAccessToken();
     if (token !== null) {
@@ -48,9 +76,11 @@ function buildHeaders(options: RequestOptions, hasBody: boolean): Record<string,
 
 export const api = {
   get<TResponse>(path: string, options: RequestOptions = {}): Promise<TResponse> {
-    return apiRequest<TResponse>(path, {
-      headers: buildHeaders(options, false),
-    });
+    return executeWithRetry<TResponse>(
+      path,
+      () => ({ headers: buildHeaders(options, false) }),
+      options.auth !== false
+    );
   },
 
   post<TResponse, TBody = unknown>(
@@ -59,11 +89,15 @@ export const api = {
     options: RequestOptions = {}
   ): Promise<TResponse> {
     const hasBody = body !== undefined;
-    return apiRequest<TResponse>(path, {
-      method: "POST",
-      body: hasBody ? JSON.stringify(body) : undefined,
-      headers: buildHeaders(options, hasBody),
-    });
+    return executeWithRetry<TResponse>(
+      path,
+      () => ({
+        method: "POST",
+        body: hasBody ? JSON.stringify(body) : undefined,
+        headers: buildHeaders(options, hasBody),
+      }),
+      options.auth !== false
+    );
   },
 
   patch<TResponse, TBody = unknown>(
@@ -72,19 +106,25 @@ export const api = {
     options: RequestOptions = {}
   ): Promise<TResponse> {
     const hasBody = body !== undefined;
-    return apiRequest<TResponse>(path, {
-      method: "PATCH",
-      body: hasBody ? JSON.stringify(body) : undefined,
-      headers: buildHeaders(options, hasBody),
-    });
+    return executeWithRetry<TResponse>(
+      path,
+      () => ({
+        method: "PATCH",
+        body: hasBody ? JSON.stringify(body) : undefined,
+        headers: buildHeaders(options, hasBody),
+      }),
+      options.auth !== false
+    );
   },
 
   delete<TResponse>(path: string, options: RequestOptions = {}): Promise<TResponse> {
-    return apiRequest<TResponse>(path, {
-      method: "DELETE",
-      headers: buildHeaders(options, false),
-    });
+    return executeWithRetry<TResponse>(
+      path,
+      () => ({ method: "DELETE", headers: buildHeaders(options, false) }),
+      options.auth !== false
+    );
   },
 };
 
 export { ApiError };
+export { apiRequest } from "./rawRequest";

@@ -4,22 +4,31 @@ import { MemoryRouter } from "react-router-dom";
 import type { ReactNode } from "react";
 import { createElement } from "react";
 import { useSocialLogin } from "../hooks/useSocialLogin";
-import { socialAuth } from "../api/authApi";
+import { socialAuth, getCurrentUser } from "../api/authApi";
 import type { SocialAuthResponse } from "../types/auth.types";
+import type { CurrentUser } from "../types/auth.types";
 import { tokenStorage } from "@/lib/tokenStorage";
 import { ApiError } from "@/lib/api/apiError";
 import { en } from "@/i18n/en";
 import { ROUTES } from "@/routes/paths";
 
 const mockNavigate = vi.hoisted(() => vi.fn());
+const mockSetAuthenticatedUser = vi.fn();
 
 vi.mock("react-router-dom", async () => {
   const actual = await vi.importActual<typeof import("react-router-dom")>("react-router-dom");
   return { ...actual, useNavigate: () => mockNavigate };
 });
 
+vi.mock("@/features/auth/context/AuthContext", () => ({
+  useAuth: () => ({
+    setAuthenticatedUser: mockSetAuthenticatedUser,
+  }),
+}));
+
 vi.mock("../api/authApi", () => ({
   socialAuth: vi.fn(),
+  getCurrentUser: vi.fn(),
 }));
 
 vi.mock("@/lib/tokenStorage", () => ({
@@ -38,7 +47,28 @@ vi.mock("../social/socialConfig", () => ({
 }));
 
 const mockSocialAuth = vi.mocked(socialAuth);
+const mockGetCurrentUser = vi.mocked(getCurrentUser);
 const mockSetTokens = vi.mocked(tokenStorage.setTokens);
+const mockClearTokens = vi.mocked(tokenStorage.clearTokens);
+
+const mockUser: CurrentUser = {
+  id: 1,
+  username: "user@example.com",
+  email: "user@example.com",
+  full_name: "Test User",
+  first_name: "Test",
+  last_name: "User",
+  avatar: null,
+  phone_number: "",
+  job_title: "",
+  timezone: "UTC",
+  locale: "en",
+  is_profile_completed: false,
+  email_verified: true,
+  preferred_auth_provider: "email",
+  mfa_enabled: false,
+  memberships: [],
+};
 
 function wrapper({ children }: { children: ReactNode }) {
   return createElement(MemoryRouter, null, children);
@@ -47,11 +77,12 @@ function wrapper({ children }: { children: ReactNode }) {
 describe("useSocialLogin", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetCurrentUser.mockResolvedValue(mockUser);
   });
 
   // --- success paths ---
 
-  it("stores tokens and navigates to /app on Google success", async () => {
+  it("stores tokens, calls getCurrentUser, and navigates to /app on Google success", async () => {
     mockSocialAuth.mockResolvedValueOnce({
       access: "tok-a",
       refresh: "tok-r",
@@ -70,10 +101,12 @@ describe("useSocialLogin", () => {
       access_token: "google-access-token",
     });
     expect(mockSetTokens).toHaveBeenCalledWith("tok-a", "tok-r");
+    expect(mockGetCurrentUser).toHaveBeenCalledTimes(1);
+    expect(mockSetAuthenticatedUser).toHaveBeenCalledWith(mockUser);
     expect(mockNavigate).toHaveBeenCalledWith(ROUTES.app, { replace: true });
   });
 
-  it("stores tokens and navigates to /app on Microsoft success", async () => {
+  it("stores tokens, calls getCurrentUser, and navigates to /app on Microsoft success", async () => {
     mockSocialAuth.mockResolvedValueOnce({
       access: "tok-a",
       refresh: "tok-r",
@@ -92,7 +125,29 @@ describe("useSocialLogin", () => {
       id_token: "ms-id-token",
     });
     expect(mockSetTokens).toHaveBeenCalledWith("tok-a", "tok-r");
+    expect(mockGetCurrentUser).toHaveBeenCalledTimes(1);
+    expect(mockSetAuthenticatedUser).toHaveBeenCalledWith(mockUser);
     expect(mockNavigate).toHaveBeenCalledWith(ROUTES.app, { replace: true });
+  });
+
+  it("clears tokens and shows error when getCurrentUser fails after social auth", async () => {
+    mockSocialAuth.mockResolvedValueOnce({
+      access: "tok-a",
+      refresh: "tok-r",
+      email: "user@example.com",
+      email_verified: true,
+      preferred_auth_provider: "google",
+    });
+    mockGetCurrentUser.mockRejectedValueOnce(new ApiError(401, { detail: "Unauthorized." }));
+    const { result } = renderHook(() => useSocialLogin(), { wrapper });
+
+    await act(async () => {
+      result.current.handleGoogleToken("google-access-token");
+    });
+
+    expect(mockClearTokens).toHaveBeenCalled();
+    expect(mockNavigate).not.toHaveBeenCalled();
+    expect(result.current.generalError).toBe("Unauthorized.");
   });
 
   // --- MFA paths ---
@@ -112,6 +167,7 @@ describe("useSocialLogin", () => {
     });
 
     expect(mockSetTokens).not.toHaveBeenCalled();
+    expect(mockGetCurrentUser).not.toHaveBeenCalled();
     expect(mockNavigate).toHaveBeenCalledWith(ROUTES.mfaChallenge, {
       state: { challengeId: "ch-123", email: "user@example.com" },
     });

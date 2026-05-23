@@ -3,18 +3,27 @@ import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import { LoginPage } from "../pages/LoginPage";
-import { login } from "../api/authApi";
+import { login, getCurrentUser } from "../api/authApi";
 import { tokenStorage } from "@/lib/tokenStorage";
 import { ApiError } from "@/lib/api/apiError";
 import { en } from "@/i18n/en";
 import { ROUTES } from "@/routes/paths";
+import type { CurrentUser } from "../types/auth.types";
 
 const mockNavigate = vi.hoisted(() => vi.fn());
+const mockSetAuthenticatedUser = vi.fn();
 
 vi.mock("react-router-dom", async () => {
   const actual = await vi.importActual<typeof import("react-router-dom")>("react-router-dom");
   return { ...actual, useNavigate: () => mockNavigate };
 });
+
+vi.mock("@/features/auth/context/AuthContext", () => ({
+  useAuth: () => ({
+    setAuthenticatedUser: mockSetAuthenticatedUser,
+    markUnauthenticated: vi.fn(),
+  }),
+}));
 
 vi.mock("@react-oauth/google", () => ({
   useGoogleLogin: vi.fn(() => vi.fn()),
@@ -34,6 +43,7 @@ vi.mock("../social/socialConfig", () => ({
 
 vi.mock("../api/authApi", () => ({
   login: vi.fn(),
+  getCurrentUser: vi.fn(),
 }));
 
 vi.mock("@/lib/tokenStorage", () => ({
@@ -46,7 +56,28 @@ vi.mock("@/lib/tokenStorage", () => ({
 }));
 
 const mockLogin = vi.mocked(login);
+const mockGetCurrentUser = vi.mocked(getCurrentUser);
 const mockSetTokens = vi.mocked(tokenStorage.setTokens);
+const mockClearTokens = vi.mocked(tokenStorage.clearTokens);
+
+const mockUser: CurrentUser = {
+  id: 1,
+  username: "user@example.com",
+  email: "user@example.com",
+  full_name: "Test User",
+  first_name: "Test",
+  last_name: "User",
+  avatar: null,
+  phone_number: "",
+  job_title: "",
+  timezone: "UTC",
+  locale: "en",
+  is_profile_completed: false,
+  email_verified: true,
+  preferred_auth_provider: "email",
+  mfa_enabled: false,
+  memberships: [],
+};
 
 function renderLoginPage() {
   return render(
@@ -59,6 +90,7 @@ function renderLoginPage() {
 describe("LoginPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetCurrentUser.mockResolvedValue(mockUser);
   });
 
   it("renders email and password fields", () => {
@@ -127,6 +159,30 @@ describe("LoginPage", () => {
     });
   });
 
+  it("calls getCurrentUser after storing tokens", async () => {
+    mockLogin.mockResolvedValueOnce({ access: "tok-a", refresh: "tok-r" });
+    const user = userEvent.setup();
+    renderLoginPage();
+    await user.type(screen.getByLabelText(en.auth.fields.email), "user@example.com");
+    await user.type(screen.getByLabelText(en.auth.fields.password), "password123");
+    await user.click(screen.getByRole("button", { name: /sign in/i }));
+    await waitFor(() => {
+      expect(mockGetCurrentUser).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("calls setAuthenticatedUser with user after getCurrentUser succeeds", async () => {
+    mockLogin.mockResolvedValueOnce({ access: "tok-a", refresh: "tok-r" });
+    const user = userEvent.setup();
+    renderLoginPage();
+    await user.type(screen.getByLabelText(en.auth.fields.email), "user@example.com");
+    await user.type(screen.getByLabelText(en.auth.fields.password), "password123");
+    await user.click(screen.getByRole("button", { name: /sign in/i }));
+    await waitFor(() => {
+      expect(mockSetAuthenticatedUser).toHaveBeenCalledWith(mockUser);
+    });
+  });
+
   it("navigates to /app on normal login success", async () => {
     mockLogin.mockResolvedValueOnce({ access: "tok-a", refresh: "tok-r" });
     const user = userEvent.setup();
@@ -137,6 +193,21 @@ describe("LoginPage", () => {
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith(ROUTES.app);
     });
+  });
+
+  it("clears tokens and shows error when getCurrentUser fails after login", async () => {
+    mockLogin.mockResolvedValueOnce({ access: "tok-a", refresh: "tok-r" });
+    mockGetCurrentUser.mockRejectedValueOnce(new ApiError(401, { detail: "Unauthorized." }));
+    const user = userEvent.setup();
+    renderLoginPage();
+    await user.type(screen.getByLabelText(en.auth.fields.email), "user@example.com");
+    await user.type(screen.getByLabelText(en.auth.fields.password), "password123");
+    await user.click(screen.getByRole("button", { name: /sign in/i }));
+    await waitFor(() => {
+      expect(mockClearTokens).toHaveBeenCalled();
+      expect(mockNavigate).not.toHaveBeenCalled();
+    });
+    expect(await screen.findByText("Unauthorized.")).toBeInTheDocument();
   });
 
   it("does not store tokens when MFA is required", async () => {

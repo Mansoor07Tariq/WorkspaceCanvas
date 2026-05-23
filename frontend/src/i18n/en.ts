@@ -69,6 +69,15 @@ export const en = {
       verificationRequired: "You need to verify your email before you can sign in.",
       backToSignIn: "Back to sign in",
     },
+    session: {
+      loading: "Checking your session...",
+      sessionExpired: "Your session has expired. Please sign in again.",
+      logout: "Log out",
+      logoutFailed: "We could not log you out. Please try again.",
+      signedOut: "You have been signed out.",
+      protectedRouteLoading: "Loading your workspace...",
+      unauthenticatedRedirect: "Please sign in to continue.",
+    },
     social: {
       orDivider: "or",
       continueWithGoogle: "Continue with Google",
@@ -89,6 +98,23 @@ export const en = {
       passwordMinLength: "Password must be at least 8 characters.",
       confirmPasswordRequired: "Please confirm your password.",
       passwordMismatch: "Passwords do not match.",
+    },
+  },
+  app: {
+    shell: {
+      brand: "WorkspaceCanvas",
+      logout: "Log out",
+    },
+    placeholder: {
+      title: "Welcome to WorkspaceCanvas",
+      subtitle: "Your workspace dashboard will appear here.",
+      email: "Email",
+      name: "Name",
+      profileCompleted: "Profile completed",
+      organizations: "Organizations",
+      noOrganizationsTitle: "No organization yet",
+      noOrganizationsMessage:
+        "You are not part of any organization yet. Organization setup and invitations will be added next.",
     },
   },
   common: {

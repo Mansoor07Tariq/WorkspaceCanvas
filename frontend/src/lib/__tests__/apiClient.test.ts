@@ -5,7 +5,6 @@ vi.mock("@/config/env", () => ({
   API_BASE_URL: "http://localhost:8000",
 }));
 
-// vi.hoisted ensures this is created before the factory below runs (vi.mock is hoisted).
 const mockGetToken = vi.hoisted(() =>
   vi.fn<() => string | null>().mockReturnValue("stored-access-token")
 );
@@ -13,7 +12,24 @@ const mockGetToken = vi.hoisted(() =>
 vi.mock("@/lib/tokenStorage", () => ({
   tokenStorage: {
     getAccessToken: mockGetToken,
+    getRefreshToken: vi.fn(),
+    setAccessToken: vi.fn(),
+    setTokens: vi.fn(),
+    clearTokens: vi.fn(),
   },
+}));
+
+const mockEmitSessionExpired = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/sessionEvents", () => ({
+  sessionEvents: {
+    emitSessionExpired: mockEmitSessionExpired,
+    onSessionExpired: vi.fn(),
+  },
+}));
+
+const mockRefreshStoredTokens = vi.hoisted(() => vi.fn<() => Promise<boolean>>());
+vi.mock("@/features/auth/utils/sessionRefresh", () => ({
+  refreshStoredTokens: mockRefreshStoredTokens,
 }));
 
 const fetchMock = vi.fn<typeof fetch>();
@@ -87,6 +103,7 @@ describe("api.get", () => {
   beforeEach(() => {
     fetchMock.mockReset();
     mockGetToken.mockReturnValue("stored-access-token");
+    mockRefreshStoredTokens.mockResolvedValue(false);
   });
 
   it("attaches Authorization header by default (auth: true)", async () => {
@@ -125,6 +142,7 @@ describe("api.post", () => {
   beforeEach(() => {
     fetchMock.mockReset();
     mockGetToken.mockReturnValue("stored-access-token");
+    mockRefreshStoredTokens.mockResolvedValue(false);
   });
 
   it("sends POST method", async () => {
@@ -177,5 +195,109 @@ describe("api.post", () => {
   it("returns undefined on 204", async () => {
     fetchMock.mockResolvedValueOnce(makeResponse(204, null));
     expect(await api.post("/api/auth/logout/", { refresh: "tok" })).toBeUndefined();
+  });
+});
+
+describe("api — 401 retry", () => {
+  beforeEach(() => {
+    fetchMock.mockReset();
+    vi.clearAllMocks();
+    mockGetToken.mockReturnValue("old-access-token");
+  });
+
+  it("refreshes tokens and retries once when an authenticated request returns 401", async () => {
+    mockRefreshStoredTokens.mockResolvedValueOnce(true);
+    fetchMock
+      .mockResolvedValueOnce(makeResponse(401, { detail: "Expired." }))
+      .mockResolvedValueOnce(makeResponse(200, { id: 1 }));
+
+    const result = await api.get<{ id: number }>("/api/auth/me/");
+
+    expect(mockRefreshStoredTokens).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(result).toEqual({ id: 1 });
+  });
+
+  it("uses the new access token on the retry request", async () => {
+    mockRefreshStoredTokens.mockResolvedValueOnce(true);
+    mockGetToken.mockReturnValueOnce("old-access-token").mockReturnValueOnce("new-access-token");
+    fetchMock
+      .mockResolvedValueOnce(makeResponse(401, { detail: "Expired." }))
+      .mockResolvedValueOnce(makeResponse(200, {}));
+
+    await api.get("/api/auth/me/");
+
+    const [, retryOptions] = fetchMock.mock.calls[1];
+    expect((retryOptions as RequestInit).headers).toMatchObject({
+      Authorization: "Bearer new-access-token",
+    });
+  });
+
+  it("emits session expired and throws when refresh fails", async () => {
+    mockRefreshStoredTokens.mockResolvedValueOnce(false);
+    fetchMock.mockResolvedValueOnce(makeResponse(401, { detail: "Expired." }));
+
+    await expect(api.get("/api/auth/me/")).rejects.toThrow(ApiError);
+    expect(mockEmitSessionExpired).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not retry and does not refresh for public auth endpoints (auth: false)", async () => {
+    fetchMock.mockResolvedValueOnce(makeResponse(401, { detail: "Bad credentials." }));
+
+    await expect(
+      api.post("/api/auth/token/", { email: "a@b.com" }, { auth: false })
+    ).rejects.toThrow(ApiError);
+
+    expect(mockRefreshStoredTokens).not.toHaveBeenCalled();
+    expect(mockEmitSessionExpired).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not retry the token refresh endpoint itself", async () => {
+    fetchMock.mockResolvedValueOnce(makeResponse(401, { detail: "Refresh expired." }));
+
+    await expect(
+      api.post("/api/auth/token/refresh/", { refresh: "bad-tok" }, { auth: false })
+    ).rejects.toThrow(ApiError);
+
+    expect(mockRefreshStoredTokens).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not retry the login endpoint", async () => {
+    fetchMock.mockResolvedValueOnce(makeResponse(401, { detail: "Bad credentials." }));
+
+    await expect(
+      api.post("/api/auth/token/", { email: "a@b.com", password: "bad" }, { auth: false })
+    ).rejects.toThrow(ApiError);
+
+    expect(mockRefreshStoredTokens).not.toHaveBeenCalled();
+  });
+
+  it("does not retry the logout endpoint — logout is best-effort", async () => {
+    fetchMock.mockResolvedValueOnce(makeResponse(401, { detail: "Expired." }));
+
+    await expect(api.post("/api/auth/logout/", { refresh: "tok" })).rejects.toThrow(ApiError);
+
+    expect(mockRefreshStoredTokens).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("emits session expired and rethrows if retry also returns 401", async () => {
+    mockRefreshStoredTokens.mockResolvedValueOnce(true);
+    fetchMock
+      .mockResolvedValueOnce(makeResponse(401, { detail: "Expired." }))
+      .mockResolvedValueOnce(makeResponse(401, { detail: "Still expired." }));
+
+    await expect(api.get("/api/auth/me/")).rejects.toThrow(ApiError);
+    expect(mockEmitSessionExpired).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not refresh on non-401 errors", async () => {
+    fetchMock.mockResolvedValueOnce(makeResponse(500, { detail: "Server error." }));
+
+    await expect(api.get("/api/auth/me/")).rejects.toThrow(ApiError);
+    expect(mockRefreshStoredTokens).not.toHaveBeenCalled();
   });
 });

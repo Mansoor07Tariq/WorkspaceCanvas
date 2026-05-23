@@ -127,6 +127,7 @@ Detailed notes for each feature and setup step are in the `docs/` folder:
 | [021-mfa-challenge-ui.md](docs/021-mfa-challenge-ui.md) | MFA Challenge UI — TOTP and recovery code verification, missing challenge state, token storage after MFA |
 | [022-email-verification-ui.md](docs/022-email-verification-ui.md) | Email Verification UI — token verification page, success/error states, resend verification form |
 | [023-social-login-ui.md](docs/023-social-login-ui.md) | Social Login UI — Google and Microsoft OAuth buttons on Login and Signup pages, MFA-required routing |
+| [024-auth-state-protected-routes.md](docs/024-auth-state-protected-routes.md) | Auth State and Protected Routes — AuthProvider, useAuth, ProtectedRoute, /app protection, logout support |
 
 ## Common Commands
 

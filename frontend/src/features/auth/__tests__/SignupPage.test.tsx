@@ -11,6 +11,12 @@ vi.mock("../api/authApi", () => ({
   signup: vi.fn(),
 }));
 
+vi.mock("@/features/auth/context/AuthContext", () => ({
+  useAuth: () => ({
+    setAuthenticatedUser: vi.fn(),
+  }),
+}));
+
 vi.mock("@react-oauth/google", () => ({
   useGoogleLogin: vi.fn(() => vi.fn()),
   GoogleOAuthProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,

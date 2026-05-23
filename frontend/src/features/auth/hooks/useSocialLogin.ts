@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { socialAuth } from "../api/authApi";
+import { socialAuth, getCurrentUser } from "../api/authApi";
 import { tokenStorage } from "@/lib/tokenStorage";
 import { getApiErrorMessage } from "@/lib/api/getApiErrorMessage";
 import { ROUTES } from "@/routes/paths";
 import { en } from "@/i18n/en";
 import { isGoogleConfigured, isMicrosoftConfigured } from "../social/socialConfig";
+import { useAuth } from "../context/AuthContext";
 import type { SocialProvider, SocialAuthMfaResponse } from "../types/auth.types";
 
 function isSocialMfaResponse(res: object): res is SocialAuthMfaResponse {
@@ -22,6 +23,7 @@ function isMsalUserCancelled(error: unknown): boolean {
 
 export function useSocialLogin() {
   const navigate = useNavigate();
+  const { setAuthenticatedUser } = useAuth();
   const [loadingProvider, setLoadingProvider] = useState<SocialProvider | undefined>();
   const [generalError, setGeneralError] = useState<string | undefined>();
 
@@ -69,7 +71,14 @@ export function useSocialLogin() {
         });
       } else {
         tokenStorage.setTokens(response.access, response.refresh);
-        navigate(ROUTES.app, { replace: true });
+        try {
+          const user = await getCurrentUser();
+          setAuthenticatedUser(user);
+          navigate(ROUTES.app, { replace: true });
+        } catch (err: unknown) {
+          tokenStorage.clearTokens();
+          setGeneralError(getApiErrorMessage(err));
+        }
       }
     } catch (err: unknown) {
       setGeneralError(getApiErrorMessage(err));

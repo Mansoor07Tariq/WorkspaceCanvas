@@ -31,6 +31,20 @@ describe("tokenStorage", () => {
     });
   });
 
+  describe("setAccessToken", () => {
+    it("updates only the access token without touching the refresh token", () => {
+      tokenStorage.setTokens("old-acc", "ref456");
+      tokenStorage.setAccessToken("new-acc");
+      expect(localStorage.getItem(ACCESS_KEY)).toBe("new-acc");
+      expect(localStorage.getItem(REFRESH_KEY)).toBe("ref456");
+    });
+
+    it("persists the access token under the correct key", () => {
+      tokenStorage.setAccessToken("acc-only");
+      expect(localStorage.getItem(ACCESS_KEY)).toBe("acc-only");
+    });
+  });
+
   describe("setTokens", () => {
     it("persists the access token under the correct key", () => {
       tokenStorage.setTokens("acc123", "ref456");
