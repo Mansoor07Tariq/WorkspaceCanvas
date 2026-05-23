@@ -3,21 +3,31 @@ import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import { MfaChallengePage } from "../pages/MfaChallengePage";
-import { verifyMfaChallenge } from "../api/authApi";
+import { verifyMfaChallenge, getCurrentUser } from "../api/authApi";
 import { tokenStorage } from "@/lib/tokenStorage";
 import { ApiError } from "@/lib/api/apiError";
 import { en } from "@/i18n/en";
 import { ROUTES } from "@/routes/paths";
+import type { CurrentUser } from "../types/auth.types";
 
 const mockNavigate = vi.hoisted(() => vi.fn());
+const mockSetAuthenticatedUser = vi.fn();
 
 vi.mock("react-router-dom", async () => {
   const actual = await vi.importActual<typeof import("react-router-dom")>("react-router-dom");
   return { ...actual, useNavigate: () => mockNavigate };
 });
 
+vi.mock("@/features/auth/context/AuthContext", () => ({
+  useAuth: () => ({
+    setAuthenticatedUser: mockSetAuthenticatedUser,
+    markUnauthenticated: vi.fn(),
+  }),
+}));
+
 vi.mock("../api/authApi", () => ({
   verifyMfaChallenge: vi.fn(),
+  getCurrentUser: vi.fn(),
 }));
 
 vi.mock("@/lib/tokenStorage", () => ({
@@ -30,7 +40,28 @@ vi.mock("@/lib/tokenStorage", () => ({
 }));
 
 const mockVerify = vi.mocked(verifyMfaChallenge);
+const mockGetCurrentUser = vi.mocked(getCurrentUser);
 const mockSetTokens = vi.mocked(tokenStorage.setTokens);
+const mockClearTokens = vi.mocked(tokenStorage.clearTokens);
+
+const mockUser: CurrentUser = {
+  id: 1,
+  username: "user@example.com",
+  email: "user@example.com",
+  full_name: "Test User",
+  first_name: "Test",
+  last_name: "User",
+  avatar: null,
+  phone_number: "",
+  job_title: "",
+  timezone: "UTC",
+  locale: "en",
+  is_profile_completed: false,
+  email_verified: true,
+  preferred_auth_provider: "email",
+  mfa_enabled: false,
+  memberships: [],
+};
 
 function renderMfaChallengePage(state?: { challengeId?: string; email?: string } | null) {
   return render(
@@ -43,6 +74,7 @@ function renderMfaChallengePage(state?: { challengeId?: string; email?: string }
 describe("MfaChallengePage — missing challenge state", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetCurrentUser.mockResolvedValue(mockUser);
   });
 
   it("shows missing challenge title when no state is provided", () => {
@@ -73,6 +105,7 @@ describe("MfaChallengePage — TOTP mode", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetCurrentUser.mockResolvedValue(mockUser);
   });
 
   it("renders the authenticator code field", () => {
@@ -137,6 +170,28 @@ describe("MfaChallengePage — TOTP mode", () => {
     });
   });
 
+  it("calls getCurrentUser after storing tokens", async () => {
+    mockVerify.mockResolvedValueOnce({ access: "tok-a", refresh: "tok-r" });
+    const user = userEvent.setup();
+    renderMfaChallengePage(challengeState);
+    await user.type(screen.getByLabelText(en.auth.mfaChallenge.codeLabel), "123456");
+    await user.click(screen.getByRole("button", { name: en.auth.mfaChallenge.submit }));
+    await waitFor(() => {
+      expect(mockGetCurrentUser).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("calls setAuthenticatedUser with user after getCurrentUser succeeds", async () => {
+    mockVerify.mockResolvedValueOnce({ access: "tok-a", refresh: "tok-r" });
+    const user = userEvent.setup();
+    renderMfaChallengePage(challengeState);
+    await user.type(screen.getByLabelText(en.auth.mfaChallenge.codeLabel), "123456");
+    await user.click(screen.getByRole("button", { name: en.auth.mfaChallenge.submit }));
+    await waitFor(() => {
+      expect(mockSetAuthenticatedUser).toHaveBeenCalledWith(mockUser);
+    });
+  });
+
   it("navigates to /app after successful TOTP verification", async () => {
     mockVerify.mockResolvedValueOnce({ access: "tok-a", refresh: "tok-r" });
     const user = userEvent.setup();
@@ -146,6 +201,20 @@ describe("MfaChallengePage — TOTP mode", () => {
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith(ROUTES.app);
     });
+  });
+
+  it("clears tokens and shows error when getCurrentUser fails after MFA verification", async () => {
+    mockVerify.mockResolvedValueOnce({ access: "tok-a", refresh: "tok-r" });
+    mockGetCurrentUser.mockRejectedValueOnce(new ApiError(401, { detail: "Unauthorized." }));
+    const user = userEvent.setup();
+    renderMfaChallengePage(challengeState);
+    await user.type(screen.getByLabelText(en.auth.mfaChallenge.codeLabel), "123456");
+    await user.click(screen.getByRole("button", { name: en.auth.mfaChallenge.submit }));
+    await waitFor(() => {
+      expect(mockClearTokens).toHaveBeenCalled();
+      expect(mockNavigate).not.toHaveBeenCalled();
+    });
+    expect(await screen.findByText("Unauthorized.")).toBeInTheDocument();
   });
 
   it("does not store tokens on API error", async () => {
@@ -185,6 +254,7 @@ describe("MfaChallengePage — recovery code mode", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetCurrentUser.mockResolvedValue(mockUser);
   });
 
   it("switches to recovery code mode when toggle is clicked", async () => {

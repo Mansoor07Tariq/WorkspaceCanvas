@@ -1,13 +1,97 @@
-import { Box, Typography } from "@mui/material";
+import { useNavigate } from "react-router-dom";
+import { Box, Card, CardContent, Chip, Stack, Typography } from "@mui/material";
+import { AppShell } from "@/app/layout/AppShell";
+import { useAuth } from "@/features/auth/context/AuthContext";
 import { en } from "@/i18n/en";
+import { ROUTES } from "@/routes/paths";
 
 export function AppPlaceholderPage() {
+  const { user, logoutUser } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await logoutUser();
+    navigate(ROUTES.login);
+  };
+
   return (
-    <Box sx={{ p: 4, textAlign: "center" }}>
-      <Typography variant="h5">{en.auth.login.signedInTitle}</Typography>
-      <Typography variant="body1" sx={{ mt: 2, color: "text.secondary" }}>
-        {en.auth.login.signedInMessage}
-      </Typography>
-    </Box>
+    <AppShell onLogout={() => void handleLogout()}>
+      <Box sx={{ p: 4, maxWidth: 560, mx: "auto", mt: 6 }}>
+        <Stack spacing={3}>
+          <Box>
+            <Typography variant="h4" gutterBottom>
+              {en.app.placeholder.title}
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              {en.app.placeholder.subtitle}
+            </Typography>
+          </Box>
+
+          {user && (
+            <Card variant="outlined">
+              <CardContent>
+                <Stack spacing={1.5}>
+                  <Box
+                    sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
+                  >
+                    <Typography variant="body2" color="text.secondary">
+                      {en.app.placeholder.email}
+                    </Typography>
+                    <Typography variant="body2">{user.email}</Typography>
+                  </Box>
+                  {user.full_name && (
+                    <Box
+                      sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
+                      <Typography variant="body2" color="text.secondary">
+                        {en.app.placeholder.name}
+                      </Typography>
+                      <Typography variant="body2">{user.full_name}</Typography>
+                    </Box>
+                  )}
+                  <Box
+                    sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
+                  >
+                    <Typography variant="body2" color="text.secondary">
+                      {en.app.placeholder.profileCompleted}
+                    </Typography>
+                    <Chip
+                      label={user.is_profile_completed ? "Yes" : "No"}
+                      size="small"
+                      color={user.is_profile_completed ? "success" : "default"}
+                    />
+                  </Box>
+                  <Box
+                    sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
+                  >
+                    <Typography variant="body2" color="text.secondary">
+                      {en.app.placeholder.organizations}
+                    </Typography>
+                    <Typography variant="body2">{user.memberships.length}</Typography>
+                  </Box>
+                </Stack>
+              </CardContent>
+            </Card>
+          )}
+
+          {user && user.memberships.length === 0 && (
+            <Card variant="outlined" sx={{ bgcolor: "action.hover" }}>
+              <CardContent>
+                <Typography variant="subtitle2" gutterBottom>
+                  {en.app.placeholder.noOrganizationsTitle}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {en.app.placeholder.noOrganizationsMessage}
+                </Typography>
+              </CardContent>
+            </Card>
+          )}
+        </Stack>
+      </Box>
+    </AppShell>
   );
 }
