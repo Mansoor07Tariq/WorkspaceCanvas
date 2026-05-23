@@ -11,6 +11,22 @@ vi.mock("../api/authApi", () => ({
   signup: vi.fn(),
 }));
 
+vi.mock("@react-oauth/google", () => ({
+  useGoogleLogin: vi.fn(() => vi.fn()),
+  GoogleOAuthProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+
+vi.mock("@azure/msal-react", () => ({
+  useMsal: vi.fn(() => ({ instance: { loginPopup: vi.fn() } })),
+  MsalProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+
+vi.mock("../social/socialConfig", () => ({
+  msalInstance: {},
+  isGoogleConfigured: true,
+  isMicrosoftConfigured: true,
+}));
+
 const mockSignup = vi.mocked(signup);
 
 function renderSignupPage() {

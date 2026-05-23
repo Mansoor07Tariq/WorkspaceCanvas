@@ -7,11 +7,16 @@ import { LoadingButton } from "@/components/ui/LoadingButton";
 import { ErrorAlert } from "@/components/feedback/ErrorAlert";
 import { ROUTES } from "@/routes/paths";
 import { AuthPageShell } from "../components/AuthPageShell";
+import { SocialLoginButtons } from "../components/SocialLoginButtons";
 import { useLoginForm } from "../hooks/useLoginForm";
+import { useSocialLogin } from "../hooks/useSocialLogin";
 import { authFormSx } from "../styles/auth.styles";
 
 export function LoginPage() {
   const { fields, setField, fieldErrors, submission, handleSubmit } = useLoginForm();
+  const social = useSocialLogin();
+
+  const isLoading = submission.loading || social.loadingProvider !== undefined;
 
   return (
     <AuthPageShell
@@ -38,7 +43,7 @@ export function LoginPage() {
           value={fields.email}
           onChange={(e) => setField("email", e.target.value)}
           error={fieldErrors.email}
-          disabled={submission.loading}
+          disabled={isLoading}
           autoComplete="email"
           placeholder={en.auth.fields.emailPlaceholder}
         />
@@ -48,11 +53,27 @@ export function LoginPage() {
           value={fields.password}
           onChange={(e) => setField("password", e.target.value)}
           error={fieldErrors.password}
-          disabled={submission.loading}
+          disabled={isLoading}
           autoComplete="current-password"
         />
-        <LoadingButton loading={submission.loading}>{en.auth.login.submit}</LoadingButton>
+        <LoadingButton loading={submission.loading} disabled={isLoading}>
+          {en.auth.login.submit}
+        </LoadingButton>
       </Box>
+      <SocialLoginButtons
+        isGoogleConfigured={social.isGoogleConfigured}
+        isMicrosoftConfigured={social.isMicrosoftConfigured}
+        onGoogleStart={social.startGoogleFlow}
+        onGoogleToken={social.handleGoogleToken}
+        onGoogleError={social.handleGoogleError}
+        onGoogleUnavailable={social.handleGoogleUnavailable}
+        onMicrosoftStart={social.startMicrosoftFlow}
+        onMicrosoftToken={social.handleMicrosoftToken}
+        onMicrosoftError={social.handleMicrosoftError}
+        onMicrosoftUnavailable={social.handleMicrosoftUnavailable}
+        loadingProvider={social.loadingProvider}
+        generalError={social.generalError}
+      />
     </AuthPageShell>
   );
 }
