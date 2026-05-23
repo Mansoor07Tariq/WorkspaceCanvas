@@ -124,6 +124,7 @@ Detailed notes for each feature and setup step are in the `docs/` folder:
 | [018-signup-ui.md](docs/018-signup-ui.md) | Signup UI — first auth screen with form, client-side validation, API integration, success/error states |
 | [019-frontend-ui-system-foundation.md](docs/019-frontend-ui-system-foundation.md) | Frontend UI system — MUI 9, shared theme, AppThemeProvider, auth component refactor |
 | [020-login-ui.md](docs/020-login-ui.md) | Login UI — email/password login, AuthPageShell, token storage, MFA-required routing to placeholder |
+| [021-mfa-challenge-ui.md](docs/021-mfa-challenge-ui.md) | MFA Challenge UI — TOTP and recovery code verification, missing challenge state, token storage after MFA |
 
 ## Common Commands
 

@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { extractSignupFieldErrors, extractLoginFieldErrors } from "../utils/authErrorUtils";
+import {
+  extractSignupFieldErrors,
+  extractLoginFieldErrors,
+  extractMfaChallengeFieldErrors,
+} from "../utils/authErrorUtils";
 import { ApiError } from "@/lib/api/apiError";
 
 describe("extractSignupFieldErrors", () => {
@@ -76,5 +80,44 @@ describe("extractLoginFieldErrors", () => {
   it("takes only the first error when a field has multiple", () => {
     const err = new ApiError(400, { email: ["Error one.", "Error two."] });
     expect(extractLoginFieldErrors(err).email).toBe("Error one.");
+  });
+});
+
+describe("extractMfaChallengeFieldErrors", () => {
+  it("extracts token error from ApiError", () => {
+    const err = new ApiError(400, { token: ["Invalid or expired token."] });
+    expect(extractMfaChallengeFieldErrors(err).token).toBe("Invalid or expired token.");
+  });
+
+  it("extracts recovery_code error from ApiError", () => {
+    const err = new ApiError(400, { recovery_code: ["Invalid recovery code."] });
+    expect(extractMfaChallengeFieldErrors(err).recovery_code).toBe("Invalid recovery code.");
+  });
+
+  it("extracts both token and recovery_code errors", () => {
+    const err = new ApiError(400, {
+      token: ["Invalid token."],
+      recovery_code: ["Invalid recovery code."],
+    });
+    const result = extractMfaChallengeFieldErrors(err);
+    expect(result.token).toBe("Invalid token.");
+    expect(result.recovery_code).toBe("Invalid recovery code.");
+  });
+
+  it("returns empty object for a non-ApiError", () => {
+    expect(extractMfaChallengeFieldErrors(new Error("network failure"))).toEqual({});
+  });
+
+  it("returns empty object when ApiError data is not an object", () => {
+    expect(extractMfaChallengeFieldErrors(new ApiError(500, "internal error"))).toEqual({});
+  });
+
+  it("returns empty object when ApiError data is null", () => {
+    expect(extractMfaChallengeFieldErrors(new ApiError(500, null))).toEqual({});
+  });
+
+  it("returns empty object when no matching fields are present", () => {
+    const err = new ApiError(400, { detail: "MFA challenge expired." });
+    expect(extractMfaChallengeFieldErrors(err)).toEqual({});
   });
 });

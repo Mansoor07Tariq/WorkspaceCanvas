@@ -40,3 +40,8 @@ export const signupSuccessEmailSx: SxProps<Theme> = {
 export const signupSuccessHintSx: SxProps<Theme> = {
   color: "text.disabled",
 };
+
+export const mfaToggleSx: SxProps<Theme> = {
+  mt: 1,
+  textAlign: "center",
+};
