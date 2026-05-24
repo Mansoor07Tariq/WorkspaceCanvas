@@ -10,27 +10,36 @@ This project is in early development.
 
 Currently completed:
 
-- React + TypeScript frontend setup
-- Tailwind CSS setup
-- Material UI (MUI 9) with shared theme and component system
-- Django backend project setup with `config` app (settings, URLs, WSGI/ASGI)
-- PostgreSQL database configured via environment variables
-- `accounts` app with Organization, Membership, and Invitation models
-- Docker setup for local development
-- JWT email/password login, refresh, verify, logout, current user endpoint
-- Signup endpoint with email verification flow (console email backend in dev)
-- Google and Microsoft social login — verifies provider tokens, finds or creates users, returns WorkspaceCanvas JWT tokens
+**Infrastructure and architecture**
+
+- React + TypeScript frontend (Vite, MUI 9, Tailwind, React Router)
+- Django backend with PostgreSQL, Docker, CI/CD (lint, format, test, build)
+- `accounts` app: Organization, Membership, Invitation models
+
+**Full authentication stack (backend + frontend)**
+
+- Custom User model with email verification, MFA, and social auth fields
+- Email/password signup with email verification flow
+- JWT login, refresh (token rotation + blacklist), logout, current user endpoint
+- Google and Microsoft OAuth 2.0 social login with full OIDC/JWKS verification
+- TOTP MFA: setup, confirm, disable, recovery codes, re-auth for sensitive operations
+- MFA login enforcement: challenge-based gate on email and social login flows
+- Frontend auth UI: Signup, Login, Email Verification, MFA Challenge pages
+- Google and Microsoft social login buttons with popup flows
+- AuthProvider, useAuth, ProtectedRoute, session-expiry handling
+- Silent token refresh on 401 with global session expiry propagation
+- Authenticated app shell placeholder at `/app`
+- Rate limiting on all public auth endpoints (DRF ScopedRateThrottle)
+- 263 frontend tests, ~188 backend tests (require PostgreSQL)
 
 Upcoming work:
 
-- Add backend apps one by one
-- Create office/floor/map models
-- Build the 2.5D office map editor
-- Add desk booking flow
-- Add employee-facing office preview
-- Add events module
-- Add awards and voting module
-- Add Outlook email and calendar integration later
+- Profile Completion (user profile fields, avatar, timezone)
+- Organization Setup (create org, invite members)
+- Office map editor (2.5D canvas)
+- Desk booking flow
+- Events module
+- Awards and voting module
 
 ## Tech Stack
 
@@ -128,6 +137,8 @@ Detailed notes for each feature and setup step are in the `docs/` folder:
 | [022-email-verification-ui.md](docs/022-email-verification-ui.md) | Email Verification UI — token verification page, success/error states, resend verification form |
 | [023-social-login-ui.md](docs/023-social-login-ui.md) | Social Login UI — Google and Microsoft OAuth buttons on Login and Signup pages, MFA-required routing |
 | [024-auth-state-protected-routes.md](docs/024-auth-state-protected-routes.md) | Auth State and Protected Routes — AuthProvider, useAuth, ProtectedRoute, /app protection, logout support |
+| [025-auth-hardening-cleanup.md](docs/025-auth-hardening-cleanup.md) | Auth Hardening and Cleanup — allauth removal, SECRET_KEY enforcement, CORS env var, rate limiting, MFA secret removal |
+| [026-auth-security-cleanup.md](docs/026-auth-security-cleanup.md) | Auth Security Cleanup and QR Code — django-ipware IP extraction, django-csp, QR code for MFA setup, MfaSetupPage, theme-driven link colours |
 
 ## Common Commands
 
@@ -198,7 +209,9 @@ docker compose up --build
 | Field | Value |
 |---|---|
 | Username | `admin` |
-| Password | `admin123` |
+| Password | See `DJANGO_SUPERUSER_PASSWORD` in `backend/.env` |
+
+**Important:** Never use the example password in any real environment. Set a strong password in your `.env` file.
 
 ### Environment Variables
 
@@ -213,11 +226,16 @@ Key variables:
 | Variable | Description |
 |---|---|
 | `POSTGRES_HOST` | Set to `db` when running in Docker, `localhost` when running locally |
-| `DJANGO_SECRET_KEY` | Django secret key — change this in production |
+| `DJANGO_SECRET_KEY` | **Required.** Django secret key. Generate with: `python -c "import secrets; print(secrets.token_hex(50))"` |
 | `DJANGO_DEBUG` | `True` for development, `False` for production |
+| `DJANGO_CORS_ALLOWED_ORIGINS` | Comma-separated allowed frontend origins. Default: `http://localhost:5173,http://127.0.0.1:5173` |
 | `DJANGO_SUPERUSER_USERNAME` | Auto-created superuser username |
 | `DJANGO_SUPERUSER_EMAIL` | Auto-created superuser email |
-| `DJANGO_SUPERUSER_PASSWORD` | Auto-created superuser password |
+| `DJANGO_SUPERUSER_PASSWORD` | Auto-created superuser password — set a strong value |
+| `GOOGLE_CLIENT_ID` | Optional. Google OAuth client ID for social login |
+| `MICROSOFT_CLIENT_ID` | Optional. Microsoft OAuth client ID for social login |
+
+See `backend/.env.example` for the full variable reference including email, MFA, and throttle rate settings.
 
 ### Running Without Docker
 

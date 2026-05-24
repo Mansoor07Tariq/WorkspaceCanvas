@@ -1,6 +1,7 @@
 export { SignupPage } from "./pages/SignupPage";
 export { LoginPage } from "./pages/LoginPage";
 export { MfaChallengePage } from "./pages/MfaChallengePage";
+export { MfaSetupPage } from "./pages/MfaSetupPage";
 export { VerifyEmailPage } from "./pages/VerifyEmailPage";
 export { AuthProvider, useAuth } from "./context/AuthContext";
 export * from "./api/authApi";

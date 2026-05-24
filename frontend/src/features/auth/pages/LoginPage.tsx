@@ -1,5 +1,5 @@
 import { Link as RouterLink } from "react-router-dom";
-import { Box } from "@mui/material";
+import { Box, Typography } from "@mui/material";
 import { en } from "@/i18n/en";
 import { FormTextField } from "@/components/ui/FormTextField";
 import { PasswordField } from "@/components/ui/PasswordField";
@@ -25,12 +25,11 @@ export function LoginPage() {
       footer={
         <>
           {en.auth.login.noAccount}{" "}
-          <RouterLink
-            to={ROUTES.signup}
-            style={{ color: "#2563EB", fontWeight: 600, textDecoration: "none" }}
-          >
-            {en.auth.login.createAccount}
-          </RouterLink>
+          <Typography component="span" sx={{ color: "primary.main", fontWeight: 600 }}>
+            <RouterLink to={ROUTES.signup} style={{ color: "inherit", textDecoration: "none" }}>
+              {en.auth.login.createAccount}
+            </RouterLink>
+          </Typography>
         </>
       }
     >

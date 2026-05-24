@@ -50,12 +50,11 @@ export function VerifyEmailPage() {
     <AuthPageShell title={en.auth.verifyEmail.errorTitle}>
       <ErrorAlert message={errorMessage} />
       <Typography variant="body2" sx={{ textAlign: "center", color: "text.secondary", mb: 1 }}>
-        <RouterLink
-          to={ROUTES.login}
-          style={{ color: "#2563EB", fontWeight: 600, textDecoration: "none" }}
-        >
-          {en.auth.verifyEmail.backToLogin}
-        </RouterLink>
+        <Typography component="span" sx={{ color: "primary.main", fontWeight: 600 }}>
+          <RouterLink to={ROUTES.login} style={{ color: "inherit", textDecoration: "none" }}>
+            {en.auth.verifyEmail.backToLogin}
+          </RouterLink>
+        </Typography>
       </Typography>
       <Box sx={verifyEmailResendSectionSx}>
         <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 0.5 }}>

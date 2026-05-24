@@ -69,6 +69,22 @@ export const en = {
       verificationRequired: "You need to verify your email before you can sign in.",
       backToSignIn: "Back to sign in",
     },
+    mfaSetup: {
+      title: "Set up two-factor authentication",
+      scanSubtitle:
+        "Scan this QR code with your authenticator app, then enter the 6-digit code to confirm.",
+      confirmLabel: "Authenticator code",
+      confirmPlaceholder: "123456",
+      confirmSubmit: "Enable MFA",
+      manualEntry: "Can't scan? Enter this code manually:",
+      codesTitle: "Save your recovery codes",
+      codesSubtitle:
+        "Store these codes in a safe place. Each can be used once to sign in if you lose access to your authenticator app.",
+      codesDone: "I've saved my recovery codes",
+      loadingMessage: "Setting up your authenticator...",
+      invalidCodeRequired: "Enter your authenticator code.",
+      invalidCodeFormat: "Enter a valid 6-digit code.",
+    },
     session: {
       loading: "Checking your session...",
       sessionExpired: "Your session has expired. Please sign in again.",

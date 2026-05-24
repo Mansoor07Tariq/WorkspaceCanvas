@@ -23,7 +23,7 @@ class MFAStatusSerializer(serializers.Serializer):
 
 class MFASetupSerializer(serializers.Serializer):
     provisioning_uri = serializers.CharField(read_only=True)
-    secret = serializers.CharField(read_only=True)
+    qr_code_base64 = serializers.CharField(read_only=True)
 
 
 class MFAConfirmSerializer(serializers.Serializer):
