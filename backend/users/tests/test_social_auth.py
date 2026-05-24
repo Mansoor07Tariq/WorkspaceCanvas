@@ -384,7 +384,7 @@ def _google_ok_payload(*, email="alice@example.com", email_verified="true", aud=
     return_value=_google_ok_payload(),
 )
 def test_google_service_valid_token_returns_identity(mock_get, settings):
-    settings.SOCIALACCOUNT_PROVIDERS = {"google": {"APP": {"client_id": ""}}}
+    settings.GOOGLE_CLIENT_ID = ""
     result = verify_google_token(id_token="fake")
     assert result["email"] == "alice@example.com"
     assert result["email_verified"] is True
@@ -397,7 +397,7 @@ def test_google_service_valid_token_returns_identity(mock_get, settings):
     return_value={**_google_ok_payload(), "error": "invalid_token"},
 )
 def test_google_service_invalid_token_raises(mock_get, settings):
-    settings.SOCIALACCOUNT_PROVIDERS = {"google": {"APP": {"client_id": ""}}}
+    settings.GOOGLE_CLIENT_ID = ""
     with pytest.raises(SocialAuthError) as exc_info:
         verify_google_token(id_token="bad")
     assert exc_info.value.code == "invalid_token"
@@ -409,9 +409,7 @@ def test_google_service_invalid_token_raises(mock_get, settings):
     return_value={**_google_ok_payload(aud="wrong-client"), "email_verified": "true"},
 )
 def test_google_service_audience_mismatch_raises(mock_get, settings):
-    settings.SOCIALACCOUNT_PROVIDERS = {
-        "google": {"APP": {"client_id": "correct-client"}}
-    }
+    settings.GOOGLE_CLIENT_ID = "correct-client"
     with pytest.raises(SocialAuthError) as exc_info:
         verify_google_token(id_token="tok")
     assert exc_info.value.code == "invalid_audience"
@@ -423,7 +421,7 @@ def test_google_service_audience_mismatch_raises(mock_get, settings):
     return_value=_google_ok_payload(email_verified="false"),
 )
 def test_google_service_unverified_email_raises(mock_get, settings):
-    settings.SOCIALACCOUNT_PROVIDERS = {"google": {"APP": {"client_id": ""}}}
+    settings.GOOGLE_CLIENT_ID = ""
     with pytest.raises(SocialAuthError) as exc_info:
         verify_google_token(id_token="tok")
     assert exc_info.value.code == "unverified_email"
@@ -435,7 +433,7 @@ def test_google_service_unverified_email_raises(mock_get, settings):
     return_value={k: v for k, v in _google_ok_payload().items() if k != "email"},
 )
 def test_google_service_missing_email_raises(mock_get, settings):
-    settings.SOCIALACCOUNT_PROVIDERS = {"google": {"APP": {"client_id": ""}}}
+    settings.GOOGLE_CLIENT_ID = ""
     with pytest.raises(SocialAuthError) as exc_info:
         verify_google_token(id_token="tok")
     assert exc_info.value.code == "missing_email"
@@ -448,12 +446,8 @@ def test_google_service_missing_email_raises(mock_get, settings):
 
 @pytest.fixture
 def ms_settings(settings):
-    settings.SOCIALACCOUNT_PROVIDERS = {
-        "microsoft": {
-            "APP": {"client_id": "test-client-id"},
-            "TENANT": "common",
-        }
-    }
+    settings.MICROSOFT_CLIENT_ID = "test-client-id"
+    settings.MICROSOFT_TENANT_ID = "common"
     return settings
 
 

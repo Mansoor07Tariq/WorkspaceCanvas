@@ -84,14 +84,14 @@ describe("SignupPage", () => {
     renderSignupPage();
     await user.type(screen.getByLabelText(en.auth.fields.fullName), "Jane Smith");
     await user.type(screen.getByLabelText(en.auth.fields.email), "jane@example.com");
-    await user.type(screen.getByLabelText(en.auth.fields.password), "password123");
-    await user.type(screen.getByLabelText(en.auth.fields.confirmPassword), "password123");
+    await user.type(screen.getByLabelText(en.auth.fields.password), "Strongpass1!");
+    await user.type(screen.getByLabelText(en.auth.fields.confirmPassword), "Strongpass1!");
     await user.click(screen.getByRole("button", { name: /create account/i }));
     await waitFor(() => {
       expect(mockSignup).toHaveBeenCalledWith({
         full_name: "Jane Smith",
         email: "jane@example.com",
-        password: "password123",
+        password: "Strongpass1!",
       });
     });
   });
@@ -101,8 +101,8 @@ describe("SignupPage", () => {
     const user = userEvent.setup();
     renderSignupPage();
     await user.type(screen.getByLabelText(en.auth.fields.email), "jane@example.com");
-    await user.type(screen.getByLabelText(en.auth.fields.password), "password123");
-    await user.type(screen.getByLabelText(en.auth.fields.confirmPassword), "password123");
+    await user.type(screen.getByLabelText(en.auth.fields.password), "Strongpass1!");
+    await user.type(screen.getByLabelText(en.auth.fields.confirmPassword), "Strongpass1!");
     await user.click(screen.getByRole("button", { name: /create account/i }));
     expect(await screen.findByText(en.auth.signup.successTitle)).toBeInTheDocument();
     expect(screen.getByText("jane@example.com")).toBeInTheDocument();
@@ -115,8 +115,8 @@ describe("SignupPage", () => {
     const user = userEvent.setup();
     renderSignupPage();
     await user.type(screen.getByLabelText(en.auth.fields.email), "taken@example.com");
-    await user.type(screen.getByLabelText(en.auth.fields.password), "password123");
-    await user.type(screen.getByLabelText(en.auth.fields.confirmPassword), "password123");
+    await user.type(screen.getByLabelText(en.auth.fields.password), "Strongpass1!");
+    await user.type(screen.getByLabelText(en.auth.fields.confirmPassword), "Strongpass1!");
     await user.click(screen.getByRole("button", { name: /create account/i }));
     expect(await screen.findByText("A user with this email already exists.")).toBeInTheDocument();
   });
@@ -126,8 +126,8 @@ describe("SignupPage", () => {
     const user = userEvent.setup();
     renderSignupPage();
     await user.type(screen.getByLabelText(en.auth.fields.email), "jane@example.com");
-    await user.type(screen.getByLabelText(en.auth.fields.password), "password123");
-    await user.type(screen.getByLabelText(en.auth.fields.confirmPassword), "password123");
+    await user.type(screen.getByLabelText(en.auth.fields.password), "Strongpass1!");
+    await user.type(screen.getByLabelText(en.auth.fields.confirmPassword), "Strongpass1!");
     await user.click(screen.getByRole("button", { name: /create account/i }));
     await waitFor(() => {
       expect(screen.getByRole("button", { name: /create account/i })).toBeDisabled();

@@ -29,7 +29,7 @@ def client(settings):
 def test_signup_creates_user(client):
     resp = client.post(
         SIGNUP_URL,
-        {"email": "new@example.com", "password": "strongpass123"},
+        {"email": "new@example.com", "password": "Strongpass1!"},
         format="json",
     )
     assert resp.status_code == 201
@@ -40,7 +40,7 @@ def test_signup_creates_user(client):
 def test_signup_normalises_email_to_lowercase(client):
     client.post(
         SIGNUP_URL,
-        {"email": "New@Example.COM", "password": "strongpass123"},
+        {"email": "New@Example.COM", "password": "Strongpass1!"},
         format="json",
     )
     assert User.objects.filter(email="new@example.com").exists()
@@ -50,7 +50,7 @@ def test_signup_normalises_email_to_lowercase(client):
 def test_signup_sends_verification_email(client):
     client.post(
         SIGNUP_URL,
-        {"email": "new@example.com", "password": "strongpass123"},
+        {"email": "new@example.com", "password": "Strongpass1!"},
         format="json",
     )
     assert len(mail.outbox) == 1
@@ -62,7 +62,7 @@ def test_signup_sends_verification_email(client):
 def test_signup_creates_verification_token(client):
     client.post(
         SIGNUP_URL,
-        {"email": "new@example.com", "password": "strongpass123"},
+        {"email": "new@example.com", "password": "Strongpass1!"},
         format="json",
     )
     user = User.objects.get(email="new@example.com")
@@ -73,7 +73,7 @@ def test_signup_creates_verification_token(client):
 def test_signup_sets_preferred_auth_provider_to_email(client):
     client.post(
         SIGNUP_URL,
-        {"email": "new@example.com", "password": "strongpass123"},
+        {"email": "new@example.com", "password": "Strongpass1!"},
         format="json",
     )
     user = User.objects.get(email="new@example.com")
@@ -84,7 +84,7 @@ def test_signup_sets_preferred_auth_provider_to_email(client):
 def test_signup_email_not_verified_after_signup(client):
     client.post(
         SIGNUP_URL,
-        {"email": "new@example.com", "password": "strongpass123"},
+        {"email": "new@example.com", "password": "Strongpass1!"},
         format="json",
     )
     user = User.objects.get(email="new@example.com")
@@ -97,7 +97,7 @@ def test_signup_with_full_name(client):
         SIGNUP_URL,
         {
             "email": "new@example.com",
-            "password": "strongpass123",
+            "password": "Strongpass1!",
             "full_name": "Ada Lovelace",
         },
         format="json",
@@ -111,11 +111,11 @@ def test_signup_duplicate_email_returns_400(client):
     User.objects.create_user(
         username="existing",
         email="taken@example.com",
-        password="pass123456",
+        password="Pass123456!",
     )
     resp = client.post(
         SIGNUP_URL,
-        {"email": "taken@example.com", "password": "strongpass123"},
+        {"email": "taken@example.com", "password": "Strongpass1!"},
         format="json",
     )
     assert resp.status_code == 400
@@ -126,11 +126,11 @@ def test_signup_duplicate_email_case_insensitive(client):
     User.objects.create_user(
         username="existing",
         email="taken@example.com",
-        password="pass123456",
+        password="Pass123456!",
     )
     resp = client.post(
         SIGNUP_URL,
-        {"email": "TAKEN@example.com", "password": "strongpass123"},
+        {"email": "TAKEN@example.com", "password": "Strongpass1!"},
         format="json",
     )
     assert resp.status_code == 400
@@ -147,8 +147,38 @@ def test_signup_password_too_short_returns_400(client):
 
 
 @pytest.mark.django_db
+def test_signup_password_no_uppercase_returns_400(client):
+    resp = client.post(
+        SIGNUP_URL,
+        {"email": "new@example.com", "password": "weakpass1!"},
+        format="json",
+    )
+    assert resp.status_code == 400
+
+
+@pytest.mark.django_db
+def test_signup_password_no_number_returns_400(client):
+    resp = client.post(
+        SIGNUP_URL,
+        {"email": "new@example.com", "password": "Weakpass!"},
+        format="json",
+    )
+    assert resp.status_code == 400
+
+
+@pytest.mark.django_db
+def test_signup_password_no_special_char_returns_400(client):
+    resp = client.post(
+        SIGNUP_URL,
+        {"email": "new@example.com", "password": "Weakpass1"},
+        format="json",
+    )
+    assert resp.status_code == 400
+
+
+@pytest.mark.django_db
 def test_signup_missing_email_returns_400(client):
-    resp = client.post(SIGNUP_URL, {"password": "strongpass123"}, format="json")
+    resp = client.post(SIGNUP_URL, {"password": "Strongpass1!"}, format="json")
     assert resp.status_code == 400
 
 
@@ -162,7 +192,7 @@ def test_signup_missing_password_returns_400(client):
 def test_signup_username_equals_normalized_email(client):
     client.post(
         SIGNUP_URL,
-        {"email": "Alice@Example.COM", "password": "strongpass123"},
+        {"email": "Alice@Example.COM", "password": "Strongpass1!"},
         format="json",
     )
     user = User.objects.get(email="alice@example.com")
@@ -173,7 +203,7 @@ def test_signup_username_equals_normalized_email(client):
 def test_signup_email_equals_normalized_email(client):
     client.post(
         SIGNUP_URL,
-        {"email": "Alice@Example.COM", "password": "strongpass123"},
+        {"email": "Alice@Example.COM", "password": "Strongpass1!"},
         format="json",
     )
     user = User.objects.get(email="alice@example.com")
@@ -190,7 +220,7 @@ def unverified_user(db):
     return User.objects.create_user(
         username="unverified",
         email="unverified@example.com",
-        password="strongpass123",
+        password="Strongpass1!",
     )
 
 

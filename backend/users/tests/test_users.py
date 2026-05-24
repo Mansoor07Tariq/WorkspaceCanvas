@@ -9,7 +9,7 @@ def user(db):
     return User.objects.create_user(
         username="testuser",
         email="test@example.com",
-        password="securepass123",
+        password="Securepass1!",
     )
 
 
@@ -18,7 +18,7 @@ def test_custom_user_can_be_created():
     user = User.objects.create_user(
         username="testuser",
         email="test@example.com",
-        password="securepass123",
+        password="Securepass1!",
     )
     assert user.pk is not None
     assert user.email == "test@example.com"

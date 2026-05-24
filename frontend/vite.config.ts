@@ -4,12 +4,13 @@ import tailwindcss from "@tailwindcss/vite";
 import { fileURLToPath, URL } from "node:url";
 
 // Dev-only CSP. In production set equivalent headers in your reverse proxy (nginx).
-// 'unsafe-eval' is required by Vite HMR; remove it in production builds.
-// 'unsafe-inline' is required by MUI's CSS-in-JS emotion runtime.
+// 'unsafe-eval' + 'unsafe-inline' in script-src: required by Vite HMR and the
+// @vitejs/plugin-react preamble inline script; remove both in production builds.
+// 'unsafe-inline' in style-src is required by MUI's CSS-in-JS emotion runtime.
 // Social auth domains (Google/Microsoft) are included for OAuth popup flows.
 const DEV_CSP = [
   "default-src 'none'",
-  "script-src 'self' 'unsafe-eval' https://accounts.google.com",
+  "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://accounts.google.com",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data:",
   "font-src 'self'",

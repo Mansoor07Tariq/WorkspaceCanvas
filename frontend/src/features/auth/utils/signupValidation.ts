@@ -18,6 +18,12 @@ export function validateSignupForm(
     errors.password = en.auth.validation.passwordRequired;
   } else if (password.length < 8) {
     errors.password = en.auth.validation.passwordMinLength;
+  } else if (!/[A-Z]/.test(password)) {
+    errors.password = en.auth.validation.passwordNoUpper;
+  } else if (!/[0-9]/.test(password)) {
+    errors.password = en.auth.validation.passwordNoNumber;
+  } else if (!/[^A-Za-z0-9]/.test(password)) {
+    errors.password = en.auth.validation.passwordNoSpecial;
   }
   return errors;
 }
