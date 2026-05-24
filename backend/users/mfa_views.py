@@ -1,5 +1,8 @@
+import base64
+import io
+
 import pyotp
-from django.conf import settings
+import qrcode
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -53,11 +56,12 @@ class MFASetupView(APIView):
                 "type": "object",
                 "properties": {
                     "provisioning_uri": {"type": "string"},
+                    "qr_code_base64": {"type": "string"},
                     "detail": {"type": "string"},
                 },
             }
         },
-        summary="Begin MFA setup — returns a TOTP provisioning URI",
+        summary="Begin MFA setup — returns a TOTP provisioning URI and QR code",
     )
     def post(self, request: Request) -> Response:
         user = request.user
@@ -75,18 +79,30 @@ class MFASetupView(APIView):
 
         secret = pyotp.random_base32()
         device = UserMFADevice.objects.create(user=user, secret=secret)
+        provisioning_uri = device.provisioning_uri()
+
+        qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECT_L,
+            box_size=6,
+            border=4,
+        )
+        qr.add_data(provisioning_uri)
+        qr.make(fit=True)
+        img = qr.make_image(fill_color="black", back_color="white")
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        qr_b64 = base64.b64encode(buf.getvalue()).decode()
 
         _confirm_url = "/api/auth/mfa/confirm/"
         response_data = {
-            "provisioning_uri": device.provisioning_uri(),
+            "provisioning_uri": provisioning_uri,
+            "qr_code_base64": qr_b64,
             "detail": (
-                f"Scan the provisioning URI in your authenticator app, "
+                f"Scan the QR code or provisioning URI in your authenticator app, "
                 f"then confirm with POST {_confirm_url}."
             ),
         }
-        if settings.DEBUG:
-            response_data["secret"] = secret
-
         return Response(response_data)
 
 
@@ -167,6 +183,7 @@ class RecoveryCodeRegenerateView(APIView):
 
 class MFALoginChallengeVerifyView(APIView):
     permission_classes = [AllowAny]
+    throttle_scope = "auth_mfa_challenge"
 
     @extend_schema(
         request=MFALoginChallengeVerifySerializer,

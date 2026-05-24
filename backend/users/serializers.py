@@ -11,6 +11,7 @@ from accounts.models import Membership
 
 from .models import MFALoginChallenge, User
 from .social_auth import SocialAuthError, verify_google_token, verify_microsoft_token
+from .utils import get_client_ip
 
 
 def build_jwt_response_for_user(user: User) -> dict:
@@ -105,7 +106,7 @@ class EmailTokenObtainPairSerializer(serializers.Serializer):
             authenticated_user.preferred_auth_provider = User.AuthProvider.EMAIL
             update_fields.append("preferred_auth_provider")
 
-        ip = self._get_client_ip(request) if request else None
+        ip = get_client_ip(request) if request else None
         if ip:
             authenticated_user.last_login_ip = ip
             update_fields.append("last_login_ip")
@@ -124,13 +125,6 @@ class EmailTokenObtainPairSerializer(serializers.Serializer):
             }
 
         return build_jwt_response_for_user(authenticated_user)
-
-    @staticmethod
-    def _get_client_ip(request) -> str:
-        forwarded = request.META.get("HTTP_X_FORWARDED_FOR")
-        if forwarded:
-            return forwarded.split(",")[0].strip()
-        return request.META.get("REMOTE_ADDR", "")
 
 
 class LogoutSerializer(serializers.Serializer):
@@ -246,16 +240,9 @@ class SocialAuthSerializer(serializers.Serializer):
                     email_verified_at=now if provider_verified else None,
                 )
 
-        ip = _get_client_ip(request) if request else None
+        ip = get_client_ip(request) if request else None
         if ip:
             user.last_login_ip = ip
             user.save(update_fields=["last_login_ip"])
 
         return user
-
-
-def _get_client_ip(request) -> str:
-    forwarded = request.META.get("HTTP_X_FORWARDED_FOR")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return request.META.get("REMOTE_ADDR", "")

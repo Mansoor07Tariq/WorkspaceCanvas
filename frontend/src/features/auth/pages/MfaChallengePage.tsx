@@ -15,12 +15,11 @@ interface LocationState {
 }
 
 const backToLoginFooter = (
-  <RouterLink
-    to={ROUTES.login}
-    style={{ color: "#2563EB", fontWeight: 600, textDecoration: "none" }}
-  >
-    {en.auth.mfaChallenge.backToLogin}
-  </RouterLink>
+  <Typography component="span" sx={{ color: "primary.main", fontWeight: 600 }}>
+    <RouterLink to={ROUTES.login} style={{ color: "inherit", textDecoration: "none" }}>
+      {en.auth.mfaChallenge.backToLogin}
+    </RouterLink>
+  </Typography>
 );
 
 export function MfaChallengePage() {

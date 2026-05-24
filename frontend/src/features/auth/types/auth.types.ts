@@ -113,6 +113,7 @@ export interface MfaStatus {
 
 export interface MfaSetupResponse {
   provisioning_uri: string;
+  qr_code_base64: string;
   detail: string;
   secret?: string;
 }

@@ -74,3 +74,36 @@ export const socialProviderIconSx: SxProps<Theme> = {
   height: 18,
   display: "block",
 };
+
+export const mfaSetupQrBoxSx: SxProps<Theme> = {
+  display: "flex",
+  justifyContent: "center",
+  my: 2,
+};
+
+export const mfaSetupManualCodeSx: SxProps<Theme> = {
+  mt: 1,
+  p: 1.5,
+  bgcolor: "grey.100",
+  borderRadius: 1,
+  fontFamily: "monospace",
+  fontSize: "0.75rem",
+  wordBreak: "break-all",
+  textAlign: "center",
+};
+
+export const mfaCodesGridSx: SxProps<Theme> = {
+  display: "grid",
+  gridTemplateColumns: "1fr 1fr",
+  gap: 1,
+  my: 2,
+};
+
+export const mfaCodeItemSx: SxProps<Theme> = {
+  fontFamily: "monospace",
+  fontSize: "0.875rem",
+  p: 0.75,
+  bgcolor: "grey.100",
+  borderRadius: 1,
+  textAlign: "center",
+};

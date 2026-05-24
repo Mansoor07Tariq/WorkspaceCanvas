@@ -27,6 +27,7 @@ from .social_auth import SocialAuthError
 
 class EmailTokenObtainPairView(APIView):
     permission_classes = [AllowAny]
+    throttle_scope = "auth_login"
 
     @extend_schema(
         request=EmailTokenObtainPairSerializer,
@@ -88,6 +89,7 @@ _RESEND_COOLDOWN_SECONDS = 60
 
 class SignupView(APIView):
     permission_classes = [AllowAny]
+    throttle_scope = "auth_signup"
 
     @extend_schema(
         request=SignupSerializer,
@@ -145,7 +147,7 @@ class VerifyEmailView(APIView):
                 token.user.mark_email_verified()
         except EmailVerificationToken.DoesNotExist:
             return Response(
-                {"detail": "Invalid verification token."},
+                {"detail": _invalid},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         return Response({"detail": "Email verified successfully."})
@@ -153,6 +155,7 @@ class VerifyEmailView(APIView):
 
 class ResendEmailVerificationView(APIView):
     permission_classes = [AllowAny]
+    throttle_scope = "auth_resend"
 
     @extend_schema(
         request=ResendEmailVerificationSerializer,
@@ -190,6 +193,7 @@ class ResendEmailVerificationView(APIView):
 
 class SocialAuthView(APIView):
     permission_classes = [AllowAny]
+    throttle_scope = "auth_social"
 
     @extend_schema(
         request=SocialAuthSerializer,

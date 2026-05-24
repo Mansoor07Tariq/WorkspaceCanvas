@@ -48,12 +48,14 @@ export function SignupPage() {
             <Typography variant="body2" sx={signupSuccessHintSx}>
               {en.auth.signup.verificationRequired}
             </Typography>
-            <RouterLink
-              to={ROUTES.login}
-              style={{ color: "#2563EB", fontWeight: 600, fontSize: "0.875rem" }}
+            <Typography
+              component="span"
+              sx={{ color: "primary.main", fontWeight: 600, fontSize: "0.875rem" }}
             >
-              {en.auth.signup.backToSignIn}
-            </RouterLink>
+              <RouterLink to={ROUTES.login} style={{ color: "inherit", textDecoration: "none" }}>
+                {en.auth.signup.backToSignIn}
+              </RouterLink>
+            </Typography>
           </Box>
         </AuthCard>
       </CenteredPageLayout>
@@ -67,12 +69,11 @@ export function SignupPage() {
       footer={
         <>
           {en.auth.signup.alreadyHaveAccount}{" "}
-          <RouterLink
-            to={ROUTES.login}
-            style={{ color: "#2563EB", fontWeight: 600, textDecoration: "none" }}
-          >
-            {en.auth.signup.signIn}
-          </RouterLink>
+          <Typography component="span" sx={{ color: "primary.main", fontWeight: 600 }}>
+            <RouterLink to={ROUTES.login} style={{ color: "inherit", textDecoration: "none" }}>
+              {en.auth.signup.signIn}
+            </RouterLink>
+          </Typography>
         </>
       }
     >

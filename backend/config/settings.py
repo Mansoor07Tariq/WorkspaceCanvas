@@ -2,18 +2,22 @@ import os
 from datetime import timedelta
 from pathlib import Path
 
+from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 load_dotenv(BASE_DIR / ".env")
 
-SECRET_KEY = os.environ.get(
-    "DJANGO_SECRET_KEY",
-    "django-insecure-o-hl#15j)ki5=6ro20s3t#ccji7_na)1no^6+*b&)d8=c+f*5_",
-)
+DEBUG = os.environ.get("DJANGO_DEBUG", "False").lower() in ["true", "1", "yes"]
 
-DEBUG = os.environ.get("DJANGO_DEBUG", "True").lower() in ["true", "1", "yes"]
+_secret_key_env = os.environ.get("DJANGO_SECRET_KEY")
+if not _secret_key_env:
+    raise ImproperlyConfigured(
+        "DJANGO_SECRET_KEY environment variable is required. "
+        'Generate one with: python -c "import secrets; print(secrets.token_hex(50))"'
+    )
+SECRET_KEY = _secret_key_env
 
 ALLOWED_HOSTS = [
     host.strip()
@@ -35,31 +39,24 @@ INSTALLED_APPS = [
     "rest_framework",
     "rest_framework_simplejwt.token_blacklist",
     "corsheaders",
+    "csp",
     "django_filters",
     "drf_spectacular",
-    "django.contrib.sites",
-    "allauth",
-    "allauth.account",
-    "allauth.socialaccount",
-    "allauth.socialaccount.providers.google",
-    "allauth.socialaccount.providers.microsoft",
     # Local apps
     "users",
     "accounts",
 ]
 
-SITE_ID = 1
-
 AUTH_USER_MODEL = "users.User"
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "csp.middleware.CSPMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
-    "allauth.account.middleware.AccountMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -141,11 +138,36 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
 # CORS
+# In production set DJANGO_CORS_ALLOWED_ORIGINS to a comma-separated list of
+# allowed origins, e.g. "https://app.workspacecanvas.com".
 
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
+    origin.strip()
+    for origin in os.environ.get(
+        "DJANGO_CORS_ALLOWED_ORIGINS",
+        "http://localhost:5173,http://127.0.0.1:5173",
+    ).split(",")
+    if origin.strip()
 ]
+
+
+# Content Security Policy (django-csp)
+# Applied to Django-served pages (admin, schema). The React SPA is served
+# separately and gets its CSP from Vite (dev) or nginx (production).
+
+CONTENT_SECURITY_POLICY = {
+    "DIRECTIVES": {
+        "default-src": ("'none'",),
+        "script-src": ("'self'",),
+        "style-src": ("'self'", "'unsafe-inline'"),
+        "img-src": ("'self'", "data:"),
+        "font-src": ("'self'",),
+        "connect-src": ("'self'",),
+        "form-action": ("'self'",),
+        "frame-ancestors": ("'none'",),
+        "base-uri": ("'none'",),
+    }
+}
 
 
 # Django REST Framework
@@ -158,6 +180,16 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ],
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.ScopedRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "auth_login": os.environ.get("THROTTLE_AUTH_LOGIN", "5/min"),
+        "auth_signup": os.environ.get("THROTTLE_AUTH_SIGNUP", "5/min"),
+        "auth_resend": os.environ.get("THROTTLE_AUTH_RESEND", "3/min"),
+        "auth_mfa_challenge": os.environ.get("THROTTLE_AUTH_MFA_CHALLENGE", "5/min"),
+        "auth_social": os.environ.get("THROTTLE_AUTH_SOCIAL", "10/min"),
+    },
 }
 
 
@@ -169,35 +201,6 @@ SIMPLE_JWT = {
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
     "UPDATE_LAST_LOGIN": True,
-}
-
-
-# django-allauth
-
-ACCOUNT_LOGIN_METHODS = {"email"}
-ACCOUNT_SIGNUP_FIELDS = ["email*", "password1*", "password2*"]
-ACCOUNT_EMAIL_VERIFICATION = "optional"
-
-SOCIALACCOUNT_EMAIL_REQUIRED = True
-SOCIALACCOUNT_QUERY_EMAIL = True
-SOCIALACCOUNT_AUTO_SIGNUP = True
-
-SOCIALACCOUNT_PROVIDERS = {
-    "google": {
-        "APP": {
-            "client_id": os.environ.get("GOOGLE_CLIENT_ID", ""),
-            "secret": os.environ.get("GOOGLE_CLIENT_SECRET", ""),
-        },
-        "SCOPE": ["profile", "email"],
-        "AUTH_PARAMS": {"access_type": "online"},
-    },
-    "microsoft": {
-        "APP": {
-            "client_id": os.environ.get("MICROSOFT_CLIENT_ID", ""),
-            "secret": os.environ.get("MICROSOFT_CLIENT_SECRET", ""),
-        },
-        "TENANT": os.environ.get("MICROSOFT_TENANT_ID", "common"),
-    },
 }
 
 

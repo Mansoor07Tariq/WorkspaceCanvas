@@ -9,6 +9,8 @@ from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.utils import timezone
 
+from .utils import get_client_ip
+
 
 class User(AbstractUser):
     class AuthProvider(models.TextChoices):
@@ -226,11 +228,7 @@ class MFALoginChallenge(models.Model):
         ip = None
         user_agent = ""
         if request:
-            forwarded = request.META.get("HTTP_X_FORWARDED_FOR")
-            if forwarded:
-                ip = forwarded.split(",")[0].strip()
-            else:
-                ip = request.META.get("REMOTE_ADDR")
+            ip = get_client_ip(request)
             user_agent = request.META.get("HTTP_USER_AGENT", "")
         lifetime = timedelta(minutes=settings.MFA_CHALLENGE_LIFETIME_MINUTES)
         return cls.objects.create(

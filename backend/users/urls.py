@@ -29,6 +29,8 @@ urlpatterns = [
     ),
     path("token/", EmailTokenObtainPairView.as_view(), name="token-obtain"),
     path("token/refresh/", TokenRefreshView.as_view(), name="token-refresh"),
+    # token/verify/ is kept for completeness and tested in test_auth.py.
+    # The frontend does not use it; clients may call it to probe token validity.
     path("token/verify/", TokenVerifyView.as_view(), name="token-verify"),
     path("logout/", LogoutView.as_view(), name="auth-logout"),
     path("me/", CurrentUserView.as_view(), name="auth-me"),

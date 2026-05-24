@@ -215,6 +215,25 @@ def test_setup_returns_400_if_already_confirmed(auth_client, confirmed_device):
     assert "already enabled" in resp.data["detail"]
 
 
+@pytest.mark.django_db
+def test_setup_never_returns_raw_secret(auth_client):
+    """MFA setup response must never expose the raw TOTP secret."""
+    resp = auth_client.post(SETUP_URL)
+    assert resp.status_code == 200
+    assert "secret" not in resp.data
+
+
+@pytest.mark.django_db
+def test_setup_returns_qr_code_base64(auth_client):
+    import base64
+
+    resp = auth_client.post(SETUP_URL)
+    assert resp.status_code == 200
+    assert "qr_code_base64" in resp.data
+    decoded = base64.b64decode(resp.data["qr_code_base64"])
+    assert decoded[:8] == b"\x89PNG\r\n\x1a\n"
+
+
 # ---------------------------------------------------------------------------
 # 3. Confirm endpoint
 # ---------------------------------------------------------------------------
