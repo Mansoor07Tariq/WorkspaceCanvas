@@ -7,6 +7,7 @@ from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -18,6 +19,7 @@ from .serializers import (
     EmailTokenObtainPairSerializer,
     EmailVerificationSerializer,
     LogoutSerializer,
+    ProfileUpdateSerializer,
     ResendEmailVerificationSerializer,
     SignupSerializer,
     SocialAuthSerializer,
@@ -53,6 +55,12 @@ class EmailTokenObtainPairView(APIView):
 class CurrentUserView(APIView):
     permission_classes = [IsAuthenticated]
 
+    def get_throttles(self):
+        if self.request.method == "PATCH":
+            self.throttle_scope = "auth_profile"
+            return [ScopedRateThrottle()]
+        return []
+
     @extend_schema(
         responses={200: CurrentUserSerializer},
         summary="Return the currently authenticated user",
@@ -60,6 +68,19 @@ class CurrentUserView(APIView):
     def get(self, request: Request) -> Response:
         serializer = CurrentUserSerializer(request.user)
         return Response(serializer.data)
+
+    @extend_schema(
+        request=ProfileUpdateSerializer,
+        responses={200: CurrentUserSerializer},
+        summary="Update the current user's profile",
+    )
+    def patch(self, request: Request) -> Response:
+        serializer = ProfileUpdateSerializer(
+            request.user, data=request.data, partial=True
+        )
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        return Response(CurrentUserSerializer(user).data)
 
 
 class LogoutView(APIView):

@@ -193,6 +193,7 @@ REST_FRAMEWORK = {
         "auth_resend": os.environ.get("THROTTLE_AUTH_RESEND", "3/min"),
         "auth_mfa_challenge": os.environ.get("THROTTLE_AUTH_MFA_CHALLENGE", "5/min"),
         "auth_social": os.environ.get("THROTTLE_AUTH_SOCIAL", "10/min"),
+        "auth_profile": os.environ.get("THROTTLE_AUTH_PROFILE", "30/min"),
     },
 }
 

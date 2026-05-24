@@ -1,3 +1,6 @@
+import re
+from zoneinfo import available_timezones
+
 from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import (
     validate_password as django_validate_password,
@@ -12,6 +15,9 @@ from accounts.models import Membership
 from .models import MFALoginChallenge, User
 from .social_auth import SocialAuthError, verify_google_token, verify_microsoft_token
 from .utils import get_client_ip
+
+_PHONE_RE = re.compile(r"^[0-9\s+\(\)\-]+$")
+_SUPPORTED_LOCALES = frozenset({"en", "en-IE", "en-GB", "en-US"})
 
 
 def build_jwt_response_for_user(user: User) -> dict:
@@ -246,3 +252,57 @@ class SocialAuthSerializer(serializers.Serializer):
             user.save(update_fields=["last_login_ip"])
 
         return user
+
+
+class ProfileUpdateSerializer(serializers.ModelSerializer):
+    full_name = serializers.CharField(max_length=255)
+    job_title = serializers.CharField(max_length=120, required=False, allow_blank=True)
+    phone_number = serializers.CharField(
+        max_length=30, required=False, allow_blank=True
+    )
+    timezone = serializers.CharField(max_length=64, required=False)
+    locale = serializers.CharField(max_length=20, required=False)
+
+    class Meta:
+        model = User
+        fields = ["full_name", "job_title", "phone_number", "timezone", "locale"]
+
+    def validate_full_name(self, value):
+        stripped = value.strip()
+        if not stripped:
+            raise serializers.ValidationError("Full name is required.")
+        return stripped
+
+    def validate_job_title(self, value):
+        return value.strip()
+
+    def validate_phone_number(self, value):
+        stripped = value.strip()
+        if stripped and not _PHONE_RE.match(stripped):
+            raise serializers.ValidationError(
+                "Enter a valid phone number (digits, spaces, +, (, ), - only)."
+            )
+        return stripped
+
+    def validate_timezone(self, value):
+        if value not in available_timezones():
+            raise serializers.ValidationError(
+                "Enter a valid timezone (e.g. Europe/Dublin, America/New_York, UTC)."
+            )
+        return value
+
+    def validate_locale(self, value):
+        if value not in _SUPPORTED_LOCALES:
+            supported = ", ".join(sorted(_SUPPORTED_LOCALES))
+            raise serializers.ValidationError(
+                f"Unsupported locale. Supported: {supported}."
+            )
+        return value
+
+    def update(self, instance, validated_data):
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.is_profile_completed = bool(instance.full_name.strip())
+        update_fields = list(set(validated_data.keys()) | {"is_profile_completed"})
+        instance.save(update_fields=update_fields)
+        return instance

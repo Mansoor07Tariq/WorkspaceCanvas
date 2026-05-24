@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { AppBar, Box, Button, Toolbar, Typography } from "@mui/material";
 import { useAuth } from "@/features/auth/context/AuthContext";
+import { AppSidebar } from "./AppSidebar";
 import { en } from "@/i18n/en";
 
 interface Props {
@@ -28,8 +29,11 @@ export function AppShell({ children, onLogout }: Props) {
           </Button>
         </Toolbar>
       </AppBar>
-      <Box component="main" sx={{ flexGrow: 1 }}>
-        {children}
+      <Box sx={{ display: "flex", flexGrow: 1 }}>
+        <AppSidebar />
+        <Box component="main" sx={{ flexGrow: 1, minWidth: 0 }}>
+          {children}
+        </Box>
       </Box>
     </Box>
   );
