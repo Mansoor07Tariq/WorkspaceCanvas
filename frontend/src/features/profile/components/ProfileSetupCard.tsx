@@ -14,10 +14,10 @@ export function ProfileSetupCard() {
       <Card variant="outlined">
         <CardContent sx={{ p: 4 }}>
           <Stack spacing={3}>
-            <Stack direction="row" spacing={1.5} alignItems="center">
+            <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
               <AccountCircleOutlined color="primary" sx={{ fontSize: 32 }} />
               <Box>
-                <Typography variant="h6" fontWeight={600}>
+                <Typography variant="h6" sx={{ fontWeight: 600 }}>
                   {en.app.profile.setupTitle}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
