@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { Box, Card, CardContent, Stack, Typography } from "@mui/material";
 import { AppShell } from "@/app/layout/AppShell";
 import { useAuth } from "@/features/auth/context/AuthContext";
-import { ProfileSetupCard } from "@/features/profile";
+import { ProfileOnboardingCarousel } from "@/features/profile";
 import { en } from "@/i18n/en";
 import { ROUTES } from "@/routes/paths";
 
@@ -18,7 +18,7 @@ export function AppPlaceholderPage() {
   return (
     <AppShell onLogout={() => void handleLogout()}>
       {user && !user.is_profile_completed ? (
-        <ProfileSetupCard />
+        <ProfileOnboardingCarousel />
       ) : (
         <Box sx={{ p: 4, maxWidth: 560, mx: "auto", mt: 6 }}>
           <Stack spacing={3}>

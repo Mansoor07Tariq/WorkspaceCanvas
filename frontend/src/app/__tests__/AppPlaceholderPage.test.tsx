@@ -25,6 +25,8 @@ vi.mock("@/features/auth/context/AuthContext", () => ({
 
 vi.mock("@/features/profile/api/profileApi", () => ({
   updateProfile: vi.fn(),
+  uploadAvatar: vi.fn(),
+  removeAvatar: vi.fn(),
 }));
 
 const mockUpdateProfile = vi.mocked(updateProfile);
@@ -100,24 +102,29 @@ describe("AppPlaceholderPage — app shell", () => {
 describe("AppPlaceholderPage — profile setup card", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("shows the profile setup card when profile is not completed", () => {
+  it("shows the onboarding carousel when profile is not completed", () => {
     renderPage({ user: { ...mockUser, is_profile_completed: false } });
-    expect(screen.getByText(en.app.profile.setupTitle)).toBeInTheDocument();
+    expect(screen.getByText(en.app.profile.carousel.stepWelcomeTitle)).toBeInTheDocument();
   });
 
   it("does not show the dashboard when profile is not completed", () => {
     renderPage({ user: { ...mockUser, is_profile_completed: false } });
-    expect(screen.queryByText(en.app.placeholder.title)).not.toBeInTheDocument();
+    // placeholder.subtitle is unique to the dashboard; placeholder.title overlaps carousel welcome title
+    expect(screen.queryByText(en.app.placeholder.subtitle)).not.toBeInTheDocument();
   });
 
-  it("shows the full name field in the setup card", () => {
+  it("shows the Get started button on the welcome carousel step", () => {
     renderPage({ user: { ...mockUser, is_profile_completed: false } });
+    expect(
+      screen.getByRole("button", { name: en.app.profile.carousel.stepWelcomeCta })
+    ).toBeInTheDocument();
+  });
+
+  it("shows the name field after clicking Get started", async () => {
+    const user = userEvent.setup();
+    renderPage({ user: { ...mockUser, is_profile_completed: false } });
+    await user.click(screen.getByRole("button", { name: en.app.profile.carousel.stepWelcomeCta }));
     expect(screen.getByLabelText(en.app.profile.fullName)).toBeInTheDocument();
-  });
-
-  it("shows the save button in the setup card", () => {
-    renderPage({ user: { ...mockUser, is_profile_completed: false } });
-    expect(screen.getByRole("button", { name: en.app.profile.saveButton })).toBeInTheDocument();
   });
 
   it("sidebar product items are disabled when profile is incomplete", () => {
@@ -132,7 +139,7 @@ describe("AppPlaceholderPage — profile setup card", () => {
     );
   });
 
-  it("unlocks sidebar and shows dashboard after profile is saved", async () => {
+  it("unlocks sidebar and shows dashboard after profile is saved via carousel", async () => {
     const user = userEvent.setup();
     const completedUser = { ...mockUser, is_profile_completed: true };
     mockUpdateProfile.mockResolvedValueOnce(completedUser);
@@ -144,8 +151,13 @@ describe("AppPlaceholderPage — profile setup card", () => {
       "true"
     );
 
-    await user.type(screen.getByLabelText(en.app.profile.fullName), "Jane Smith");
-    await user.click(screen.getByRole("button", { name: en.app.profile.saveButton }));
+    // Navigate through the carousel: welcome → name → email → workDetails → avatar (finish)
+    // Name is pre-filled from user.full_name = "Jane Smith"
+    await user.click(screen.getByRole("button", { name: en.app.profile.carousel.stepWelcomeCta }));
+    await user.click(screen.getByRole("button", { name: en.app.profile.carousel.next }));
+    await user.click(screen.getByRole("button", { name: en.app.profile.carousel.next }));
+    await user.click(screen.getByRole("button", { name: en.app.profile.carousel.skip }));
+    await user.click(screen.getByRole("button", { name: en.app.profile.carousel.finish }));
 
     await waitFor(() => {
       expect(mockSetAuthenticatedUser).toHaveBeenCalledWith(completedUser);
@@ -159,7 +171,10 @@ describe("AppPlaceholderPage — profile setup card", () => {
       </MemoryRouter>
     );
 
-    expect(screen.queryByText(en.app.profile.setupTitle)).not.toBeInTheDocument();
+    // stepWelcomeTitle overlaps placeholder.title; check the CTA button instead
+    expect(
+      screen.queryByRole("button", { name: en.app.profile.carousel.stepWelcomeCta })
+    ).not.toBeInTheDocument();
     expect(screen.getByText(en.app.placeholder.title)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: en.app.sidebar.offices })).not.toHaveAttribute(
       "aria-disabled",

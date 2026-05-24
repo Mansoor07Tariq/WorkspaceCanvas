@@ -131,6 +131,8 @@ export const en = {
       deskBooking: "Desk Booking",
       events: "Events",
       people: "People",
+      almostThereTitle: "Almost there",
+      almostThereBody: "Complete your profile to unlock the workspace tools.",
     },
     profile: {
       setupTitle: "Complete your profile",
@@ -141,6 +143,55 @@ export const en = {
       phoneNumber: "Phone number",
       saveButton: "Complete profile",
       phoneNumberInvalid: "Enter a valid phone number (digits, spaces, +, (, ), - only).",
+      carousel: {
+        // Short labels for step progress indicator
+        stepWelcome: "Welcome",
+        stepName: "Name",
+        stepEmail: "Email",
+        stepWorkDetails: "Work",
+        stepAvatar: "Photo",
+        stepDone: "Finish",
+
+        stepWelcomeTitle: "Welcome to WorkspaceCanvas",
+        stepWelcomeSubtitle:
+          "Let's set up your profile so your team can recognize you when booking desks, joining events, and planning office days.",
+        stepWelcomeCta: "Get started",
+
+        stepNameTitle: "What should we call you?",
+        stepNameSubtitle: "This name will be visible to teammates when you book a desk.",
+
+        stepEmailTitle: "Confirm your sign-in email",
+        stepEmailSubtitle: "This is the email connected to your WorkspaceCanvas account.",
+        stepEmailVerifiedLabel: "Verified",
+
+        stepWorkDetailsTitle: "A few work details",
+        stepWorkDetailsSubtitle: "Optional details help your team understand who's booking what.",
+
+        stepAvatarTitle: "Add a profile photo",
+        stepAvatarSubtitle: "Optional, but helpful for teammates to recognize you at a glance.",
+
+        stepDoneGreeting: "You're ready to go",
+        stepDoneTitle: "You're all set!",
+        stepDoneSubtitle:
+          "Your profile is ready. Next, you'll be able to create or join a workspace.",
+
+        next: "Next",
+        back: "Back",
+        skip: "Skip",
+        finish: "Complete profile",
+
+        avatarUploadLabel: "Upload photo",
+        avatarChangeLabel: "Change photo",
+        avatarRemoveLabel: "Remove photo",
+        avatarTooLarge: "Photo must be 2 MB or smaller.",
+        avatarInvalidType: "Only JPEG, PNG, and WebP images are supported.",
+        avatarPreviewAlt: "Profile photo preview",
+
+        timezoneLabel: "Timezone",
+        timezoneHelper: "e.g. Europe/Dublin, America/New_York, UTC",
+        timezoneInvalid: "Enter a valid IANA timezone.",
+        profileCompletion: "Profile completion",
+      },
     },
     pages: {
       comingSoon: "This feature is coming soon.",

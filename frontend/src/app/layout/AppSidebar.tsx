@@ -5,9 +5,13 @@ import {
   ListItemButton,
   ListItemIcon,
   ListItemText,
+  Stack,
   Tooltip,
+  Typography,
 } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import {
+  AutoAwesomeOutlined,
   BusinessOutlined,
   CalendarMonthOutlined,
   GridViewOutlined,
@@ -59,6 +63,8 @@ export function AppSidebar() {
         borderColor: "divider",
         bgcolor: "background.paper",
         pt: 1,
+        display: "flex",
+        flexDirection: "column",
       }}
     >
       <List dense disablePadding>
@@ -93,6 +99,37 @@ export function AppSidebar() {
           );
         })}
       </List>
+
+      {/* "Almost there" card — shown only when user exists and profile is incomplete */}
+      {user != null && !profileComplete && (
+        <Box sx={{ px: 1.5, pt: 2, pb: 2, mt: "auto" }}>
+          <Box
+            sx={{
+              p: 1.75,
+              borderRadius: 3,
+              background: (theme) =>
+                `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.07)} 0%, ${alpha(theme.palette.secondary.main, 0.05)} 100%)`,
+              border: "1px solid",
+              borderColor: (theme) => alpha(theme.palette.primary.main, 0.14),
+            }}
+          >
+            <Stack spacing={0.75}>
+              <Stack direction="row" spacing={0.75} sx={{ alignItems: "center" }}>
+                <AutoAwesomeOutlined sx={{ fontSize: 15, color: "primary.main", flexShrink: 0 }} />
+                <Typography
+                  variant="caption"
+                  sx={{ fontWeight: 700, color: "primary.main", lineHeight: 1.3 }}
+                >
+                  {en.app.sidebar.almostThereTitle}
+                </Typography>
+              </Stack>
+              <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.5 }}>
+                {en.app.sidebar.almostThereBody}
+              </Typography>
+            </Stack>
+          </Box>
+        </Box>
+      )}
     </Box>
   );
 }

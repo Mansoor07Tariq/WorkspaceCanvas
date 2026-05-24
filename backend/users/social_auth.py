@@ -16,6 +16,7 @@ from django.core.cache import cache
 from jwt.algorithms import RSAAlgorithm
 
 _CACHE_TTL = 3600  # 1 hour
+_AVATAR_MAX_DOWNLOAD_BYTES = 5 * 1024 * 1024  # 5 MB hard cap on what we'll download
 
 
 class SocialAuthError(Exception):
@@ -28,8 +29,30 @@ class SocialAuthError(Exception):
 
 
 # ---------------------------------------------------------------------------
-# Internal HTTP helper
+# Internal HTTP helpers
 # ---------------------------------------------------------------------------
+
+
+def _fetch_avatar_bytes(url: str, *, headers: dict | None = None) -> bytes | None:
+    """
+    Download an avatar image from a provider URL.
+
+    Returns the raw bytes on success, or None if the download fails, the
+    response exceeds _AVATAR_MAX_DOWNLOAD_BYTES, or the URL is empty.
+    Caller is responsible for format/size validation before saving.
+    """
+    if not url:
+        return None
+    try:
+        req = urllib.request.Request(url, headers=headers or {})
+        with urllib.request.urlopen(req, timeout=10) as resp:  # noqa: S310
+            # Read one byte beyond the limit so we can detect oversized images.
+            data = resp.read(_AVATAR_MAX_DOWNLOAD_BYTES + 1)
+            if len(data) > _AVATAR_MAX_DOWNLOAD_BYTES:
+                return None
+            return data or None
+    except Exception:
+        return None
 
 
 def _get_json(url: str, *, headers: dict | None = None) -> dict:
@@ -116,12 +139,18 @@ def verify_google_token(
                 "Google token audience is invalid.", code="invalid_audience"
             )
 
+    picture_url = data.get("picture", "")
     return {
         "provider": "google",
         "provider_user_id": data.get("sub"),
         "email": email.lower(),
         "email_verified": True,
         "full_name": data.get("name", ""),
+        "first_name": data.get("given_name", ""),
+        "last_name": data.get("family_name", ""),
+        "locale": data.get("locale", ""),
+        "job_title": "",  # not available from Google tokeninfo
+        "avatar_bytes": _fetch_avatar_bytes(picture_url),
         "tenant_id": None,
     }
 
@@ -160,12 +189,21 @@ def _verify_microsoft_access_token(access_token: str) -> dict:
         raise SocialAuthError(
             "Microsoft did not return an email address.", code="missing_email"
         )
+    avatar_bytes = _fetch_avatar_bytes(
+        "https://graph.microsoft.com/v1.0/me/photo/$value",
+        headers={"Authorization": f"Bearer {access_token}"},
+    )
     return {
         "provider": "microsoft",
         "provider_user_id": data.get("id"),
         "email": email.lower(),
         "email_verified": True,
         "full_name": data.get("displayName", ""),
+        "first_name": data.get("givenName", ""),
+        "last_name": data.get("surname", ""),
+        "locale": data.get("preferredLanguage", ""),
+        "job_title": data.get("jobTitle", ""),
+        "avatar_bytes": avatar_bytes,
         "tenant_id": None,
     }
 
@@ -295,5 +333,12 @@ def _verify_microsoft_id_token(id_token: str) -> dict:
         "email": email.lower(),
         "email_verified": True,
         "full_name": claims.get("name", ""),
+        # given_name/family_name are non-standard MS ID token claims;
+        # jobTitle and preferredLanguage are not included in ID tokens.
+        "first_name": claims.get("given_name", ""),
+        "last_name": claims.get("family_name", ""),
+        "locale": "",
+        "job_title": "",
+        "avatar_bytes": None,  # no access token available in ID token path
         "tenant_id": tid or None,
     }

@@ -53,10 +53,15 @@ async function executeWithRetry<TResponse>(
   }
 }
 
-function buildHeaders(options: RequestOptions, hasBody: boolean): Record<string, string> {
+function buildHeaders(
+  options: RequestOptions,
+  hasBody: boolean,
+  isFormData: boolean
+): Record<string, string> {
   const headers: Record<string, string> = {};
 
-  if (hasBody) {
+  // Let the browser set Content-Type (with boundary) for multipart/form-data.
+  if (hasBody && !isFormData) {
     headers["Content-Type"] = "application/json";
   }
 
@@ -78,7 +83,7 @@ export const api = {
   get<TResponse>(path: string, options: RequestOptions = {}): Promise<TResponse> {
     return executeWithRetry<TResponse>(
       path,
-      () => ({ headers: buildHeaders(options, false) }),
+      () => ({ headers: buildHeaders(options, false, false) }),
       options.auth !== false
     );
   },
@@ -89,12 +94,13 @@ export const api = {
     options: RequestOptions = {}
   ): Promise<TResponse> {
     const hasBody = body !== undefined;
+    const isFormData = body instanceof FormData;
     return executeWithRetry<TResponse>(
       path,
       () => ({
         method: "POST",
-        body: hasBody ? JSON.stringify(body) : undefined,
-        headers: buildHeaders(options, hasBody),
+        body: hasBody ? (isFormData ? (body as BodyInit) : JSON.stringify(body)) : undefined,
+        headers: buildHeaders(options, hasBody, isFormData),
       }),
       options.auth !== false
     );
@@ -106,12 +112,13 @@ export const api = {
     options: RequestOptions = {}
   ): Promise<TResponse> {
     const hasBody = body !== undefined;
+    const isFormData = body instanceof FormData;
     return executeWithRetry<TResponse>(
       path,
       () => ({
         method: "PATCH",
-        body: hasBody ? JSON.stringify(body) : undefined,
-        headers: buildHeaders(options, hasBody),
+        body: hasBody ? (isFormData ? (body as BodyInit) : JSON.stringify(body)) : undefined,
+        headers: buildHeaders(options, hasBody, isFormData),
       }),
       options.auth !== false
     );
@@ -120,7 +127,7 @@ export const api = {
   delete<TResponse>(path: string, options: RequestOptions = {}): Promise<TResponse> {
     return executeWithRetry<TResponse>(
       path,
-      () => ({ method: "DELETE", headers: buildHeaders(options, false) }),
+      () => ({ method: "DELETE", headers: buildHeaders(options, false, false) }),
       options.auth !== false
     );
   },
