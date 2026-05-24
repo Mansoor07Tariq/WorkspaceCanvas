@@ -24,7 +24,7 @@ def active_user(db):
     return User.objects.create_user(
         username="jane@example.com",
         email="jane@example.com",
-        password="strongpass123",
+        password="Strongpass1!",
     )
 
 
@@ -33,7 +33,7 @@ def inactive_user(db):
     return User.objects.create_user(
         username="inactive@example.com",
         email="inactive@example.com",
-        password="strongpass123",
+        password="Strongpass1!",
         is_active=False,
     )
 
@@ -42,7 +42,7 @@ def inactive_user(db):
 def tokens(client, active_user):
     response = client.post(
         TOKEN_URL,
-        {"email": "jane@example.com", "password": "strongpass123"},
+        {"email": "jane@example.com", "password": "Strongpass1!"},
         format="json",
     )
     return response.data
@@ -55,7 +55,7 @@ def tokens(client, active_user):
 def test_active_user_can_login(client, active_user):
     response = client.post(
         TOKEN_URL,
-        {"email": "jane@example.com", "password": "strongpass123"},
+        {"email": "jane@example.com", "password": "Strongpass1!"},
         format="json",
     )
     assert response.status_code == 200
@@ -65,7 +65,7 @@ def test_active_user_can_login(client, active_user):
 def test_login_returns_access_token(client, active_user):
     response = client.post(
         TOKEN_URL,
-        {"email": "jane@example.com", "password": "strongpass123"},
+        {"email": "jane@example.com", "password": "Strongpass1!"},
         format="json",
     )
     assert "access" in response.data
@@ -75,7 +75,7 @@ def test_login_returns_access_token(client, active_user):
 def test_login_returns_refresh_token(client, active_user):
     response = client.post(
         TOKEN_URL,
-        {"email": "jane@example.com", "password": "strongpass123"},
+        {"email": "jane@example.com", "password": "Strongpass1!"},
         format="json",
     )
     assert "refresh" in response.data
@@ -105,7 +105,7 @@ def test_login_unknown_email_fails(client, db):
 def test_inactive_user_cannot_login(client, inactive_user):
     response = client.post(
         TOKEN_URL,
-        {"email": "inactive@example.com", "password": "strongpass123"},
+        {"email": "inactive@example.com", "password": "Strongpass1!"},
         format="json",
     )
     assert response.status_code in [400, 401]
@@ -116,7 +116,7 @@ def test_login_sets_preferred_auth_provider_if_blank(client, active_user):
     assert active_user.preferred_auth_provider == ""
     client.post(
         TOKEN_URL,
-        {"email": "jane@example.com", "password": "strongpass123"},
+        {"email": "jane@example.com", "password": "Strongpass1!"},
         format="json",
     )
     active_user.refresh_from_db()
@@ -130,7 +130,7 @@ def test_login_does_not_overwrite_preferred_auth_provider(client, active_user):
 
     client.post(
         TOKEN_URL,
-        {"email": "jane@example.com", "password": "strongpass123"},
+        {"email": "jane@example.com", "password": "Strongpass1!"},
         format="json",
     )
     active_user.refresh_from_db()
@@ -141,7 +141,7 @@ def test_login_does_not_overwrite_preferred_auth_provider(client, active_user):
 def test_login_updates_last_login_ip(client, active_user):
     client.post(
         TOKEN_URL,
-        {"email": "jane@example.com", "password": "strongpass123"},
+        {"email": "jane@example.com", "password": "Strongpass1!"},
         format="json",
         REMOTE_ADDR="192.168.1.1",
     )

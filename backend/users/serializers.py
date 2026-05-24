@@ -133,7 +133,7 @@ class LogoutSerializer(serializers.Serializer):
 
 class SignupSerializer(serializers.Serializer):
     email = serializers.EmailField()
-    password = serializers.CharField(write_only=True, min_length=8)
+    password = serializers.CharField(write_only=True)
     full_name = serializers.CharField(max_length=255, required=False, allow_blank=True)
 
     def validate_password(self, value):

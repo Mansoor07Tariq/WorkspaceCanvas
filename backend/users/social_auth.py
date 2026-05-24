@@ -50,23 +50,15 @@ def _get_json(url: str, *, headers: dict | None = None) -> dict:
 
 
 def _google_client_id() -> str:
-    return (
-        settings.SOCIALACCOUNT_PROVIDERS.get("google", {})
-        .get("APP", {})
-        .get("client_id", "")
-    )
+    return getattr(settings, "GOOGLE_CLIENT_ID", "")
 
 
 def _microsoft_client_id() -> str:
-    return (
-        settings.SOCIALACCOUNT_PROVIDERS.get("microsoft", {})
-        .get("APP", {})
-        .get("client_id", "")
-    )
+    return getattr(settings, "MICROSOFT_CLIENT_ID", "")
 
 
 def _microsoft_tenant() -> str:
-    return settings.SOCIALACCOUNT_PROVIDERS.get("microsoft", {}).get("TENANT", "common")
+    return getattr(settings, "MICROSOFT_TENANT_ID", "common")
 
 
 # ---------------------------------------------------------------------------
