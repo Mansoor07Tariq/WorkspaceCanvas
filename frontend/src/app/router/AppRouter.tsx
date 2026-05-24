@@ -7,7 +7,9 @@ import {
   VerifyEmailPage,
 } from "@/features/auth";
 import { AppPlaceholderPage } from "@/app/pages/AppPlaceholderPage";
+import { ComingSoonPage } from "@/app/pages/ComingSoonPage";
 import { ProtectedRoute } from "@/routes/ProtectedRoute";
+import { en } from "@/i18n/en";
 import { ROUTES } from "@/routes/paths";
 
 export function AppRouter() {
@@ -31,6 +33,38 @@ export function AppRouter() {
           element={
             <ProtectedRoute>
               <AppPlaceholderPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.offices}
+          element={
+            <ProtectedRoute>
+              <ComingSoonPage title={en.app.sidebar.offices} />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.bookings}
+          element={
+            <ProtectedRoute>
+              <ComingSoonPage title={en.app.sidebar.deskBooking} />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.events}
+          element={
+            <ProtectedRoute>
+              <ComingSoonPage title={en.app.sidebar.events} />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.people}
+          element={
+            <ProtectedRoute>
+              <ComingSoonPage title={en.app.sidebar.people} />
             </ProtectedRoute>
           }
         />

@@ -5,4 +5,8 @@ export const ROUTES = {
   mfaChallenge: "/mfa-challenge",
   app: "/app",
   mfaSetup: "/app/mfa/setup",
+  offices: "/app/offices",
+  bookings: "/app/bookings",
+  events: "/app/events",
+  people: "/app/people",
 } as const;

@@ -124,12 +124,32 @@ export const en = {
       brand: "WorkspaceCanvas",
       logout: "Log out",
     },
+    sidebar: {
+      lockedTooltip: "Complete your profile to unlock this section.",
+      dashboard: "Dashboard",
+      offices: "Offices",
+      deskBooking: "Desk Booking",
+      events: "Events",
+      people: "People",
+    },
+    profile: {
+      setupTitle: "Complete your profile",
+      setupSubtitle: "Add a few details to get started with your workspace.",
+      fullName: "Full name",
+      fullNameRequired: "Full name is required.",
+      jobTitle: "Job title",
+      phoneNumber: "Phone number",
+      saveButton: "Complete profile",
+      phoneNumberInvalid: "Enter a valid phone number (digits, spaces, +, (, ), - only).",
+    },
+    pages: {
+      comingSoon: "This feature is coming soon.",
+    },
     placeholder: {
       title: "Welcome to WorkspaceCanvas",
       subtitle: "Your workspace dashboard will appear here.",
       email: "Email",
       name: "Name",
-      profileCompleted: "Profile completed",
       organizations: "Organizations",
       noOrganizationsTitle: "No organization yet",
       noOrganizationsMessage:
