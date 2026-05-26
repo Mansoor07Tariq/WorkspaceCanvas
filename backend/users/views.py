@@ -276,7 +276,11 @@ class CookieTokenRefreshView(APIView):
                 status=status.HTTP_401_UNAUTHORIZED,
             )
         serializer = TokenRefreshSerializer(data={"refresh": refresh_token})
-        if not serializer.is_valid():
+        try:
+            valid = serializer.is_valid()
+        except TokenError:
+            valid = False
+        if not valid:
             response = Response(
                 {
                     "detail": "Refresh token is invalid or has expired.",
