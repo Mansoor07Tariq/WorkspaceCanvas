@@ -19,7 +19,7 @@ function ReviewRow({ label, value }: ReviewRowProps) {
       <Typography variant="body2" color="text.secondary" sx={{ flexShrink: 0, mr: 2 }}>
         {label}
       </Typography>
-      <Typography variant="body2" fontWeight={600} sx={{ textAlign: "right" }}>
+      <Typography variant="body2" sx={{ fontWeight: 600, textAlign: "right" }}>
         {value}
       </Typography>
     </Stack>
@@ -38,7 +38,7 @@ export function OrgStepReview({ name, organizationType, allowedDomain }: Props) 
   return (
     <Stack spacing={3}>
       <Stack spacing={0.75}>
-        <Typography variant="h6" fontWeight={700}>
+        <Typography variant="h6" sx={{ fontWeight: 700 }}>
           {c.stepReviewTitle}
         </Typography>
         <Typography variant="body2" color="text.secondary">

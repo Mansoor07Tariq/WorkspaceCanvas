@@ -47,7 +47,7 @@ export function OrgStepType({ value, onChange, disabled }: Props) {
   return (
     <Stack spacing={3}>
       <Stack spacing={0.75}>
-        <Typography variant="h6" fontWeight={700}>
+        <Typography variant="h6" sx={{ fontWeight: 700 }}>
           {c.stepTypeTitle}
         </Typography>
         <Typography variant="body2" color="text.secondary">
@@ -85,7 +85,7 @@ export function OrgStepType({ value, onChange, disabled }: Props) {
                   control={<Radio size="small" />}
                   label={
                     <Stack spacing={0.25} sx={{ ml: 0.5 }}>
-                      <Typography variant="body2" fontWeight={600}>
+                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
                         {opt.label}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">

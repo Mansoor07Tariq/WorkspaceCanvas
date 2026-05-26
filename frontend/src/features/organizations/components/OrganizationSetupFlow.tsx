@@ -30,8 +30,10 @@ const STEP_LABELS: Record<OrgSetupStep, string> = {
   review: c.stepReview,
 };
 
-// Exclude "welcome" from the numbered steps
-const NUMBERED_STEPS = ORG_SETUP_STEPS.filter((s) => s !== "welcome");
+// Exclude "welcome" from the numbered steps. Explicit type prevents TS 5.5+
+// narrowing the array to ("name"|"type"|"domain"|"review")[], which would make
+// indexOf(currentStep) reject OrgSetupStep at compile time.
+const NUMBERED_STEPS: OrgSetupStep[] = ORG_SETUP_STEPS.filter((s) => s !== "welcome");
 
 interface Props {
   onCreated: () => void;
@@ -168,7 +170,7 @@ export function OrganizationSetupFlow({ onCreated }: Props) {
               >
                 {c.back}
               </Button>
-              <Stack direction="row" spacing={1.5} alignItems="center">
+              <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
                 {currentStep === "domain" && (
                   <Button variant="text" onClick={goSkip} disabled={submission.loading}>
                     {c.skip}

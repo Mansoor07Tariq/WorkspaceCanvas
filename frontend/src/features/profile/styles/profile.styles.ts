@@ -33,7 +33,7 @@ export function brandGradientAlpha(
 
 // ─── ProfileOnboardingProgress ────────────────────────────────────────────────
 
-export const onboardingProgressSx = (theme: Theme): SxProps<Theme> => ({
+export const onboardingProgressSx = (theme: Theme) => ({
   width: "100%",
   maxWidth: 560,
   mb: 2,

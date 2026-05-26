@@ -10,7 +10,7 @@ const c = en.app.orgSetup;
 
 export function OrgStepWelcome({ onStart }: Props) {
   return (
-    <Stack spacing={4} alignItems="center" sx={{ textAlign: "center", py: 2 }}>
+    <Stack spacing={4} sx={{ alignItems: "center", textAlign: "center", py: 2 }}>
       <Box
         sx={{
           width: 72,
@@ -25,7 +25,7 @@ export function OrgStepWelcome({ onStart }: Props) {
         <BusinessOutlined sx={{ fontSize: 36, color: "primary.contrastText" }} />
       </Box>
       <Stack spacing={1.5}>
-        <Typography variant="h5" fontWeight={700}>
+        <Typography variant="h5" sx={{ fontWeight: 700 }}>
           {c.stepWelcomeTitle}
         </Typography>
         <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 420 }}>

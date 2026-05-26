@@ -15,7 +15,7 @@ export function OrgStepName({ name, onChange, error, disabled }: Props) {
   return (
     <Stack spacing={3}>
       <Stack spacing={0.75}>
-        <Typography variant="h6" fontWeight={700}>
+        <Typography variant="h6" sx={{ fontWeight: 700 }}>
           {c.stepNameTitle}
         </Typography>
         <Typography variant="body2" color="text.secondary">

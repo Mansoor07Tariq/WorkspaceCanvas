@@ -4,7 +4,6 @@ import type { LoginResponse } from "../types/auth.types";
 
 const successResponse: LoginResponse = {
   access: "eyJhbGciOiJIUzI1NiJ9.access",
-  refresh: "eyJhbGciOiJIUzI1NiJ9.refresh",
 };
 
 const mfaResponse: LoginResponse = {

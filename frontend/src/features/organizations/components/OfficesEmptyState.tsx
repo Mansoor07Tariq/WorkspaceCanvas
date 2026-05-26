@@ -16,7 +16,7 @@ export function OfficesEmptyState() {
         p: { xs: 2, sm: 4 },
       }}
     >
-      <Stack spacing={3} alignItems="center" sx={{ textAlign: "center", maxWidth: 420 }}>
+      <Stack spacing={3} sx={{ alignItems: "center", textAlign: "center", maxWidth: 420 }}>
         <Box
           sx={{
             width: 80,
@@ -31,7 +31,7 @@ export function OfficesEmptyState() {
           <BusinessOutlined sx={{ fontSize: 40, color: "primary.main" }} aria-hidden="true" />
         </Box>
         <Stack spacing={1}>
-          <Typography variant="h6" fontWeight={700}>
+          <Typography variant="h6" sx={{ fontWeight: 700 }}>
             {c.emptyStateTitle}
           </Typography>
           <Typography variant="body2" color="text.secondary">
