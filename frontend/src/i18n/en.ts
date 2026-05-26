@@ -202,6 +202,58 @@ export const en = {
         profileCompletion: "Profile completion",
       },
     },
+    orgSetup: {
+      stepWelcome: "Welcome",
+      stepName: "Name",
+      stepType: "Type",
+      stepDomain: "Domain",
+      stepReview: "Review",
+
+      stepWelcomeTitle: "Set up your workspace",
+      stepWelcomeSubtitle:
+        "Create an organization to manage your offices, book desks, and invite your team.",
+      stepWelcomeCta: "Get started",
+
+      stepNameTitle: "What's your organization called?",
+      stepNameSubtitle: "This name will be visible to everyone in your workspace.",
+      nameLabel: "Organization name",
+      namePlaceholder: "Acme Corp",
+      nameRequired: "Organization name is required.",
+
+      stepTypeTitle: "What kind of organization is it?",
+      stepTypeSubtitle: "Choose the option that best describes your workspace.",
+      typeCompany: "Company",
+      typeCompanyDescription: "A business or startup with a dedicated team.",
+      typeCoworking: "Co-working Space",
+      typeCoworkingDescription: "A shared workspace open to multiple tenants.",
+      typeOther: "Other",
+      typeOtherDescription: "A non-profit, community space, or something else.",
+
+      stepDomainTitle: "Restrict sign-up by email domain?",
+      stepDomainSubtitle:
+        "Optional. Limit who can join your organization to people with a matching email domain.",
+      domainLabel: "Email domain",
+      domainPlaceholder: "example.com",
+      domainSkipHint: "Leave blank to allow any email address.",
+
+      stepReviewTitle: "Review and create",
+      stepReviewSubtitle: "Confirm the details below before creating your organization.",
+      reviewNameLabel: "Name",
+      reviewTypeLabel: "Type",
+      reviewDomainLabel: "Allowed domain",
+      reviewDomainNone: "Any email address",
+
+      createButton: "Create organization",
+
+      next: "Next",
+      back: "Back",
+      skip: "Skip",
+
+      emptyStateTitle: "No offices yet",
+      emptyStateSubtitle:
+        "Your organization has been set up. Offices will appear here once you add them.",
+      emptyStateAction: "Add your first office",
+    },
     pages: {
       comingSoon: "This feature is coming soon.",
     },

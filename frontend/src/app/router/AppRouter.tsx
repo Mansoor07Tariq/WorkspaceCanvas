@@ -7,6 +7,7 @@ import {
   VerifyEmailPage,
 } from "@/features/auth";
 import { AppPlaceholderPage } from "@/app/pages/AppPlaceholderPage";
+import { AppOfficesPage } from "@/app/pages/AppOfficesPage";
 import { ComingSoonPage } from "@/app/pages/ComingSoonPage";
 import { ProtectedRoute } from "@/routes/ProtectedRoute";
 import { en } from "@/i18n/en";
@@ -40,7 +41,7 @@ export function AppRouter() {
           path={ROUTES.offices}
           element={
             <ProtectedRoute>
-              <ComingSoonPage title={en.app.sidebar.offices} />
+              <AppOfficesPage />
             </ProtectedRoute>
           }
         />

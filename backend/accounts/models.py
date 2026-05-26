@@ -3,12 +3,14 @@ import uuid
 from django.conf import settings
 from django.db import models
 from django.utils import timezone
+from django.utils.text import slugify
 
 
 class Organization(models.Model):
     class OrgType(models.TextChoices):
         COMPANY = "company", "Company"
         COWORKING_SPACE = "coworking_space", "Co-working Space"
+        OTHER = "other", "Other"
 
     class Status(models.TextChoices):
         DRAFT = "draft", "Draft"
@@ -35,6 +37,16 @@ class Organization(models.Model):
 
     def __str__(self) -> str:
         return self.name
+
+    @classmethod
+    def generate_slug(cls, name: str) -> str:
+        base = slugify(name) or "org"
+        slug = base
+        suffix = 1
+        while cls.objects.filter(slug=slug).exists():
+            slug = f"{base}-{suffix}"
+            suffix += 1
+        return slug
 
     @property
     def is_approved(self) -> bool:
