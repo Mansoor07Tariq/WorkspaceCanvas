@@ -7,12 +7,15 @@ Social auth tests — three layers:
 """
 
 import base64
+import io
 import time
 from unittest.mock import patch
 
 import jwt
 import pytest
 from cryptography.hazmat.primitives.asymmetric import rsa
+from django.conf import settings as django_settings
+from PIL import Image
 from rest_framework.test import APIClient
 
 from accounts.models import Membership, Organization
@@ -32,6 +35,11 @@ GOOGLE_IDENTITY = {
     "email": "alice@example.com",
     "email_verified": True,
     "full_name": "Alice Smith",
+    "first_name": "Alice",
+    "last_name": "Smith",
+    "locale": "en-US",
+    "job_title": "",
+    "avatar_bytes": None,
     "tenant_id": None,
 }
 
@@ -41,8 +49,19 @@ MICROSOFT_IDENTITY = {
     "email": "bob@example.com",
     "email_verified": True,
     "full_name": "Bob Jones",
+    "first_name": "Bob",
+    "last_name": "Jones",
+    "locale": "en-GB",
+    "job_title": "Senior Engineer",
+    "avatar_bytes": None,
     "tenant_id": "tenant-abc",
 }
+
+
+def _make_jpeg_bytes() -> bytes:
+    buf = io.BytesIO()
+    Image.new("RGB", (10, 10), color=(255, 0, 0)).save(buf, format="JPEG")
+    return buf.getvalue()
 
 
 @pytest.fixture
@@ -131,13 +150,13 @@ def test_google_creates_new_user(mock_verify, client):
 
 @pytest.mark.django_db
 @patch("users.serializers.verify_google_token", return_value=GOOGLE_IDENTITY)
-def test_google_returns_access_and_refresh_tokens(mock_verify, client):
+def test_google_returns_access_token_and_refresh_cookie(mock_verify, client):
     resp = client.post(
         SOCIAL_URL, {"provider": "google", "id_token": "tok"}, format="json"
     )
     assert resp.status_code == 200
     assert "access" in resp.data
-    assert "refresh" in resp.data
+    assert django_settings.AUTH_COOKIE_NAME in resp.cookies
 
 
 @pytest.mark.django_db
@@ -262,7 +281,7 @@ def test_microsoft_access_token_returns_tokens(mock_verify, client):
         format="json",
     )
     assert "access" in resp.data
-    assert "refresh" in resp.data
+    assert django_settings.AUTH_COOKIE_NAME in resp.cookies
 
 
 @pytest.mark.django_db
@@ -364,6 +383,187 @@ def test_me_endpoint_works_with_social_login_token(mock_verify, client):
 
 
 # ---------------------------------------------------------------------------
+# Social name prefill tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+@patch("users.serializers.verify_google_token", return_value=GOOGLE_IDENTITY)
+def test_google_backfills_full_name_for_existing_user_with_blank_name(
+    mock_verify, client
+):
+    user = User.objects.create_user(
+        username="alice@example.com",
+        email="alice@example.com",
+        password="x" * 10,
+        full_name="",
+    )
+    client.post(SOCIAL_URL, {"provider": "google", "id_token": "tok"}, format="json")
+    user.refresh_from_db()
+    assert user.full_name == GOOGLE_IDENTITY["full_name"]
+
+
+@pytest.mark.django_db
+@patch("users.serializers.verify_google_token", return_value=GOOGLE_IDENTITY)
+def test_google_preserves_full_name_for_existing_user_with_name(mock_verify, client):
+    user = User.objects.create_user(
+        username="alice@example.com",
+        email="alice@example.com",
+        password="x" * 10,
+        full_name="Existing Name",
+    )
+    client.post(SOCIAL_URL, {"provider": "google", "id_token": "tok"}, format="json")
+    user.refresh_from_db()
+    assert user.full_name == "Existing Name"
+
+
+@pytest.mark.django_db
+@patch("users.serializers.verify_microsoft_token", return_value=MICROSOFT_IDENTITY)
+def test_microsoft_backfills_full_name_for_existing_user_with_blank_name(
+    mock_verify, client
+):
+    user = User.objects.create_user(
+        username="bob@example.com",
+        email="bob@example.com",
+        password="x" * 10,
+        full_name="",
+    )
+    client.post(SOCIAL_URL, {"provider": "microsoft", "id_token": "tok"}, format="json")
+    user.refresh_from_db()
+    assert user.full_name == MICROSOFT_IDENTITY["full_name"]
+
+
+@pytest.mark.django_db
+@patch("users.serializers.verify_microsoft_token", return_value=MICROSOFT_IDENTITY)
+def test_microsoft_preserves_full_name_for_existing_user_with_name(mock_verify, client):
+    user = User.objects.create_user(
+        username="bob@example.com",
+        email="bob@example.com",
+        password="x" * 10,
+        full_name="Existing Name",
+    )
+    client.post(SOCIAL_URL, {"provider": "microsoft", "id_token": "tok"}, format="json")
+    user.refresh_from_db()
+    assert user.full_name == "Existing Name"
+
+
+# ---------------------------------------------------------------------------
+# Social profile field backfill tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+@patch("users.serializers.verify_google_token", return_value=GOOGLE_IDENTITY)
+def test_google_new_user_gets_first_and_last_name(mock_verify, client):
+    client.post(SOCIAL_URL, {"provider": "google", "id_token": "tok"}, format="json")
+    user = User.objects.get(email="alice@example.com")
+    assert user.first_name == GOOGLE_IDENTITY["first_name"]
+    assert user.last_name == GOOGLE_IDENTITY["last_name"]
+
+
+@pytest.mark.django_db
+@patch("users.serializers.verify_google_token", return_value=GOOGLE_IDENTITY)
+def test_google_new_user_gets_locale(mock_verify, client):
+    client.post(SOCIAL_URL, {"provider": "google", "id_token": "tok"}, format="json")
+    user = User.objects.get(email="alice@example.com")
+    assert user.locale == GOOGLE_IDENTITY["locale"]
+
+
+@pytest.mark.django_db
+@patch("users.serializers.verify_google_token", return_value=GOOGLE_IDENTITY)
+def test_google_backfills_first_last_name_for_existing_user_with_blank_names(
+    mock_verify, client
+):
+    user = User.objects.create_user(
+        username="alice@example.com",
+        email="alice@example.com",
+        password="x" * 10,
+        first_name="",
+        last_name="",
+    )
+    client.post(SOCIAL_URL, {"provider": "google", "id_token": "tok"}, format="json")
+    user.refresh_from_db()
+    assert user.first_name == GOOGLE_IDENTITY["first_name"]
+    assert user.last_name == GOOGLE_IDENTITY["last_name"]
+
+
+@pytest.mark.django_db
+@patch("users.serializers.verify_google_token", return_value=GOOGLE_IDENTITY)
+def test_google_preserves_first_last_name_for_existing_user(mock_verify, client):
+    user = User.objects.create_user(
+        username="alice@example.com",
+        email="alice@example.com",
+        password="x" * 10,
+        first_name="Alicia",
+        last_name="Smythe",
+    )
+    client.post(SOCIAL_URL, {"provider": "google", "id_token": "tok"}, format="json")
+    user.refresh_from_db()
+    assert user.first_name == "Alicia"
+    assert user.last_name == "Smythe"
+
+
+@pytest.mark.django_db
+@patch("users.serializers.verify_microsoft_token", return_value=MICROSOFT_IDENTITY)
+def test_microsoft_new_user_gets_job_title(mock_verify, client):
+    client.post(SOCIAL_URL, {"provider": "microsoft", "id_token": "tok"}, format="json")
+    user = User.objects.get(email="bob@example.com")
+    assert user.job_title == MICROSOFT_IDENTITY["job_title"]
+
+
+@pytest.mark.django_db
+@patch("users.serializers.verify_microsoft_token", return_value=MICROSOFT_IDENTITY)
+def test_microsoft_new_user_gets_locale(mock_verify, client):
+    client.post(SOCIAL_URL, {"provider": "microsoft", "id_token": "tok"}, format="json")
+    user = User.objects.get(email="bob@example.com")
+    assert user.locale == MICROSOFT_IDENTITY["locale"]
+
+
+@pytest.mark.django_db
+@patch("users.serializers.verify_microsoft_token", return_value=MICROSOFT_IDENTITY)
+def test_microsoft_backfills_job_title_for_existing_user_with_blank_job_title(
+    mock_verify, client
+):
+    user = User.objects.create_user(
+        username="bob@example.com",
+        email="bob@example.com",
+        password="x" * 10,
+        job_title="",
+    )
+    client.post(SOCIAL_URL, {"provider": "microsoft", "id_token": "tok"}, format="json")
+    user.refresh_from_db()
+    assert user.job_title == MICROSOFT_IDENTITY["job_title"]
+
+
+@pytest.mark.django_db
+@patch("users.serializers.verify_microsoft_token", return_value=MICROSOFT_IDENTITY)
+def test_microsoft_preserves_job_title_for_existing_user(mock_verify, client):
+    user = User.objects.create_user(
+        username="bob@example.com",
+        email="bob@example.com",
+        password="x" * 10,
+        job_title="Director",
+    )
+    client.post(SOCIAL_URL, {"provider": "microsoft", "id_token": "tok"}, format="json")
+    user.refresh_from_db()
+    assert user.job_title == "Director"
+
+
+@pytest.mark.django_db
+@patch("users.serializers.verify_google_token", return_value=GOOGLE_IDENTITY)
+def test_locale_not_updated_when_user_has_non_default_locale(mock_verify, client):
+    user = User.objects.create_user(
+        username="alice@example.com",
+        email="alice@example.com",
+        password="x" * 10,
+        locale="en-IE",
+    )
+    client.post(SOCIAL_URL, {"provider": "google", "id_token": "tok"}, format="json")
+    user.refresh_from_db()
+    assert user.locale == "en-IE"
+
+
+# ---------------------------------------------------------------------------
 # 2. Google service unit tests (mock _get_json)
 # ---------------------------------------------------------------------------
 
@@ -374,6 +574,9 @@ def _google_ok_payload(*, email="alice@example.com", email_verified="true", aud=
         "email": email,
         "email_verified": email_verified,
         "name": "Alice Smith",
+        "given_name": "Alice",
+        "family_name": "Smith",
+        "locale": "en-US",
         "aud": aud,
     }
 
@@ -389,6 +592,9 @@ def test_google_service_valid_token_returns_identity(mock_get, settings):
     assert result["email"] == "alice@example.com"
     assert result["email_verified"] is True
     assert result["provider"] == "google"
+    assert result["first_name"] == "Alice"
+    assert result["last_name"] == "Smith"
+    assert result["locale"] == "en-US"
 
 
 @pytest.mark.django_db
@@ -564,3 +770,71 @@ def test_microsoft_id_token_unknown_kid_raises(rsa_key_pair, test_jwk, ms_settin
             with pytest.raises(SocialAuthError) as exc_info:
                 _verify_microsoft_id_token(token)
     assert exc_info.value.code == "invalid_token"
+
+
+# ---------------------------------------------------------------------------
+# Social avatar backfill tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_new_user_gets_avatar_when_provider_supplies_bytes(client):
+    identity = {**GOOGLE_IDENTITY, "avatar_bytes": _make_jpeg_bytes()}
+    with patch("users.serializers.verify_google_token", return_value=identity):
+        resp = client.post(
+            SOCIAL_URL, {"provider": "google", "id_token": "tok"}, format="json"
+        )
+    assert resp.status_code == 200
+    user = User.objects.get(email="alice@example.com")
+    assert bool(user.avatar)
+
+
+@pytest.mark.django_db
+def test_existing_user_without_avatar_gets_avatar_backfilled(client):
+    user = User.objects.create_user(
+        username="alice@example.com",
+        email="alice@example.com",
+        password="x" * 10,
+    )
+    assert not user.avatar
+    identity = {**GOOGLE_IDENTITY, "avatar_bytes": _make_jpeg_bytes()}
+    with patch("users.serializers.verify_google_token", return_value=identity):
+        client.post(
+            SOCIAL_URL, {"provider": "google", "id_token": "tok"}, format="json"
+        )
+    user.refresh_from_db()
+    assert bool(user.avatar)
+
+
+@pytest.mark.django_db
+def test_existing_user_with_avatar_is_not_overwritten(client, settings, tmp_path):
+    settings.MEDIA_ROOT = str(tmp_path)
+    user = User.objects.create_user(
+        username="alice@example.com",
+        email="alice@example.com",
+        password="x" * 10,
+    )
+    from django.core.files.base import ContentFile
+
+    user.avatar.save("existing.jpg", ContentFile(_make_jpeg_bytes()), save=True)
+    original_name = user.avatar.name
+
+    identity = {**GOOGLE_IDENTITY, "avatar_bytes": _make_jpeg_bytes()}
+    with patch("users.serializers.verify_google_token", return_value=identity):
+        client.post(
+            SOCIAL_URL, {"provider": "google", "id_token": "tok"}, format="json"
+        )
+    user.refresh_from_db()
+    assert user.avatar.name == original_name
+
+
+@pytest.mark.django_db
+def test_invalid_avatar_bytes_does_not_prevent_user_creation(client):
+    identity = {**GOOGLE_IDENTITY, "avatar_bytes": b"not-an-image"}
+    with patch("users.serializers.verify_google_token", return_value=identity):
+        resp = client.post(
+            SOCIAL_URL, {"provider": "google", "id_token": "tok"}, format="json"
+        )
+    assert resp.status_code == 200
+    user = User.objects.get(email="alice@example.com")
+    assert not user.avatar

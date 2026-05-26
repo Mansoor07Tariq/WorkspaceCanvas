@@ -4,6 +4,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import { useGoogleLogin } from "@react-oauth/google";
 import { SocialLoginButtons } from "../components/SocialLoginButtons";
+import type { SocialProviderConfig } from "../hooks/useSocialLogin";
 import { en } from "@/i18n/en";
 
 const mockTriggerGoogle = vi.fn();
@@ -23,20 +24,23 @@ const mockUseGoogleLogin = vi.mocked(useGoogleLogin);
 
 type Props = React.ComponentProps<typeof SocialLoginButtons>;
 
+function makeProvider(overrides: Partial<SocialProviderConfig> = {}): SocialProviderConfig {
+  return {
+    configured: true,
+    onStart: vi.fn(),
+    onToken: vi.fn(),
+    onError: vi.fn(),
+    onUnavailable: vi.fn(),
+    ...overrides,
+  };
+}
+
 function renderButtons(props: Partial<Props> = {}) {
   return render(
     <MemoryRouter>
       <SocialLoginButtons
-        isGoogleConfigured={true}
-        isMicrosoftConfigured={true}
-        onGoogleStart={vi.fn()}
-        onGoogleToken={vi.fn()}
-        onGoogleError={vi.fn()}
-        onGoogleUnavailable={vi.fn()}
-        onMicrosoftStart={vi.fn()}
-        onMicrosoftToken={vi.fn()}
-        onMicrosoftError={vi.fn()}
-        onMicrosoftUnavailable={vi.fn()}
+        google={makeProvider()}
+        microsoft={makeProvider()}
         loadingProvider={undefined}
         {...props}
       />
@@ -74,131 +78,130 @@ describe("SocialLoginButtons", () => {
 
   // --- Google configured flow ---
 
-  it("calls onGoogleStart and triggers Google SDK on button click", async () => {
+  it("calls onStart and triggers Google SDK on button click", async () => {
     const user = userEvent.setup();
-    const onGoogleStart = vi.fn();
-    renderButtons({ onGoogleStart });
+    const google = makeProvider({ onStart: vi.fn() });
+    renderButtons({ google });
     await user.click(screen.getByRole("button", { name: en.auth.social.continueWithGoogle }));
-    expect(onGoogleStart).toHaveBeenCalledTimes(1);
+    expect(google.onStart).toHaveBeenCalledTimes(1);
     expect(mockTriggerGoogle).toHaveBeenCalledTimes(1);
   });
 
-  it("calls onGoogleToken when Google onSuccess fires", () => {
-    const onGoogleToken = vi.fn();
+  it("calls onToken when Google onSuccess fires", () => {
+    const google = makeProvider({ onToken: vi.fn() });
     mockUseGoogleLogin.mockImplementationOnce((options) => {
       const opts = options as { onSuccess?: (r: { access_token: string }) => void };
       return () => opts.onSuccess?.({ access_token: "google-tok" });
     });
-    renderButtons({ onGoogleToken });
+    renderButtons({ google });
     screen.getByRole("button", { name: en.auth.social.continueWithGoogle }).click();
-    expect(onGoogleToken).toHaveBeenCalledWith("google-tok");
+    expect(google.onToken).toHaveBeenCalledWith("google-tok");
   });
 
-  it("calls onGoogleError when Google onError fires", () => {
-    const onGoogleError = vi.fn();
+  it("calls onError when Google onError fires", () => {
+    const google = makeProvider({ onError: vi.fn() });
     mockUseGoogleLogin.mockImplementationOnce((options) => {
       const opts = options as { onError?: () => void };
       return () => opts.onError?.();
     });
-    renderButtons({ onGoogleError });
+    renderButtons({ google });
     screen.getByRole("button", { name: en.auth.social.continueWithGoogle }).click();
-    expect(onGoogleError).toHaveBeenCalledTimes(1);
+    expect(google.onError).toHaveBeenCalledTimes(1);
   });
 
   // --- Google unavailable ---
 
-  it("calls onGoogleUnavailable and does not trigger SDK when Google is not configured", async () => {
+  it("calls onUnavailable and does not trigger SDK when Google is not configured", async () => {
     const user = userEvent.setup();
-    const onGoogleUnavailable = vi.fn();
-    renderButtons({ isGoogleConfigured: false, onGoogleUnavailable });
+    const google = makeProvider({ configured: false, onUnavailable: vi.fn() });
+    renderButtons({ google });
     await user.click(screen.getByRole("button", { name: en.auth.social.continueWithGoogle }));
-    expect(onGoogleUnavailable).toHaveBeenCalledTimes(1);
+    expect(google.onUnavailable).toHaveBeenCalledTimes(1);
     expect(mockTriggerGoogle).not.toHaveBeenCalled();
   });
 
-  it("does not call onGoogleStart when Google is not configured", async () => {
+  it("does not call onStart when Google is not configured", async () => {
     const user = userEvent.setup();
-    const onGoogleStart = vi.fn();
-    renderButtons({ isGoogleConfigured: false, onGoogleStart });
+    const google = makeProvider({ configured: false, onStart: vi.fn() });
+    renderButtons({ google });
     await user.click(screen.getByRole("button", { name: en.auth.social.continueWithGoogle }));
-    expect(onGoogleStart).not.toHaveBeenCalled();
+    expect(google.onStart).not.toHaveBeenCalled();
   });
 
   // --- Microsoft configured flow ---
 
-  it("calls onMicrosoftStart and then onMicrosoftToken on popup success", async () => {
+  it("calls onStart and then onToken on popup success", async () => {
     const user = userEvent.setup();
-    const onMicrosoftStart = vi.fn();
-    const onMicrosoftToken = vi.fn();
+    const microsoft = makeProvider({ onStart: vi.fn(), onToken: vi.fn() });
     mockLoginPopup.mockResolvedValueOnce({ idToken: "ms-id-token" });
 
-    renderButtons({ onMicrosoftStart, onMicrosoftToken });
+    renderButtons({ microsoft });
     await user.click(screen.getByRole("button", { name: en.auth.social.continueWithMicrosoft }));
 
     await vi.waitFor(() => {
-      expect(onMicrosoftStart).toHaveBeenCalledTimes(1);
-      expect(onMicrosoftToken).toHaveBeenCalledWith("ms-id-token");
+      expect(microsoft.onStart).toHaveBeenCalledTimes(1);
+      expect(microsoft.onToken).toHaveBeenCalledWith("ms-id-token");
     });
   });
 
-  it("calls onMicrosoftError when popup throws", async () => {
+  it("calls onError when popup throws", async () => {
     const user = userEvent.setup();
-    const onMicrosoftError = vi.fn();
+    const microsoft = makeProvider({ onError: vi.fn() });
     const popupError = new Error("Some MSAL error");
     mockLoginPopup.mockRejectedValueOnce(popupError);
 
-    renderButtons({ onMicrosoftError });
+    renderButtons({ microsoft });
     await user.click(screen.getByRole("button", { name: en.auth.social.continueWithMicrosoft }));
 
     await vi.waitFor(() => {
-      expect(onMicrosoftError).toHaveBeenCalledWith(popupError);
+      expect(microsoft.onError).toHaveBeenCalledWith(popupError);
     });
   });
 
-  it("calls onMicrosoftError with cancelled error when popup is cancelled", async () => {
+  it("calls onError with cancelled error when popup is cancelled", async () => {
     const user = userEvent.setup();
-    const onMicrosoftError = vi.fn();
+    const microsoft = makeProvider({ onError: vi.fn() });
     const cancelledError = Object.assign(new Error("Cancelled"), { errorCode: "user_cancelled" });
     mockLoginPopup.mockRejectedValueOnce(cancelledError);
 
-    renderButtons({ onMicrosoftError });
+    renderButtons({ microsoft });
     await user.click(screen.getByRole("button", { name: en.auth.social.continueWithMicrosoft }));
 
     await vi.waitFor(() => {
-      expect(onMicrosoftError).toHaveBeenCalledWith(cancelledError);
+      expect(microsoft.onError).toHaveBeenCalledWith(cancelledError);
     });
   });
 
-  it("does not call onMicrosoftToken when popup throws", async () => {
+  it("does not call onToken when popup throws", async () => {
     const user = userEvent.setup();
-    const onMicrosoftToken = vi.fn();
+    const microsoft = makeProvider({ onToken: vi.fn() });
     mockLoginPopup.mockRejectedValueOnce(new Error("error"));
 
-    renderButtons({ onMicrosoftToken });
+    renderButtons({ microsoft });
     await user.click(screen.getByRole("button", { name: en.auth.social.continueWithMicrosoft }));
 
     await vi.waitFor(() => {
-      expect(onMicrosoftToken).not.toHaveBeenCalled();
+      expect(microsoft.onToken).not.toHaveBeenCalled();
     });
   });
 
   // --- Microsoft unavailable ---
 
-  it("calls onMicrosoftUnavailable and does not call loginPopup when Microsoft is not configured", async () => {
+  it("calls onUnavailable and does not call loginPopup when Microsoft is not configured", async () => {
     const user = userEvent.setup();
-    const onMicrosoftUnavailable = vi.fn();
-    renderButtons({ isMicrosoftConfigured: false, onMicrosoftUnavailable });
+    const microsoft = makeProvider({ configured: false, onUnavailable: vi.fn() });
+    renderButtons({ microsoft });
     await user.click(screen.getByRole("button", { name: en.auth.social.continueWithMicrosoft }));
-    expect(onMicrosoftUnavailable).toHaveBeenCalledTimes(1);
+    expect(microsoft.onUnavailable).toHaveBeenCalledTimes(1);
     expect(mockLoginPopup).not.toHaveBeenCalled();
   });
 
-  it("does not call onMicrosoftStart when Microsoft is not configured", async () => {
+  it("does not call onStart when Microsoft is not configured", async () => {
     const user = userEvent.setup();
-    const onMicrosoftStart = vi.fn();
-    renderButtons({ isMicrosoftConfigured: false, onMicrosoftStart });
+    const microsoft = makeProvider({ configured: false, onStart: vi.fn() });
+    renderButtons({ microsoft });
     await user.click(screen.getByRole("button", { name: en.auth.social.continueWithMicrosoft }));
-    expect(onMicrosoftStart).not.toHaveBeenCalled();
+    expect(microsoft.onStart).not.toHaveBeenCalled();
   });
 
   // --- per-provider loading ---

@@ -8,11 +8,7 @@ import { ROUTES } from "@/routes/paths";
 import { AuthPageShell } from "../components/AuthPageShell";
 import { useMfaChallengeForm } from "../hooks/useMfaChallengeForm";
 import { authFormSx, mfaToggleSx } from "../styles/auth.styles";
-
-interface LocationState {
-  challengeId?: string;
-  email?: string;
-}
+import type { MfaChallengeNavigationState } from "../types/auth.types";
 
 const backToLoginFooter = (
   <Typography component="span" sx={{ color: "primary.main", fontWeight: 600 }}>
@@ -24,7 +20,7 @@ const backToLoginFooter = (
 
 export function MfaChallengePage() {
   const location = useLocation();
-  const state = location.state as LocationState | null;
+  const state = location.state as MfaChallengeNavigationState | null;
   const challengeId = state?.challengeId;
   const email = state?.email;
 

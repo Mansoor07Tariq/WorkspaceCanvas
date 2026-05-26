@@ -132,3 +132,24 @@ describe("AppSidebar — null user", () => {
     });
   });
 });
+
+describe("AppSidebar — Almost there card", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("shows Almost there card when profile is incomplete", () => {
+    renderSidebar(incompleteUser);
+    expect(screen.getByText(en.app.sidebar.almostThereTitle)).toBeInTheDocument();
+    expect(screen.getByText(en.app.sidebar.almostThereBody)).toBeInTheDocument();
+  });
+
+  it("does not show Almost there card when profile is complete", () => {
+    renderSidebar(completeUser);
+    expect(screen.queryByText(en.app.sidebar.almostThereTitle)).not.toBeInTheDocument();
+    expect(screen.queryByText(en.app.sidebar.almostThereBody)).not.toBeInTheDocument();
+  });
+
+  it("does not show Almost there card when user is null", () => {
+    renderSidebar(null);
+    expect(screen.queryByText(en.app.sidebar.almostThereTitle)).not.toBeInTheDocument();
+  });
+});

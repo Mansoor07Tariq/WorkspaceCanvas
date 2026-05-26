@@ -1,5 +1,7 @@
-import { type FormEvent, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { confirmMfa, setupMfa } from "../api/authApi";
+import { useFormSubmission } from "@/hooks/useFormSubmission";
+import { en } from "@/i18n/en";
 
 export type MfaSetupStep = "loading" | "scan" | "codes" | "error";
 
@@ -10,22 +12,23 @@ interface MfaSetupState {
   token: string;
   tokenError: string;
   recoveryCodes: string[];
-  generalError: string;
+  generalError: string | undefined;
   loading: boolean;
   setToken: (value: string) => void;
-  handleConfirm: (e: FormEvent) => void;
+  handleConfirm: (e: { preventDefault(): void }) => void;
 }
 
 export function useMfaSetup(): MfaSetupState {
+  const { submission, startSubmission, setGeneralError, endSubmission } = useFormSubmission();
   const [step, setStep] = useState<MfaSetupStep>("loading");
   const [qrCodeBase64, setQrCodeBase64] = useState("");
   const [provisioningUri, setProvisioningUri] = useState("");
   const [token, setToken] = useState("");
   const [tokenError, setTokenError] = useState("");
   const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
-  const [generalError, setGeneralError] = useState("");
-  const [loading, setLoading] = useState(false);
   const initialized = useRef(false);
+
+  const c = en.auth.mfaSetup;
 
   useEffect(() => {
     if (initialized.current) return;
@@ -38,35 +41,35 @@ export function useMfaSetup(): MfaSetupState {
         setStep("scan");
       })
       .catch(() => {
-        setGeneralError("Failed to initialize MFA setup. Please try again.");
+        setGeneralError(c.setupInitError);
         setStep("error");
       });
+    // c is a module-level constant — intentionally omitted from deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function handleConfirm(e: FormEvent) {
+  function handleConfirm(e: { preventDefault(): void }) {
     e.preventDefault();
     const trimmed = token.trim();
     if (!trimmed) {
-      setTokenError("Enter your authenticator code.");
+      setTokenError(c.invalidCodeRequired);
       return;
     }
     if (!/^\d{6}$/.test(trimmed)) {
-      setTokenError("Enter a valid 6-digit code.");
+      setTokenError(c.invalidCodeFormat);
       return;
     }
     setTokenError("");
-    setLoading(true);
+    startSubmission();
     confirmMfa({ token: trimmed })
       .then((resp) => {
         setRecoveryCodes(resp.recovery_codes);
         setStep("codes");
       })
       .catch(() => {
-        setGeneralError(
-          "Verification failed. Make sure your device clock is correct and try again."
-        );
+        setGeneralError(c.setupVerificationError);
       })
-      .finally(() => setLoading(false));
+      .finally(() => endSubmission());
   }
 
   return {
@@ -76,8 +79,8 @@ export function useMfaSetup(): MfaSetupState {
     token,
     tokenError,
     recoveryCodes,
-    generalError,
-    loading,
+    generalError: submission.generalError,
+    loading: submission.loading,
     setToken,
     handleConfirm,
   };

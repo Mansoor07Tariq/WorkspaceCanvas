@@ -10,6 +10,7 @@ from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from .auth_cookies import set_refresh_cookie
 from .mfa_serializers import (
     MFAConfirmSerializer,
     MFADisableSerializer,
@@ -192,16 +193,20 @@ class MFALoginChallengeVerifyView(APIView):
                 "type": "object",
                 "properties": {
                     "access": {"type": "string"},
-                    "refresh": {"type": "string"},
                 },
             }
         },
         summary=(
             "Verify an MFA challenge after primary login — "
-            "returns full JWT tokens on success"
+            "returns access token; refresh token set as httpOnly cookie"
         ),
     )
     def post(self, request: Request) -> Response:
         serializer = MFALoginChallengeVerifySerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        return Response(serializer.save(), status=status.HTTP_200_OK)
+        data = dict(serializer.save())
+        refresh = data.pop("refresh", None)
+        response = Response(data, status=status.HTTP_200_OK)
+        if refresh:
+            set_refresh_cookie(response, refresh)
+        return response

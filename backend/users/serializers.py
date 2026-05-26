@@ -1,12 +1,16 @@
+import io
 import re
 from zoneinfo import available_timezones
 
+from django.conf import settings as django_settings
 from django.contrib.auth import authenticate
 from django.contrib.auth.password_validation import (
     validate_password as django_validate_password,
 )
+from django.core.files.base import ContentFile
 from django.db import transaction
 from django.utils import timezone
+from PIL import Image
 from rest_framework import serializers
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -17,7 +21,30 @@ from .social_auth import SocialAuthError, verify_google_token, verify_microsoft_
 from .utils import get_client_ip
 
 _PHONE_RE = re.compile(r"^[0-9\s+\(\)\-]+$")
-_SUPPORTED_LOCALES = frozenset({"en", "en-IE", "en-GB", "en-US"})
+_INVALID_CREDENTIALS_MSG = "Invalid email or password."
+_VALID_TIMEZONES = available_timezones()
+_SOCIAL_PROVIDERS = [User.AuthProvider.GOOGLE, User.AuthProvider.MICROSOFT]
+
+
+def _require_nonempty(value: str, field_label: str) -> str:
+    stripped = value.strip()
+    if not stripped:
+        raise serializers.ValidationError(f"{field_label} is required.")
+    return stripped
+
+
+def _open_and_validate_image(raw: bytes) -> "Image.Image":
+    """Open image bytes with Pillow; raises ValidationError on failure."""
+    try:
+        img = Image.open(io.BytesIO(raw))
+        img.load()
+    except Exception:
+        raise serializers.ValidationError("Upload a valid image file.")
+    if img.format not in django_settings.AVATAR_ALLOWED_FORMATS:
+        raise serializers.ValidationError(
+            "Only JPEG, PNG, and WebP images are supported."
+        )
+    return img
 
 
 def build_jwt_response_for_user(user: User) -> dict:
@@ -85,14 +112,14 @@ class EmailTokenObtainPairSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True)
 
     def validate(self, data):
-        email = data["email"]
+        email = User.normalize_email(data["email"])
         password = data["password"]
         request = self.context.get("request")
 
         try:
             user = User.objects.get(email__iexact=email)
         except User.DoesNotExist:
-            raise serializers.ValidationError({"detail": "Invalid email or password."})
+            raise serializers.ValidationError({"detail": _INVALID_CREDENTIALS_MSG})
 
         authenticated_user = authenticate(
             request=request,
@@ -101,7 +128,7 @@ class EmailTokenObtainPairSerializer(serializers.Serializer):
         )
 
         if authenticated_user is None:
-            raise serializers.ValidationError({"detail": "Invalid email or password."})
+            raise serializers.ValidationError({"detail": _INVALID_CREDENTIALS_MSG})
 
         if not authenticated_user.is_active:
             raise serializers.ValidationError({"detail": "This account is inactive."})
@@ -133,10 +160,6 @@ class EmailTokenObtainPairSerializer(serializers.Serializer):
         return build_jwt_response_for_user(authenticated_user)
 
 
-class LogoutSerializer(serializers.Serializer):
-    refresh = serializers.CharField()
-
-
 class SignupSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
@@ -147,9 +170,10 @@ class SignupSerializer(serializers.Serializer):
         return value
 
     def validate_email(self, value):
-        if User.objects.filter(email__iexact=value).exists():
+        normalized = User.normalize_email(value)
+        if User.objects.filter(email__iexact=normalized).exists():
             raise serializers.ValidationError("A user with this email already exists.")
-        return value.lower()
+        return normalized
 
     def create(self, validated_data):
         email = validated_data["email"]
@@ -170,8 +194,25 @@ class ResendEmailVerificationSerializer(serializers.Serializer):
     email = serializers.EmailField()
 
 
+def _save_social_avatar(user, avatar_bytes: bytes) -> bool:
+    """Validate and attach avatar bytes to user.avatar (does not call user.save)."""
+    if not avatar_bytes or len(avatar_bytes) > django_settings.AVATAR_MAX_BYTES:
+        return False
+    try:
+        img = _open_and_validate_image(avatar_bytes)
+    except serializers.ValidationError:
+        return False
+    ext = "jpg" if img.format == "JPEG" else img.format.lower()
+    user.avatar.save(
+        f"social_avatar_{user.id}.{ext}", ContentFile(avatar_bytes), save=False
+    )
+    return True
+
+
 class SocialAuthSerializer(serializers.Serializer):
-    provider = serializers.ChoiceField(choices=["google", "microsoft"])
+    provider = serializers.ChoiceField(
+        choices=[(p.value, p.label) for p in _SOCIAL_PROVIDERS]
+    )
     access_token = serializers.CharField(required=False, allow_blank=True)
     id_token = serializers.CharField(required=False, allow_blank=True)
 
@@ -217,9 +258,17 @@ class SocialAuthSerializer(serializers.Serializer):
 
     @staticmethod
     def _find_or_create_user(identity: dict, request) -> User:
-        email = identity["email"]
+        email = User.normalize_email(identity["email"])
         provider = identity["provider"]
         provider_verified = identity["email_verified"]
+
+        provider_locale = identity.get("locale", "").strip()
+        # Only use the locale if it's one we support; fall back to "en".
+        initial_locale = (
+            provider_locale
+            if provider_locale in django_settings.SUPPORTED_LOCALES
+            else "en"
+        )
 
         with transaction.atomic():
             try:
@@ -232,6 +281,32 @@ class SocialAuthSerializer(serializers.Serializer):
                 if not user.preferred_auth_provider:
                     user.preferred_auth_provider = provider
                     update_fields.append("preferred_auth_provider")
+                # Backfill profile fields from provider when blank on this account
+                for attr, provider_val in (
+                    ("full_name", identity.get("full_name", "").strip()),
+                    ("first_name", identity.get("first_name", "").strip()),
+                    ("last_name", identity.get("last_name", "").strip()),
+                    ("job_title", identity.get("job_title", "").strip()),
+                ):
+                    if provider_val and not getattr(user, attr, "").strip():
+                        setattr(user, attr, provider_val)
+                        update_fields.append(attr)
+                # Locale: only update if still the default "en" and provider
+                # offers a more specific supported locale.
+                if (
+                    provider_locale in django_settings.SUPPORTED_LOCALES
+                    and provider_locale != "en"
+                    and user.locale == "en"
+                ):
+                    user.locale = provider_locale
+                    update_fields.append("locale")
+                avatar_bytes = identity.get("avatar_bytes")
+                if (
+                    not user.avatar
+                    and avatar_bytes
+                    and _save_social_avatar(user, avatar_bytes)
+                ):
+                    update_fields.append("avatar")
                 if update_fields:
                     user.save(update_fields=update_fields)
             except User.DoesNotExist:
@@ -240,38 +315,54 @@ class SocialAuthSerializer(serializers.Serializer):
                     username=email,
                     email=email,
                     password=None,
-                    full_name=identity.get("full_name", ""),
+                    full_name=identity.get("full_name", "").strip(),
+                    first_name=identity.get("first_name", "").strip(),
+                    last_name=identity.get("last_name", "").strip(),
+                    job_title=identity.get("job_title", "").strip(),
+                    locale=initial_locale,
                     preferred_auth_provider=provider,
                     email_verified=provider_verified,
                     email_verified_at=now if provider_verified else None,
                 )
+                avatar_bytes = identity.get("avatar_bytes")
+                if avatar_bytes and _save_social_avatar(user, avatar_bytes):
+                    user.save(update_fields=["avatar"])
 
-        ip = get_client_ip(request) if request else None
-        if ip:
-            user.last_login_ip = ip
-            user.save(update_fields=["last_login_ip"])
+            ip = get_client_ip(request) if request else None
+            if ip:
+                user.last_login_ip = ip
+                user.save(update_fields=["last_login_ip"])
 
         return user
 
 
 class ProfileUpdateSerializer(serializers.ModelSerializer):
-    full_name = serializers.CharField(max_length=255)
+    full_name = serializers.CharField(max_length=255, required=False)
     job_title = serializers.CharField(max_length=120, required=False, allow_blank=True)
     phone_number = serializers.CharField(
         max_length=30, required=False, allow_blank=True
     )
     timezone = serializers.CharField(max_length=64, required=False)
     locale = serializers.CharField(max_length=20, required=False)
+    avatar = serializers.ImageField(required=False, allow_null=True, use_url=True)
+    remove_avatar = serializers.BooleanField(
+        required=False, default=False, write_only=True
+    )
 
     class Meta:
         model = User
-        fields = ["full_name", "job_title", "phone_number", "timezone", "locale"]
+        fields = [
+            "full_name",
+            "job_title",
+            "phone_number",
+            "timezone",
+            "locale",
+            "avatar",
+            "remove_avatar",
+        ]
 
     def validate_full_name(self, value):
-        stripped = value.strip()
-        if not stripped:
-            raise serializers.ValidationError("Full name is required.")
-        return stripped
+        return _require_nonempty(value, "Full name")
 
     def validate_job_title(self, value):
         return value.strip()
@@ -285,24 +376,50 @@ class ProfileUpdateSerializer(serializers.ModelSerializer):
         return stripped
 
     def validate_timezone(self, value):
-        if value not in available_timezones():
+        if value not in _VALID_TIMEZONES:
             raise serializers.ValidationError(
                 "Enter a valid timezone (e.g. Europe/Dublin, America/New_York, UTC)."
             )
         return value
 
     def validate_locale(self, value):
-        if value not in _SUPPORTED_LOCALES:
-            supported = ", ".join(sorted(_SUPPORTED_LOCALES))
+        if value not in django_settings.SUPPORTED_LOCALES:
+            supported = ", ".join(sorted(django_settings.SUPPORTED_LOCALES))
             raise serializers.ValidationError(
                 f"Unsupported locale. Supported: {supported}."
             )
         return value
 
+    def validate_avatar(self, value):
+        if value is None:
+            return value
+        if value.size > django_settings.AVATAR_MAX_BYTES:
+            raise serializers.ValidationError("Avatar must be 2 MB or smaller.")
+        # Re-read bytes so Pillow doesn't interfere with Django's upload pipeline
+        raw = value.read()
+        value.seek(0)
+        _open_and_validate_image(raw)
+        return value
+
     def update(self, instance, validated_data):
+        remove_avatar = validated_data.pop("remove_avatar", False)
+        avatar_changed = False
+
+        if remove_avatar:
+            if instance.avatar:
+                instance.avatar.delete(save=False)
+            instance.avatar = None
+            avatar_changed = True
+
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
-        instance.is_profile_completed = bool(instance.full_name.strip())
+
+        if "avatar" in validated_data:
+            avatar_changed = True
+
+        instance.is_profile_completed = instance.compute_profile_completion()
         update_fields = list(set(validated_data.keys()) | {"is_profile_completed"})
+        if avatar_changed:
+            update_fields = list(set(update_fields) | {"avatar"})
         instance.save(update_fields=update_fields)
         return instance

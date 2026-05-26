@@ -17,20 +17,24 @@ vi.mock("../api/authApi", () => ({
 vi.mock("@/lib/tokenStorage", () => ({
   tokenStorage: {
     getAccessToken: vi.fn(),
-    getRefreshToken: vi.fn(),
-    setTokens: vi.fn(),
+    setAccessToken: vi.fn(),
     clearTokens: vi.fn(),
   },
+}));
+
+vi.mock("@/features/auth/utils/sessionRefresh", () => ({
+  refreshStoredTokens: vi.fn(),
 }));
 
 // Use the real sessionEvents so tests can call emitSessionExpired directly.
 // Each test's useEffect cleanup removes its own listener on unmount.
 
+import { refreshStoredTokens } from "@/features/auth/utils/sessionRefresh";
+
 const mockGetCurrentUser = vi.mocked(getCurrentUser);
 const mockLogout = vi.mocked(logout);
-const mockGetAccessToken = vi.mocked(tokenStorage.getAccessToken);
-const mockGetRefreshToken = vi.mocked(tokenStorage.getRefreshToken);
 const mockClearTokens = vi.mocked(tokenStorage.clearTokens);
+const mockRefreshStoredTokens = vi.mocked(refreshStoredTokens);
 
 const mockUser: CurrentUser = {
   id: 1,
@@ -60,22 +64,27 @@ describe("AuthContext — bootstrap", () => {
     vi.clearAllMocks();
   });
 
-  it("initialises as unauthenticated and does not call getCurrentUser when no token", async () => {
-    mockGetAccessToken.mockReturnValue(null);
+  it("always starts as loading on mount", () => {
+    mockRefreshStoredTokens.mockResolvedValue(false);
+    const { result } = renderHook(() => useAuth(), { wrapper });
+    expect(result.current.status).toBe("loading");
+  });
+
+  it("becomes unauthenticated when refresh fails on bootstrap", async () => {
+    mockRefreshStoredTokens.mockResolvedValue(false);
     const { result } = renderHook(() => useAuth(), { wrapper });
 
-    expect(result.current.status).toBe("unauthenticated");
+    await waitFor(() => expect(result.current.status).toBe("unauthenticated"));
+
     expect(result.current.user).toBeNull();
     expect(mockGetCurrentUser).not.toHaveBeenCalled();
   });
 
-  it("initialises as loading when token exists, then transitions to authenticated", async () => {
-    mockGetAccessToken.mockReturnValue("tok");
+  it("calls getCurrentUser after successful refresh and becomes authenticated", async () => {
+    mockRefreshStoredTokens.mockResolvedValue(true);
     mockGetCurrentUser.mockResolvedValueOnce(mockUser);
 
     const { result } = renderHook(() => useAuth(), { wrapper });
-
-    expect(result.current.status).toBe("loading");
 
     await waitFor(() => expect(result.current.status).toBe("authenticated"));
 
@@ -83,8 +92,8 @@ describe("AuthContext — bootstrap", () => {
     expect(mockGetCurrentUser).toHaveBeenCalledTimes(1);
   });
 
-  it("clears tokens and becomes unauthenticated when getCurrentUser fails on bootstrap", async () => {
-    mockGetAccessToken.mockReturnValue("expired-tok");
+  it("clears tokens and becomes unauthenticated when getCurrentUser fails after refresh", async () => {
+    mockRefreshStoredTokens.mockResolvedValue(true);
     mockGetCurrentUser.mockRejectedValueOnce(new Error("Unauthorized"));
 
     const { result } = renderHook(() => useAuth(), { wrapper });
@@ -99,15 +108,13 @@ describe("AuthContext — bootstrap", () => {
 describe("AuthContext — refreshUser", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetAccessToken.mockReturnValue(null);
+    mockRefreshStoredTokens.mockResolvedValue(false);
   });
 
   it("updates user and sets authenticated on success", async () => {
     mockGetCurrentUser.mockResolvedValueOnce(mockUser);
     const { result } = renderHook(() => useAuth(), { wrapper });
-
-    // Simulate token appearing
-    mockGetAccessToken.mockReturnValue("tok");
+    await waitFor(() => expect(result.current.status).toBe("unauthenticated"));
 
     await act(async () => {
       await result.current.refreshUser();
@@ -119,8 +126,8 @@ describe("AuthContext — refreshUser", () => {
 
   it("clears tokens and becomes unauthenticated when getCurrentUser fails", async () => {
     mockGetCurrentUser.mockRejectedValueOnce(new Error("Unauthorized"));
-    mockGetAccessToken.mockReturnValue("tok");
     const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.status).toBe("unauthenticated"));
 
     await act(async () => {
       await result.current.refreshUser();
@@ -130,29 +137,17 @@ describe("AuthContext — refreshUser", () => {
     expect(result.current.user).toBeNull();
     expect(mockClearTokens).toHaveBeenCalled();
   });
-
-  it("becomes unauthenticated immediately when no access token", async () => {
-    mockGetAccessToken.mockReturnValue(null);
-    const { result } = renderHook(() => useAuth(), { wrapper });
-
-    await act(async () => {
-      await result.current.refreshUser();
-    });
-
-    expect(result.current.status).toBe("unauthenticated");
-    expect(mockGetCurrentUser).not.toHaveBeenCalled();
-    expect(mockClearTokens).toHaveBeenCalled();
-  });
 });
 
 describe("AuthContext — setAuthenticatedUser", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetAccessToken.mockReturnValue(null);
+    mockRefreshStoredTokens.mockResolvedValue(false);
   });
 
-  it("sets authenticated status and stores user", () => {
+  it("sets authenticated status and stores user", async () => {
     const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.status).toBe("unauthenticated"));
 
     act(() => {
       result.current.setAuthenticatedUser(mockUser);
@@ -167,11 +162,12 @@ describe("AuthContext — setAuthenticatedUser", () => {
 describe("AuthContext — markUnauthenticated", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetAccessToken.mockReturnValue(null);
+    mockRefreshStoredTokens.mockResolvedValue(false);
   });
 
-  it("clears tokens, user, and sets unauthenticated", () => {
+  it("clears tokens, user, and sets unauthenticated", async () => {
     const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.status).toBe("unauthenticated"));
 
     act(() => {
       result.current.setAuthenticatedUser(mockUser);
@@ -186,8 +182,9 @@ describe("AuthContext — markUnauthenticated", () => {
     expect(mockClearTokens).toHaveBeenCalled();
   });
 
-  it("stores optional error message", () => {
+  it("stores optional error message", async () => {
     const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.status).toBe("unauthenticated"));
 
     act(() => {
       result.current.markUnauthenticated("Session expired.");
@@ -200,36 +197,37 @@ describe("AuthContext — markUnauthenticated", () => {
 describe("AuthContext — logoutUser", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetAccessToken.mockReturnValue(null);
+    mockRefreshStoredTokens.mockResolvedValue(false);
   });
 
-  it("calls logout API with refresh token when present", async () => {
-    mockGetRefreshToken.mockReturnValue("ref-tok");
+  it("calls logout API without arguments", async () => {
     mockLogout.mockResolvedValueOnce(undefined);
     const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.status).toBe("unauthenticated"));
 
     await act(async () => {
       await result.current.logoutUser();
     });
 
-    expect(mockLogout).toHaveBeenCalledWith({ refresh: "ref-tok" });
+    expect(mockLogout).toHaveBeenCalledWith();
   });
 
-  it("does not call logout API when no refresh token", async () => {
-    mockGetRefreshToken.mockReturnValue(null);
+  it("always calls the logout API regardless of token state", async () => {
+    mockLogout.mockResolvedValueOnce(undefined);
     const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.status).toBe("unauthenticated"));
 
     await act(async () => {
       await result.current.logoutUser();
     });
 
-    expect(mockLogout).not.toHaveBeenCalled();
+    expect(mockLogout).toHaveBeenCalledTimes(1);
   });
 
   it("clears tokens even when backend logout fails", async () => {
-    mockGetRefreshToken.mockReturnValue("ref-tok");
     mockLogout.mockRejectedValueOnce(new Error("Server error"));
     const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.status).toBe("unauthenticated"));
 
     await act(async () => {
       await result.current.logoutUser();
@@ -241,9 +239,10 @@ describe("AuthContext — logoutUser", () => {
   });
 
   it("sets unauthenticated and clears user", async () => {
-    mockGetRefreshToken.mockReturnValue(null);
+    mockLogout.mockResolvedValueOnce(undefined);
     mockGetCurrentUser.mockResolvedValueOnce(mockUser);
     const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.status).toBe("unauthenticated"));
 
     act(() => {
       result.current.setAuthenticatedUser(mockUser);
@@ -261,12 +260,12 @@ describe("AuthContext — logoutUser", () => {
 describe("AuthContext — session expired event", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetAccessToken.mockReturnValue(null);
+    mockRefreshStoredTokens.mockResolvedValue(false);
   });
 
   it("marks unauthenticated with sessionExpired error when session expired event fires", async () => {
-    mockGetCurrentUser.mockResolvedValueOnce(mockUser);
     const { result } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.status).toBe("unauthenticated"));
 
     act(() => {
       result.current.setAuthenticatedUser(mockUser);
@@ -282,8 +281,9 @@ describe("AuthContext — session expired event", () => {
     expect(mockClearTokens).toHaveBeenCalled();
   });
 
-  it("unsubscribes from session expired events on unmount", () => {
+  it("unsubscribes from session expired events on unmount", async () => {
     const { result, unmount } = renderHook(() => useAuth(), { wrapper });
+    await waitFor(() => expect(result.current.status).toBe("unauthenticated"));
 
     act(() => {
       result.current.setAuthenticatedUser(mockUser);

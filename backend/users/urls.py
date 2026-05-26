@@ -1,5 +1,5 @@
 from django.urls import path
-from rest_framework_simplejwt.views import TokenRefreshView, TokenVerifyView
+from rest_framework_simplejwt.views import TokenVerifyView
 
 from .mfa_views import (
     MFAConfirmView,
@@ -10,6 +10,7 @@ from .mfa_views import (
     RecoveryCodeRegenerateView,
 )
 from .views import (
+    CookieTokenRefreshView,
     CurrentUserView,
     EmailTokenObtainPairView,
     LogoutView,
@@ -28,7 +29,7 @@ urlpatterns = [
         name="auth-resend-verification",
     ),
     path("token/", EmailTokenObtainPairView.as_view(), name="token-obtain"),
-    path("token/refresh/", TokenRefreshView.as_view(), name="token-refresh"),
+    path("token/refresh/", CookieTokenRefreshView.as_view(), name="token-refresh"),
     # token/verify/ is kept for completeness and tested in test_auth.py.
     # The frontend does not use it; clients may call it to probe token validity.
     path("token/verify/", TokenVerifyView.as_view(), name="token-verify"),

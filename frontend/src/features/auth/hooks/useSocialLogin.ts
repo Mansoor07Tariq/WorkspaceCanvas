@@ -1,13 +1,27 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { socialAuth, getCurrentUser } from "../api/authApi";
-import { tokenStorage } from "@/lib/tokenStorage";
+import { socialAuth } from "../api/authApi";
+import { usePostAuthNavigation } from "@/hooks/usePostAuthNavigation";
+import { navigateToMfaChallenge } from "../utils/authUtils";
 import { getApiErrorMessage } from "@/lib/api/getApiErrorMessage";
-import { ROUTES } from "@/routes/paths";
 import { en } from "@/i18n/en";
 import { isGoogleConfigured, isMicrosoftConfigured } from "../social/socialConfig";
-import { useAuth } from "../context/AuthContext";
 import type { SocialProvider, SocialAuthMfaResponse } from "../types/auth.types";
+
+export interface SocialProviderConfig {
+  configured: boolean;
+  onStart: () => void;
+  onToken: (token: string) => void;
+  onError: (error?: unknown) => void;
+  onUnavailable: () => void;
+}
+
+export interface SocialLoginState {
+  google: SocialProviderConfig;
+  microsoft: SocialProviderConfig;
+  loadingProvider: SocialProvider | undefined;
+  generalError: string | undefined;
+}
 
 function isSocialMfaResponse(res: object): res is SocialAuthMfaResponse {
   return "mfa_required" in res;
@@ -21,41 +35,11 @@ function isMsalUserCancelled(error: unknown): boolean {
   );
 }
 
-export function useSocialLogin() {
+export function useSocialLogin(): SocialLoginState {
   const navigate = useNavigate();
-  const { setAuthenticatedUser } = useAuth();
+  const { navigateAfterAuth } = usePostAuthNavigation();
   const [loadingProvider, setLoadingProvider] = useState<SocialProvider | undefined>();
   const [generalError, setGeneralError] = useState<string | undefined>();
-
-  function startGoogleFlow() {
-    setLoadingProvider("google");
-    setGeneralError(undefined);
-  }
-
-  function startMicrosoftFlow() {
-    setLoadingProvider("microsoft");
-    setGeneralError(undefined);
-  }
-
-  function handleGoogleError() {
-    setLoadingProvider(undefined);
-    setGeneralError(en.auth.social.googleError);
-  }
-
-  function handleMicrosoftError(error: unknown) {
-    setLoadingProvider(undefined);
-    setGeneralError(
-      isMsalUserCancelled(error) ? en.auth.social.popupClosed : en.auth.social.microsoftError
-    );
-  }
-
-  function handleGoogleUnavailable() {
-    setGeneralError(en.auth.social.googleUnavailable);
-  }
-
-  function handleMicrosoftUnavailable() {
-    setGeneralError(en.auth.social.microsoftUnavailable);
-  }
 
   async function submitSocialToken(
     provider: SocialProvider,
@@ -66,19 +50,10 @@ export function useSocialLogin() {
     try {
       const response = await socialAuth({ provider, ...token });
       if (isSocialMfaResponse(response)) {
-        navigate(ROUTES.mfaChallenge, {
-          state: { challengeId: response.challenge_id, email: response.email },
-        });
+        navigateToMfaChallenge(navigate, response.challenge_id, response.email);
       } else {
-        tokenStorage.setTokens(response.access, response.refresh);
-        try {
-          const user = await getCurrentUser();
-          setAuthenticatedUser(user);
-          navigate(ROUTES.app, { replace: true });
-        } catch (err: unknown) {
-          tokenStorage.clearTokens();
-          setGeneralError(getApiErrorMessage(err));
-        }
+        const error = await navigateAfterAuth(response, { replace: true });
+        if (error) setGeneralError(error);
       }
     } catch (err: unknown) {
       setGeneralError(getApiErrorMessage(err));
@@ -87,26 +62,35 @@ export function useSocialLogin() {
     }
   }
 
-  function handleGoogleToken(accessToken: string) {
-    void submitSocialToken("google", { access_token: accessToken });
-  }
-
-  function handleMicrosoftToken(idToken: string) {
-    void submitSocialToken("microsoft", { id_token: idToken });
-  }
-
-  return {
-    loadingProvider,
-    generalError,
-    isGoogleConfigured,
-    isMicrosoftConfigured,
-    startGoogleFlow,
-    startMicrosoftFlow,
-    handleGoogleToken,
-    handleMicrosoftToken,
-    handleGoogleError,
-    handleMicrosoftError,
-    handleGoogleUnavailable,
-    handleMicrosoftUnavailable,
+  const google: SocialProviderConfig = {
+    configured: isGoogleConfigured,
+    onStart: () => {
+      setLoadingProvider("google");
+      setGeneralError(undefined);
+    },
+    onToken: (accessToken) => void submitSocialToken("google", { access_token: accessToken }),
+    onError: () => {
+      setLoadingProvider(undefined);
+      setGeneralError(en.auth.social.googleError);
+    },
+    onUnavailable: () => setGeneralError(en.auth.social.googleUnavailable),
   };
+
+  const microsoft: SocialProviderConfig = {
+    configured: isMicrosoftConfigured,
+    onStart: () => {
+      setLoadingProvider("microsoft");
+      setGeneralError(undefined);
+    },
+    onToken: (idToken) => void submitSocialToken("microsoft", { id_token: idToken }),
+    onError: (error) => {
+      setLoadingProvider(undefined);
+      setGeneralError(
+        isMsalUserCancelled(error) ? en.auth.social.popupClosed : en.auth.social.microsoftError
+      );
+    },
+    onUnavailable: () => setGeneralError(en.auth.social.microsoftUnavailable),
+  };
+
+  return { google, microsoft, loadingProvider, generalError };
 }

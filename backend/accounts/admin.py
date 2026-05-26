@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Invitation, Membership, Organization
+from .models import Invitation, MemberRole, Membership, Organization
 
 
 @admin.action(description="Submit selected organizations for approval")
@@ -18,7 +18,7 @@ def approve_organizations(modeladmin, request, queryset):
     queryset.update(status=Organization.Status.ACTIVE, is_active=True)
     Membership.objects.filter(
         organization_id__in=org_ids,
-        role=Membership.Role.OWNER,
+        role=MemberRole.OWNER,
     ).update(status=Membership.Status.ACTIVE)
 
 
@@ -28,7 +28,7 @@ def reject_organizations(modeladmin, request, queryset):
     queryset.update(status=Organization.Status.REJECTED)
     Membership.objects.filter(
         organization_id__in=org_ids,
-        role=Membership.Role.OWNER,
+        role=MemberRole.OWNER,
     ).update(status=Membership.Status.DISABLED)
 
 

@@ -33,9 +33,8 @@ vi.mock("../api/authApi", () => ({
 
 vi.mock("@/lib/tokenStorage", () => ({
   tokenStorage: {
-    setTokens: vi.fn(),
+    setAccessToken: vi.fn(),
     getAccessToken: vi.fn().mockReturnValue(null),
-    getRefreshToken: vi.fn().mockReturnValue(null),
     clearTokens: vi.fn(),
   },
 }));
@@ -48,7 +47,7 @@ vi.mock("../social/socialConfig", () => ({
 
 const mockSocialAuth = vi.mocked(socialAuth);
 const mockGetCurrentUser = vi.mocked(getCurrentUser);
-const mockSetTokens = vi.mocked(tokenStorage.setTokens);
+const mockSetAccessToken = vi.mocked(tokenStorage.setAccessToken);
 const mockClearTokens = vi.mocked(tokenStorage.clearTokens);
 
 const mockUser: CurrentUser = {
@@ -82,10 +81,9 @@ describe("useSocialLogin", () => {
 
   // --- success paths ---
 
-  it("stores tokens, calls getCurrentUser, and navigates to /app on Google success", async () => {
+  it("stores access token, calls getCurrentUser, and navigates to /app on Google success", async () => {
     mockSocialAuth.mockResolvedValueOnce({
       access: "tok-a",
-      refresh: "tok-r",
       email: "user@example.com",
       email_verified: true,
       preferred_auth_provider: "google",
@@ -93,23 +91,22 @@ describe("useSocialLogin", () => {
     const { result } = renderHook(() => useSocialLogin(), { wrapper });
 
     await act(async () => {
-      result.current.handleGoogleToken("google-access-token");
+      result.current.google.onToken("google-access-token");
     });
 
     expect(mockSocialAuth).toHaveBeenCalledWith({
       provider: "google",
       access_token: "google-access-token",
     });
-    expect(mockSetTokens).toHaveBeenCalledWith("tok-a", "tok-r");
+    expect(mockSetAccessToken).toHaveBeenCalledWith("tok-a");
     expect(mockGetCurrentUser).toHaveBeenCalledTimes(1);
     expect(mockSetAuthenticatedUser).toHaveBeenCalledWith(mockUser);
     expect(mockNavigate).toHaveBeenCalledWith(ROUTES.app, { replace: true });
   });
 
-  it("stores tokens, calls getCurrentUser, and navigates to /app on Microsoft success", async () => {
+  it("stores access token, calls getCurrentUser, and navigates to /app on Microsoft success", async () => {
     mockSocialAuth.mockResolvedValueOnce({
       access: "tok-a",
-      refresh: "tok-r",
       email: "user@example.com",
       email_verified: true,
       preferred_auth_provider: "microsoft",
@@ -117,14 +114,14 @@ describe("useSocialLogin", () => {
     const { result } = renderHook(() => useSocialLogin(), { wrapper });
 
     await act(async () => {
-      result.current.handleMicrosoftToken("ms-id-token");
+      result.current.microsoft.onToken("ms-id-token");
     });
 
     expect(mockSocialAuth).toHaveBeenCalledWith({
       provider: "microsoft",
       id_token: "ms-id-token",
     });
-    expect(mockSetTokens).toHaveBeenCalledWith("tok-a", "tok-r");
+    expect(mockSetAccessToken).toHaveBeenCalledWith("tok-a");
     expect(mockGetCurrentUser).toHaveBeenCalledTimes(1);
     expect(mockSetAuthenticatedUser).toHaveBeenCalledWith(mockUser);
     expect(mockNavigate).toHaveBeenCalledWith(ROUTES.app, { replace: true });
@@ -133,7 +130,6 @@ describe("useSocialLogin", () => {
   it("clears tokens and shows error when getCurrentUser fails after social auth", async () => {
     mockSocialAuth.mockResolvedValueOnce({
       access: "tok-a",
-      refresh: "tok-r",
       email: "user@example.com",
       email_verified: true,
       preferred_auth_provider: "google",
@@ -142,7 +138,7 @@ describe("useSocialLogin", () => {
     const { result } = renderHook(() => useSocialLogin(), { wrapper });
 
     await act(async () => {
-      result.current.handleGoogleToken("google-access-token");
+      result.current.google.onToken("google-access-token");
     });
 
     expect(mockClearTokens).toHaveBeenCalled();
@@ -163,10 +159,10 @@ describe("useSocialLogin", () => {
     const { result } = renderHook(() => useSocialLogin(), { wrapper });
 
     await act(async () => {
-      result.current.handleGoogleToken("google-access-token");
+      result.current.google.onToken("google-access-token");
     });
 
-    expect(mockSetTokens).not.toHaveBeenCalled();
+    expect(mockSetAccessToken).not.toHaveBeenCalled();
     expect(mockGetCurrentUser).not.toHaveBeenCalled();
     expect(mockNavigate).toHaveBeenCalledWith(ROUTES.mfaChallenge, {
       state: { challengeId: "ch-123", email: "user@example.com" },
@@ -184,10 +180,10 @@ describe("useSocialLogin", () => {
     const { result } = renderHook(() => useSocialLogin(), { wrapper });
 
     await act(async () => {
-      result.current.handleGoogleToken("google-access-token");
+      result.current.google.onToken("google-access-token");
     });
 
-    expect(mockSetTokens).not.toHaveBeenCalled();
+    expect(mockSetAccessToken).not.toHaveBeenCalled();
   });
 
   // --- backend error paths ---
@@ -197,7 +193,7 @@ describe("useSocialLogin", () => {
     const { result } = renderHook(() => useSocialLogin(), { wrapper });
 
     await act(async () => {
-      result.current.handleGoogleToken("bad-token");
+      result.current.google.onToken("bad-token");
     });
 
     expect(result.current.generalError).toBe("Invalid token.");
@@ -208,7 +204,7 @@ describe("useSocialLogin", () => {
     const { result } = renderHook(() => useSocialLogin(), { wrapper });
 
     await act(async () => {
-      result.current.handleGoogleToken("bad-token");
+      result.current.google.onToken("bad-token");
     });
 
     expect(result.current.generalError).toBe(en.common.somethingWentWrong);
@@ -219,7 +215,6 @@ describe("useSocialLogin", () => {
       .mockRejectedValueOnce(new ApiError(400, { detail: "Invalid token." }))
       .mockResolvedValueOnce({
         access: "tok-a",
-        refresh: "tok-r",
         email: "user@example.com",
         email_verified: true,
         preferred_auth_provider: "google",
@@ -227,12 +222,12 @@ describe("useSocialLogin", () => {
     const { result } = renderHook(() => useSocialLogin(), { wrapper });
 
     await act(async () => {
-      result.current.handleGoogleToken("bad-token");
+      result.current.google.onToken("bad-token");
     });
     expect(result.current.generalError).toBe("Invalid token.");
 
     await act(async () => {
-      result.current.handleGoogleToken("good-token");
+      result.current.google.onToken("good-token");
     });
     expect(result.current.generalError).toBeUndefined();
   });
@@ -249,14 +244,13 @@ describe("useSocialLogin", () => {
     const { result } = renderHook(() => useSocialLogin(), { wrapper });
 
     act(() => {
-      result.current.handleGoogleToken("token");
+      result.current.google.onToken("token");
     });
     expect(result.current.loadingProvider).toBe("google");
 
     await act(async () => {
       resolveAuth({
         access: "tok-a",
-        refresh: "tok-r",
         email: "u@example.com",
         email_verified: true,
         preferred_auth_provider: "google",
@@ -265,117 +259,129 @@ describe("useSocialLogin", () => {
     expect(result.current.loadingProvider).toBeUndefined();
   });
 
-  // --- startGoogleFlow / startMicrosoftFlow ---
+  // --- google.onStart / microsoft.onStart ---
 
-  it("startGoogleFlow sets loadingProvider to google", () => {
+  it("google.onStart sets loadingProvider to google", () => {
     const { result } = renderHook(() => useSocialLogin(), { wrapper });
 
     act(() => {
-      result.current.startGoogleFlow();
+      result.current.google.onStart();
     });
 
     expect(result.current.loadingProvider).toBe("google");
   });
 
-  it("startGoogleFlow clears generalError", async () => {
+  it("google.onStart clears generalError", async () => {
     mockSocialAuth.mockRejectedValueOnce(new ApiError(400, { detail: "Prior error." }));
     const { result } = renderHook(() => useSocialLogin(), { wrapper });
 
     await act(async () => {
-      result.current.handleGoogleToken("bad-token");
+      result.current.google.onToken("bad-token");
     });
     expect(result.current.generalError).toBe("Prior error.");
 
     act(() => {
-      result.current.startGoogleFlow();
+      result.current.google.onStart();
     });
     expect(result.current.generalError).toBeUndefined();
   });
 
-  it("startMicrosoftFlow sets loadingProvider to microsoft", () => {
+  it("microsoft.onStart sets loadingProvider to microsoft", () => {
     const { result } = renderHook(() => useSocialLogin(), { wrapper });
 
     act(() => {
-      result.current.startMicrosoftFlow();
+      result.current.microsoft.onStart();
     });
 
     expect(result.current.loadingProvider).toBe("microsoft");
   });
 
-  // --- handleGoogleError ---
+  // --- google.onError ---
 
-  it("handleGoogleError clears loadingProvider and sets googleError", () => {
+  it("google.onError clears loadingProvider and sets googleError", () => {
     const { result } = renderHook(() => useSocialLogin(), { wrapper });
 
     act(() => {
-      result.current.startGoogleFlow();
+      result.current.google.onStart();
     });
     expect(result.current.loadingProvider).toBe("google");
 
     act(() => {
-      result.current.handleGoogleError();
+      result.current.google.onError();
     });
     expect(result.current.loadingProvider).toBeUndefined();
     expect(result.current.generalError).toBe(en.auth.social.googleError);
   });
 
-  // --- handleMicrosoftError ---
+  // --- microsoft.onError ---
 
-  it("handleMicrosoftError with user_cancelled sets popupClosed", () => {
+  it("microsoft.onError with user_cancelled sets popupClosed", () => {
     const cancelledError = Object.assign(new Error("Cancelled"), { errorCode: "user_cancelled" });
     const { result } = renderHook(() => useSocialLogin(), { wrapper });
 
     act(() => {
-      result.current.startMicrosoftFlow();
-      result.current.handleMicrosoftError(cancelledError);
+      result.current.microsoft.onStart();
+      result.current.microsoft.onError(cancelledError);
     });
 
     expect(result.current.loadingProvider).toBeUndefined();
     expect(result.current.generalError).toBe(en.auth.social.popupClosed);
   });
 
-  it("handleMicrosoftError with other error sets microsoftError", () => {
+  it("microsoft.onError with other error sets microsoftError", () => {
     const { result } = renderHook(() => useSocialLogin(), { wrapper });
 
     act(() => {
-      result.current.handleMicrosoftError(new Error("Generic MSAL error"));
+      result.current.microsoft.onError(new Error("Generic MSAL error"));
     });
 
     expect(result.current.loadingProvider).toBeUndefined();
     expect(result.current.generalError).toBe(en.auth.social.microsoftError);
   });
 
-  it("handleMicrosoftError without errorCode sets microsoftError", () => {
+  it("microsoft.onError without errorCode sets microsoftError", () => {
     const { result } = renderHook(() => useSocialLogin(), { wrapper });
 
     act(() => {
-      result.current.handleMicrosoftError("not an Error object");
+      result.current.microsoft.onError("not an Error object");
     });
 
     expect(result.current.generalError).toBe(en.auth.social.microsoftError);
   });
 
-  // --- handleGoogleUnavailable / handleMicrosoftUnavailable ---
+  // --- onUnavailable ---
 
-  it("handleGoogleUnavailable sets googleUnavailable and does not set loadingProvider", () => {
+  it("google.onUnavailable sets googleUnavailable and does not set loadingProvider", () => {
     const { result } = renderHook(() => useSocialLogin(), { wrapper });
 
     act(() => {
-      result.current.handleGoogleUnavailable();
+      result.current.google.onUnavailable();
     });
 
     expect(result.current.generalError).toBe(en.auth.social.googleUnavailable);
     expect(result.current.loadingProvider).toBeUndefined();
   });
 
-  it("handleMicrosoftUnavailable sets microsoftUnavailable and does not set loadingProvider", () => {
+  it("microsoft.onUnavailable sets microsoftUnavailable and does not set loadingProvider", () => {
     const { result } = renderHook(() => useSocialLogin(), { wrapper });
 
     act(() => {
-      result.current.handleMicrosoftUnavailable();
+      result.current.microsoft.onUnavailable();
     });
 
     expect(result.current.generalError).toBe(en.auth.social.microsoftUnavailable);
     expect(result.current.loadingProvider).toBeUndefined();
+  });
+
+  // --- configured flags ---
+
+  it("google.configured is true when isGoogleConfigured is true", () => {
+    const { result } = renderHook(() => useSocialLogin(), { wrapper });
+    expect(result.current.google.configured).toBe(true);
+  });
+
+  it("microsoft.configured is true when isMicrosoftConfigured is true", () => {
+    const { result } = renderHook(() => useSocialLogin(), { wrapper });
+    expect(result.current.microsoft.configured).toBe(true);
   });
 });

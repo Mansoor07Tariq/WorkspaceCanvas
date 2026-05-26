@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useForm } from "@/hooks/useForm";
+import type { SubmissionState } from "@/hooks/useFormSubmission";
 import { signup } from "../api/authApi";
 import { getApiErrorMessage } from "@/lib/api/getApiErrorMessage";
 import { validateSignupForm, validatePasswordConfirmation } from "../utils/signupValidation";
@@ -13,11 +14,9 @@ interface SignupFields {
   confirmPassword: string;
 }
 
-interface SubmissionState {
-  loading: boolean;
+interface SignupSubmissionState extends SubmissionState {
   success: boolean;
   submittedEmail: string;
-  generalError: string | undefined;
 }
 
 const initialFields: SignupFields = {
@@ -27,7 +26,7 @@ const initialFields: SignupFields = {
   confirmPassword: "",
 };
 
-const initialSubmission: SubmissionState = {
+const initialSubmission: SignupSubmissionState = {
   loading: false,
   success: false,
   submittedEmail: "",
@@ -37,9 +36,9 @@ const initialSubmission: SubmissionState = {
 export function useSignupForm() {
   const { fields, setField } = useForm<SignupFields>(initialFields);
   const [fieldErrors, setFieldErrors] = useState<SignupFieldErrors>({});
-  const [submission, setSubmission] = useState<SubmissionState>(initialSubmission);
+  const [submission, setSubmission] = useState<SignupSubmissionState>(initialSubmission);
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  function handleSubmit(e: { preventDefault(): void }) {
     e.preventDefault();
 
     const errors = validateSignupForm(fields.fullName, fields.email, fields.password);

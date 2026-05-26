@@ -48,16 +48,15 @@ vi.mock("../api/authApi", () => ({
 
 vi.mock("@/lib/tokenStorage", () => ({
   tokenStorage: {
-    setTokens: vi.fn(),
+    setAccessToken: vi.fn(),
     getAccessToken: vi.fn().mockReturnValue(null),
-    getRefreshToken: vi.fn().mockReturnValue(null),
     clearTokens: vi.fn(),
   },
 }));
 
 const mockLogin = vi.mocked(login);
 const mockGetCurrentUser = vi.mocked(getCurrentUser);
-const mockSetTokens = vi.mocked(tokenStorage.setTokens);
+const mockSetAccessToken = vi.mocked(tokenStorage.setAccessToken);
 const mockClearTokens = vi.mocked(tokenStorage.clearTokens);
 
 const mockUser: CurrentUser = {
@@ -133,7 +132,7 @@ describe("LoginPage", () => {
   });
 
   it("calls login API with correct payload on valid submit", async () => {
-    mockLogin.mockResolvedValueOnce({ access: "tok-a", refresh: "tok-r" });
+    mockLogin.mockResolvedValueOnce({ access: "tok-a" });
     const user = userEvent.setup();
     renderLoginPage();
     await user.type(screen.getByLabelText(en.auth.fields.email), "user@example.com");
@@ -148,19 +147,19 @@ describe("LoginPage", () => {
   });
 
   it("stores tokens on normal login success", async () => {
-    mockLogin.mockResolvedValueOnce({ access: "tok-a", refresh: "tok-r" });
+    mockLogin.mockResolvedValueOnce({ access: "tok-a" });
     const user = userEvent.setup();
     renderLoginPage();
     await user.type(screen.getByLabelText(en.auth.fields.email), "user@example.com");
     await user.type(screen.getByLabelText(en.auth.fields.password), "password123");
     await user.click(screen.getByRole("button", { name: /sign in/i }));
     await waitFor(() => {
-      expect(mockSetTokens).toHaveBeenCalledWith("tok-a", "tok-r");
+      expect(mockSetAccessToken).toHaveBeenCalledWith("tok-a");
     });
   });
 
   it("calls getCurrentUser after storing tokens", async () => {
-    mockLogin.mockResolvedValueOnce({ access: "tok-a", refresh: "tok-r" });
+    mockLogin.mockResolvedValueOnce({ access: "tok-a" });
     const user = userEvent.setup();
     renderLoginPage();
     await user.type(screen.getByLabelText(en.auth.fields.email), "user@example.com");
@@ -172,7 +171,7 @@ describe("LoginPage", () => {
   });
 
   it("calls setAuthenticatedUser with user after getCurrentUser succeeds", async () => {
-    mockLogin.mockResolvedValueOnce({ access: "tok-a", refresh: "tok-r" });
+    mockLogin.mockResolvedValueOnce({ access: "tok-a" });
     const user = userEvent.setup();
     renderLoginPage();
     await user.type(screen.getByLabelText(en.auth.fields.email), "user@example.com");
@@ -184,7 +183,7 @@ describe("LoginPage", () => {
   });
 
   it("navigates to /app on normal login success", async () => {
-    mockLogin.mockResolvedValueOnce({ access: "tok-a", refresh: "tok-r" });
+    mockLogin.mockResolvedValueOnce({ access: "tok-a" });
     const user = userEvent.setup();
     renderLoginPage();
     await user.type(screen.getByLabelText(en.auth.fields.email), "user@example.com");
@@ -196,7 +195,7 @@ describe("LoginPage", () => {
   });
 
   it("clears tokens and shows error when getCurrentUser fails after login", async () => {
-    mockLogin.mockResolvedValueOnce({ access: "tok-a", refresh: "tok-r" });
+    mockLogin.mockResolvedValueOnce({ access: "tok-a" });
     mockGetCurrentUser.mockRejectedValueOnce(new ApiError(401, { detail: "Unauthorized." }));
     const user = userEvent.setup();
     renderLoginPage();
@@ -222,7 +221,7 @@ describe("LoginPage", () => {
     await user.type(screen.getByLabelText(en.auth.fields.password), "password123");
     await user.click(screen.getByRole("button", { name: /sign in/i }));
     await waitFor(() => {
-      expect(mockSetTokens).not.toHaveBeenCalled();
+      expect(mockSetAccessToken).not.toHaveBeenCalled();
     });
   });
 

@@ -12,6 +12,7 @@ from unittest.mock import patch
 
 import pyotp
 import pytest
+from django.conf import settings as django_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
 
@@ -124,7 +125,7 @@ def test_login_without_mfa_returns_tokens(client, user):
     )
     assert resp.status_code == 200
     assert "access" in resp.data
-    assert "refresh" in resp.data
+    assert django_settings.AUTH_COOKIE_NAME in resp.cookies
     assert "mfa_required" not in resp.data
 
 
@@ -189,7 +190,7 @@ def test_social_login_without_mfa_returns_tokens(client, social_user):
         )
     assert resp.status_code == 200
     assert "access" in resp.data
-    assert "refresh" in resp.data
+    assert django_settings.AUTH_COOKIE_NAME in resp.cookies
     assert "mfa_required" not in resp.data
 
 
@@ -281,7 +282,7 @@ def test_valid_challenge_totp_returns_tokens(client, challenge, mfa_user_token):
     )
     assert resp.status_code == 200
     assert "access" in resp.data
-    assert "refresh" in resp.data
+    assert django_settings.AUTH_COOKIE_NAME in resp.cookies
 
 
 @pytest.mark.django_db

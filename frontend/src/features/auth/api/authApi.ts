@@ -4,7 +4,6 @@ import type {
   CurrentUser,
   LoginRequest,
   LoginResponse,
-  LogoutRequest,
   MfaChallengeVerifyRequest,
   MfaConfirmRequest,
   MfaConfirmResponse,
@@ -18,7 +17,6 @@ import type {
   SocialAuthRequest,
   SocialAuthResponse,
   TokenPair,
-  TokenRefreshRequest,
   TokenRefreshResponse,
   VerifyEmailRequest,
 } from "../types/auth.types";
@@ -57,10 +55,8 @@ export function verifyMfaChallenge(data: MfaChallengeVerifyRequest): Promise<Tok
   });
 }
 
-export function refreshToken(data: TokenRefreshRequest): Promise<TokenRefreshResponse> {
-  return api.post<TokenRefreshResponse, TokenRefreshRequest>(AUTH_ENDPOINTS.refreshToken, data, {
-    auth: false,
-  });
+export function refreshToken(): Promise<TokenRefreshResponse> {
+  return api.post<TokenRefreshResponse>(AUTH_ENDPOINTS.refreshToken, undefined, { auth: false });
 }
 
 export function getMfaStatus(): Promise<MfaStatus> {
@@ -88,8 +84,8 @@ export function regenerateRecoveryCodes(
   );
 }
 
-export function logout(data: LogoutRequest): Promise<void> {
-  return api.post<void, LogoutRequest>(AUTH_ENDPOINTS.logout, data);
+export function logout(): Promise<void> {
+  return api.post<void>(AUTH_ENDPOINTS.logout);
 }
 
 export function getCurrentUser(): Promise<CurrentUser> {

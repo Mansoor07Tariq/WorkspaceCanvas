@@ -1,26 +1,26 @@
-const ACCESS_TOKEN_KEY = "workspacecanvas.accessToken";
-const REFRESH_TOKEN_KEY = "workspacecanvas.refreshToken";
+// Access token is held in memory only — never persisted to localStorage/sessionStorage.
+// The refresh token lives exclusively in an httpOnly cookie managed by the backend.
+// On page reload the access token is recovered by calling the refresh endpoint
+// (see AuthContext bootstrap), which reads the httpOnly cookie.
+
+let _accessToken: string | null = null;
 
 export const tokenStorage = {
   getAccessToken(): string | null {
-    return localStorage.getItem(ACCESS_TOKEN_KEY);
-  },
-
-  getRefreshToken(): string | null {
-    return localStorage.getItem(REFRESH_TOKEN_KEY);
+    return _accessToken;
   },
 
   setAccessToken(access: string): void {
-    localStorage.setItem(ACCESS_TOKEN_KEY, access);
+    _accessToken = access;
   },
 
-  setTokens(access: string, refresh: string): void {
-    localStorage.setItem(ACCESS_TOKEN_KEY, access);
-    localStorage.setItem(REFRESH_TOKEN_KEY, refresh);
+  // Kept for call-site compatibility; any extra arguments are ignored
+  // because the refresh token is stored as an httpOnly cookie by the backend.
+  setTokens(access: string): void {
+    _accessToken = access;
   },
 
   clearTokens(): void {
-    localStorage.removeItem(ACCESS_TOKEN_KEY);
-    localStorage.removeItem(REFRESH_TOKEN_KEY);
+    _accessToken = null;
   },
 };

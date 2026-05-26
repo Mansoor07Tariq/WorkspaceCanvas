@@ -4,20 +4,13 @@ import { Box, Button, CircularProgress, Divider, Typography } from "@mui/materia
 import { en } from "@/i18n/en";
 import { ErrorAlert } from "@/components/feedback/ErrorAlert";
 import { socialButtonsSx, socialProviderIconSx } from "../styles/auth.styles";
+import type { SocialProviderConfig } from "../hooks/useSocialLogin";
 import googleIconUrl from "@/assets/icons/google.svg";
 import microsoftIconUrl from "@/assets/icons/microsoft.svg";
 
 interface SocialLoginButtonsProps {
-  isGoogleConfigured: boolean;
-  isMicrosoftConfigured: boolean;
-  onGoogleStart: () => void;
-  onGoogleToken: (accessToken: string) => void;
-  onGoogleError: () => void;
-  onGoogleUnavailable: () => void;
-  onMicrosoftStart: () => void;
-  onMicrosoftToken: (idToken: string) => void;
-  onMicrosoftError: (error: unknown) => void;
-  onMicrosoftUnavailable: () => void;
+  google: SocialProviderConfig;
+  microsoft: SocialProviderConfig;
   loadingProvider: "google" | "microsoft" | undefined;
   generalError?: string;
 }
@@ -27,16 +20,8 @@ function ProviderIcon({ src }: { src: string }) {
 }
 
 export function SocialLoginButtons({
-  isGoogleConfigured,
-  isMicrosoftConfigured,
-  onGoogleStart,
-  onGoogleToken,
-  onGoogleError,
-  onGoogleUnavailable,
-  onMicrosoftStart,
-  onMicrosoftToken,
-  onMicrosoftError,
-  onMicrosoftUnavailable,
+  google,
+  microsoft,
   loadingProvider,
   generalError,
 }: SocialLoginButtonsProps) {
@@ -46,30 +31,30 @@ export function SocialLoginButtons({
   const msLoading = loadingProvider === "microsoft";
 
   const triggerGoogleLogin = useGoogleLogin({
-    onSuccess: (response) => onGoogleToken(response.access_token),
-    onError: () => onGoogleError(),
+    onSuccess: (response) => google.onToken(response.access_token),
+    onError: () => google.onError(),
   });
 
   const handleGoogleClick = () => {
-    if (!isGoogleConfigured) {
-      onGoogleUnavailable();
+    if (!google.configured) {
+      google.onUnavailable();
       return;
     }
-    onGoogleStart();
+    google.onStart();
     triggerGoogleLogin();
   };
 
   const handleMicrosoftClick = async () => {
-    if (!isMicrosoftConfigured) {
-      onMicrosoftUnavailable();
+    if (!microsoft.configured) {
+      microsoft.onUnavailable();
       return;
     }
-    onMicrosoftStart();
+    microsoft.onStart();
     try {
       const result = await instance.loginPopup({ scopes: ["openid", "profile", "email"] });
-      onMicrosoftToken(result.idToken);
+      microsoft.onToken(result.idToken);
     } catch (err) {
-      onMicrosoftError(err);
+      microsoft.onError(err);
     }
   };
 

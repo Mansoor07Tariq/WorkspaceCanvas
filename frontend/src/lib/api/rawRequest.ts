@@ -5,7 +5,10 @@ export async function apiRequest<TResponse>(
   path: string,
   init: RequestInit = {}
 ): Promise<TResponse> {
-  const response = await fetch(`${API_BASE_URL}${path}`, init);
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    ...init,
+    credentials: "include",
+  });
 
   if (!response.ok) {
     const data = await response.json().catch(() => null);
