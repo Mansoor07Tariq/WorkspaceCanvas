@@ -40,7 +40,7 @@ describe("authApi", () => {
 
   describe("login", () => {
     it("posts to the login endpoint with auth: false", async () => {
-      mockPost.mockResolvedValueOnce({ access: "acc", refresh: "ref" });
+      mockPost.mockResolvedValueOnce({ access: "acc" });
       await login({ email: "user@example.com", password: "pass" });
       expect(api.post).toHaveBeenCalledWith(
         AUTH_ENDPOINTS.login,
@@ -124,13 +124,11 @@ describe("authApi", () => {
   });
 
   describe("refreshToken", () => {
-    it("posts to the refreshToken endpoint with auth: false", async () => {
-      await refreshToken({ refresh: "ref-token" });
-      expect(api.post).toHaveBeenCalledWith(
-        AUTH_ENDPOINTS.refreshToken,
-        { refresh: "ref-token" },
-        { auth: false }
-      );
+    it("posts to the refreshToken endpoint with no body and auth: false", async () => {
+      await refreshToken();
+      expect(api.post).toHaveBeenCalledWith(AUTH_ENDPOINTS.refreshToken, undefined, {
+        auth: false,
+      });
     });
   });
 
@@ -176,9 +174,9 @@ describe("authApi", () => {
   });
 
   describe("logout", () => {
-    it("posts to the logout endpoint (auth: true by default)", async () => {
-      await logout({ refresh: "ref-token" });
-      expect(api.post).toHaveBeenCalledWith(AUTH_ENDPOINTS.logout, { refresh: "ref-token" });
+    it("posts to the logout endpoint with no body (auth: true by default)", async () => {
+      await logout();
+      expect(api.post).toHaveBeenCalledWith(AUTH_ENDPOINTS.logout);
     });
   });
 

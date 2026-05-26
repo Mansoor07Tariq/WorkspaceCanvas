@@ -3,11 +3,12 @@ import { alpha } from "@mui/material/styles";
 import { WorkspacesOutlined } from "@mui/icons-material";
 import { keyframes } from "@mui/system";
 import { en } from "@/i18n/en";
-
-const fadeUp = keyframes({
-  from: { opacity: 0, transform: "translateY(12px)" },
-  to: { opacity: 1, transform: "translateY(0)" },
-});
+import {
+  fadeUp,
+  brandGradient,
+  brandGradientHover,
+  brandGradientAlpha,
+} from "../../styles/profile.styles";
 
 const pulseGlow = keyframes({
   "0%, 100%": { boxShadow: "0 0 0 0 rgba(37,99,235,0)" },
@@ -21,6 +22,12 @@ interface Props {
 export function StepWelcome({ onStart }: Props) {
   const theme = useTheme();
   const c = en.app.profile.carousel;
+
+  const features = [
+    { label: c.stepWelcomeFeatureDesks, emoji: "🪑", color: theme.palette.primary.main },
+    { label: c.stepWelcomeFeatureEvents, emoji: "📅", color: theme.palette.secondary.main },
+    { label: c.stepWelcomeFeatureTeams, emoji: "👥", color: theme.palette.success.main },
+  ];
 
   return (
     <Stack spacing={4} sx={{ alignItems: "center", textAlign: "center", py: 1 }}>
@@ -41,7 +48,7 @@ export function StepWelcome({ onStart }: Props) {
             width: 88,
             height: 88,
             borderRadius: "50%",
-            background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.secondary.main} 100%)`,
+            background: brandGradient(theme),
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -89,7 +96,7 @@ export function StepWelcome({ onStart }: Props) {
           maxWidth: 340,
           p: 2,
           borderRadius: 3,
-          background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.06)} 0%, ${alpha(theme.palette.secondary.main, 0.04)} 100%)`,
+          background: brandGradientAlpha(theme, 0.06, 0.04),
           border: "1px solid",
           borderColor: alpha(theme.palette.primary.main, 0.12),
           "@media (prefers-reduced-motion: no-preference)": {
@@ -99,11 +106,7 @@ export function StepWelcome({ onStart }: Props) {
         }}
       >
         <Stack direction="row" spacing={1.5} sx={{ justifyContent: "center" }}>
-          {[
-            { label: "Desks", emoji: "🪑", color: theme.palette.primary.main },
-            { label: "Events", emoji: "📅", color: theme.palette.secondary.main },
-            { label: "Teams", emoji: "👥", color: "#059669" },
-          ].map(({ label, emoji, color }) => (
+          {features.map(({ label, emoji, color }) => (
             <Box
               key={label}
               sx={{
@@ -145,10 +148,8 @@ export function StepWelcome({ onStart }: Props) {
           onClick={onStart}
           fullWidth
           sx={{
-            background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.secondary.main} 100%)`,
-            "&:hover": {
-              background: `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.secondary.dark} 100%)`,
-            },
+            background: brandGradient(theme),
+            "&:hover": { background: brandGradientHover(theme) },
             boxShadow: `0 8px 24px ${alpha(theme.palette.primary.main, 0.35)}`,
             py: 1.5,
             fontSize: "1rem",

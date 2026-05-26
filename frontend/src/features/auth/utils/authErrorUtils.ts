@@ -9,52 +9,35 @@ function getFirstError(value: unknown): string | undefined {
   return undefined;
 }
 
-export function extractSignupFieldErrors(error: unknown): SignupFieldErrors {
+function extractFieldErrors<K extends string>(
+  error: unknown,
+  fields: readonly K[]
+): Partial<Record<K, string>> {
   if (!(error instanceof ApiError)) return {};
   if (typeof error.data !== "object" || error.data === null) return {};
   const data = error.data as Record<string, unknown>;
-  const result: SignupFieldErrors = {};
-  const fullName = getFirstError(data.full_name);
-  if (fullName !== undefined) result.full_name = fullName;
-  const email = getFirstError(data.email);
-  if (email !== undefined) result.email = email;
-  const password = getFirstError(data.password);
-  if (password !== undefined) result.password = password;
+  const result: Partial<Record<K, string>> = {};
+  for (const field of fields) {
+    const val = getFirstError(data[field]);
+    if (val !== undefined) result[field] = val;
+  }
   return result;
+}
+
+export function extractSignupFieldErrors(error: unknown): SignupFieldErrors {
+  return extractFieldErrors(error, ["full_name", "email", "password"] as const);
 }
 
 export function extractLoginFieldErrors(error: unknown): LoginFieldErrors {
-  if (!(error instanceof ApiError)) return {};
-  if (typeof error.data !== "object" || error.data === null) return {};
-  const data = error.data as Record<string, unknown>;
-  const result: LoginFieldErrors = {};
-  const email = getFirstError(data.email);
-  if (email !== undefined) result.email = email;
-  const password = getFirstError(data.password);
-  if (password !== undefined) result.password = password;
-  return result;
+  return extractFieldErrors(error, ["email", "password"] as const);
 }
 
 export function extractMfaChallengeFieldErrors(error: unknown): MfaChallengeFieldErrors {
-  if (!(error instanceof ApiError)) return {};
-  if (typeof error.data !== "object" || error.data === null) return {};
-  const data = error.data as Record<string, unknown>;
-  const result: MfaChallengeFieldErrors = {};
-  const token = getFirstError(data.token);
-  if (token !== undefined) result.token = token;
-  const recoveryCode = getFirstError(data.recovery_code);
-  if (recoveryCode !== undefined) result.recovery_code = recoveryCode;
-  return result;
+  return extractFieldErrors(error, ["token", "recovery_code"] as const);
 }
 
 export function extractResendVerificationFieldErrors(
   error: unknown
 ): ResendVerificationFieldErrors {
-  if (!(error instanceof ApiError)) return {};
-  if (typeof error.data !== "object" || error.data === null) return {};
-  const data = error.data as Record<string, unknown>;
-  const result: ResendVerificationFieldErrors = {};
-  const email = getFirstError(data.email);
-  if (email !== undefined) result.email = email;
-  return result;
+  return extractFieldErrors(error, ["email"] as const);
 }

@@ -2,7 +2,6 @@
 
 export interface TokenPair {
   access: string;
-  refresh: string;
 }
 
 // --- Current user ---
@@ -32,7 +31,7 @@ export interface CurrentUser {
   locale: string;
   is_profile_completed: boolean;
   email_verified: boolean;
-  preferred_auth_provider: string;
+  preferred_auth_provider: AuthProvider;
   mfa_enabled: boolean;
   memberships: MembershipInline[];
 }
@@ -75,6 +74,7 @@ export interface ResendVerificationRequest {
 // --- Social auth ---
 
 export type SocialProvider = "google" | "microsoft";
+export type AuthProvider = "email" | SocialProvider | "";
 
 export interface SocialAuthRequest {
   provider: SocialProvider;
@@ -85,15 +85,22 @@ export interface SocialAuthRequest {
 export interface SocialAuthSuccessResponse extends TokenPair {
   email: string;
   email_verified: boolean;
-  preferred_auth_provider: string;
+  preferred_auth_provider: AuthProvider;
 }
 
 export interface SocialAuthMfaResponse extends MfaRequiredResponse {
   email: string;
-  preferred_auth_provider: string;
+  preferred_auth_provider: AuthProvider;
 }
 
 export type SocialAuthResponse = SocialAuthSuccessResponse | SocialAuthMfaResponse;
+
+// --- Navigation state ---
+
+export interface MfaChallengeNavigationState {
+  challengeId: string;
+  email: string;
+}
 
 // --- MFA challenge (unauthenticated, post-login gate) ---
 
@@ -145,15 +152,6 @@ export interface RegenerateRecoveryCodesResponse {
 
 // --- Token operations ---
 
-export interface TokenRefreshRequest {
-  refresh: string;
-}
-
 export interface TokenRefreshResponse {
   access: string;
-  refresh?: string;
-}
-
-export interface LogoutRequest {
-  refresh: string;
 }

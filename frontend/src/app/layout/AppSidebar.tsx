@@ -44,9 +44,13 @@ const NAV_ITEMS: NavItem[] = [
   { label: en.app.sidebar.people, Icon: PeopleOutlined, path: ROUTES.people },
 ];
 
-const SIDEBAR_WIDTH = 220;
+export const SIDEBAR_WIDTH = 220;
 
-export function AppSidebar() {
+interface Props {
+  onNavigate?: () => void;
+}
+
+export function AppSidebar({ onNavigate }: Props) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -65,6 +69,7 @@ export function AppSidebar() {
         pt: 1,
         display: "flex",
         flexDirection: "column",
+        height: "100%",
       }}
     >
       <List dense disablePadding>
@@ -76,7 +81,10 @@ export function AppSidebar() {
             <ListItemButton
               disabled={disabled}
               selected={selected}
-              onClick={() => navigate(path)}
+              onClick={() => {
+                navigate(path);
+                onNavigate?.();
+              }}
               aria-label={label}
             >
               <ListItemIcon sx={{ minWidth: 36 }}>

@@ -12,9 +12,7 @@ const mockGetToken = vi.hoisted(() =>
 vi.mock("@/lib/tokenStorage", () => ({
   tokenStorage: {
     getAccessToken: mockGetToken,
-    getRefreshToken: vi.fn(),
     setAccessToken: vi.fn(),
-    setTokens: vi.fn(),
     clearTokens: vi.fn(),
   },
 }));
@@ -194,7 +192,7 @@ describe("api.post", () => {
 
   it("returns undefined on 204", async () => {
     fetchMock.mockResolvedValueOnce(makeResponse(204, null));
-    expect(await api.post("/api/auth/logout/", { refresh: "tok" })).toBeUndefined();
+    expect(await api.post("/api/auth/logout/")).toBeUndefined();
   });
 });
 
@@ -256,9 +254,9 @@ describe("api — 401 retry", () => {
   it("does not retry the token refresh endpoint itself", async () => {
     fetchMock.mockResolvedValueOnce(makeResponse(401, { detail: "Refresh expired." }));
 
-    await expect(
-      api.post("/api/auth/token/refresh/", { refresh: "bad-tok" }, { auth: false })
-    ).rejects.toThrow(ApiError);
+    await expect(api.post("/api/auth/token/refresh/", undefined, { auth: false })).rejects.toThrow(
+      ApiError
+    );
 
     expect(mockRefreshStoredTokens).not.toHaveBeenCalled();
     expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -277,7 +275,7 @@ describe("api — 401 retry", () => {
   it("does not retry the logout endpoint — logout is best-effort", async () => {
     fetchMock.mockResolvedValueOnce(makeResponse(401, { detail: "Expired." }));
 
-    await expect(api.post("/api/auth/logout/", { refresh: "tok" })).rejects.toThrow(ApiError);
+    await expect(api.post("/api/auth/logout/")).rejects.toThrow(ApiError);
 
     expect(mockRefreshStoredTokens).not.toHaveBeenCalled();
     expect(fetchMock).toHaveBeenCalledTimes(1);

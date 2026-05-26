@@ -1,13 +1,14 @@
-// Maps step index (0-5) to profile completion percentage shown in UI.
-const STEP_PERCENTS: Record<number, number> = {
-  0: 15, // welcome
-  1: 30, // name
-  2: 45, // email
-  3: 65, // workDetails
-  4: 82, // avatar
-  5: 100, // done
+import type { OnboardingStep } from "../types/profile.types";
+
+const STEP_PERCENTS: Record<OnboardingStep, number> = {
+  welcome: 15,
+  name: 30,
+  email: 45,
+  workDetails: 65,
+  avatar: 82,
+  done: 100,
 };
 
-export function getProfileCompletionPercent(stepIndex: number): number {
-  return STEP_PERCENTS[stepIndex] ?? 0;
+export function getProfileCompletionPercent(step: OnboardingStep): number {
+  return STEP_PERCENTS[step];
 }

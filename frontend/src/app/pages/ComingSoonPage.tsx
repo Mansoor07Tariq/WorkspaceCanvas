@@ -20,7 +20,7 @@ export function ComingSoonPage({ title }: Props) {
 
   return (
     <AppShell onLogout={() => void handleLogout()}>
-      <Box sx={{ p: 4, maxWidth: 560, mx: "auto", mt: 6 }}>
+      <Box sx={{ p: { xs: 2, sm: 4 }, maxWidth: 560, mx: "auto", mt: { xs: 3, sm: 6 } }}>
         <Typography variant="h4" gutterBottom>
           {title}
         </Typography>

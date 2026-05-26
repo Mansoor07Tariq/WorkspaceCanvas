@@ -84,6 +84,9 @@ export const en = {
       loadingMessage: "Setting up your authenticator...",
       invalidCodeRequired: "Enter your authenticator code.",
       invalidCodeFormat: "Enter a valid 6-digit code.",
+      setupInitError: "Failed to initialize MFA setup. Please try again.",
+      setupVerificationError:
+        "Verification failed. Make sure your device clock is correct and try again.",
     },
     session: {
       loading: "Checking your session...",
@@ -123,6 +126,7 @@ export const en = {
     shell: {
       brand: "WorkspaceCanvas",
       logout: "Log out",
+      openNav: "Open navigation",
     },
     sidebar: {
       lockedTooltip: "Complete your profile to unlock this section.",
@@ -174,6 +178,11 @@ export const en = {
         stepDoneTitle: "You're all set!",
         stepDoneSubtitle:
           "Your profile is ready. Next, you'll be able to create or join a workspace.",
+        stepDoneProfileComplete: "Profile complete",
+
+        stepWelcomeFeatureDesks: "Desks",
+        stepWelcomeFeatureEvents: "Events",
+        stepWelcomeFeatureTeams: "Teams",
 
         next: "Next",
         back: "Back",

@@ -45,12 +45,13 @@ class Organization(models.Model):
         return self.status == self.Status.PENDING_APPROVAL
 
 
-class Membership(models.Model):
-    class Role(models.TextChoices):
-        OWNER = "owner", "Owner"
-        ADMIN = "admin", "Admin"
-        MEMBER = "member", "Member"
+class MemberRole(models.TextChoices):
+    OWNER = "owner", "Owner"
+    ADMIN = "admin", "Admin"
+    MEMBER = "member", "Member"
 
+
+class Membership(models.Model):
     class Status(models.TextChoices):
         PENDING = "pending", "Pending"
         ACTIVE = "active", "Active"
@@ -66,7 +67,9 @@ class Membership(models.Model):
         on_delete=models.CASCADE,
         related_name="memberships",
     )
-    role = models.CharField(max_length=50, choices=Role.choices, default=Role.MEMBER)
+    role = models.CharField(
+        max_length=50, choices=MemberRole.choices, default=MemberRole.MEMBER
+    )
     status = models.CharField(
         max_length=50, choices=Status.choices, default=Status.PENDING
     )
@@ -94,11 +97,6 @@ class Membership(models.Model):
 
 
 class Invitation(models.Model):
-    class Role(models.TextChoices):
-        OWNER = "owner", "Owner"
-        ADMIN = "admin", "Admin"
-        MEMBER = "member", "Member"
-
     class Status(models.TextChoices):
         PENDING = "pending", "Pending"
         ACCEPTED = "accepted", "Accepted"
@@ -111,7 +109,9 @@ class Invitation(models.Model):
         related_name="invitations",
     )
     email = models.EmailField()
-    role = models.CharField(max_length=50, choices=Role.choices, default=Role.MEMBER)
+    role = models.CharField(
+        max_length=50, choices=MemberRole.choices, default=MemberRole.MEMBER
+    )
     status = models.CharField(
         max_length=50, choices=Status.choices, default=Status.PENDING
     )

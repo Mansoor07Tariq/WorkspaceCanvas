@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { getCurrentUser, logout } from "../api/authApi";
 import { tokenStorage } from "@/lib/tokenStorage";
 import { sessionEvents } from "@/lib/sessionEvents";
+import { refreshStoredTokens } from "@/features/auth/utils/sessionRefresh";
 import { getApiErrorMessage } from "@/lib/api/getApiErrorMessage";
 import { en } from "@/i18n/en";
 import type { CurrentUser } from "../types/auth.types";
@@ -11,10 +12,9 @@ import type { AuthContextValue, AuthState } from "../types/authState.types";
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<AuthState>(() => ({
-    status: tokenStorage.getAccessToken() ? "loading" : "unauthenticated",
-    user: null,
-  }));
+  // Always start as loading: even with no in-memory token the browser may have
+  // a valid httpOnly refresh cookie that can restore the session on mount.
+  const [state, setState] = useState<AuthState>({ status: "loading", user: null });
 
   // Guard against React StrictMode double-invoke
   const bootstrapped = useRef(false);
@@ -23,16 +23,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (bootstrapped.current) return;
     bootstrapped.current = true;
 
-    if (!tokenStorage.getAccessToken()) return;
-
-    getCurrentUser()
-      .then((user) => {
+    async function bootstrap() {
+      const refreshed = await refreshStoredTokens();
+      if (!refreshed) {
+        setState({ status: "unauthenticated", user: null });
+        return;
+      }
+      try {
+        const user = await getCurrentUser();
         setState({ status: "authenticated", user });
-      })
-      .catch((err: unknown) => {
+      } catch (err: unknown) {
         tokenStorage.clearTokens();
         setState({ status: "unauthenticated", user: null, error: getApiErrorMessage(err) });
-      });
+      }
+    }
+
+    void bootstrap();
   }, []);
 
   useEffect(() => {
@@ -44,11 +50,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   async function refreshUser() {
-    if (!tokenStorage.getAccessToken()) {
-      tokenStorage.clearTokens();
-      setState({ status: "unauthenticated", user: null });
-      return;
-    }
     setState((prev) => ({ ...prev, status: "loading" }));
     try {
       const user = await getCurrentUser();
@@ -69,13 +70,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function logoutUser() {
-    const refresh = tokenStorage.getRefreshToken();
-    if (refresh) {
-      try {
-        await logout({ refresh });
-      } catch {
-        // Backend logout errors are non-fatal; always clear local state
-      }
+    try {
+      await logout();
+    } catch {
+      // Backend logout errors are non-fatal; always clear local state
     }
     tokenStorage.clearTokens();
     setState({ status: "unauthenticated", user: null });

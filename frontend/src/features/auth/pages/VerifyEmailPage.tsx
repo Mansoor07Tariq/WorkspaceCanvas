@@ -1,9 +1,10 @@
 import { Link as RouterLink, useSearchParams } from "react-router-dom";
-import { Box, Button, CircularProgress, Typography } from "@mui/material";
+import { Box, Button, Typography } from "@mui/material";
 import { en } from "@/i18n/en";
 import { FormTextField } from "@/components/ui/FormTextField";
 import { LoadingButton } from "@/components/ui/LoadingButton";
 import { ErrorAlert } from "@/components/feedback/ErrorAlert";
+import { LoadingState } from "@/components/feedback/LoadingState";
 import { SuccessAlert } from "@/components/feedback/SuccessAlert";
 import { ROUTES } from "@/routes/paths";
 import { AuthPageShell } from "../components/AuthPageShell";
@@ -21,12 +22,7 @@ export function VerifyEmailPage() {
   if (status === "verifying") {
     return (
       <AuthPageShell title={en.auth.verifyEmail.verifyingTitle}>
-        <Box sx={verifyEmailCenterSx}>
-          <CircularProgress size={40} />
-          <Typography variant="body2" sx={{ color: "text.secondary" }}>
-            {en.auth.verifyEmail.verifyingMessage}
-          </Typography>
-        </Box>
+        <LoadingState message={en.auth.verifyEmail.verifyingMessage} />
       </AuthPageShell>
     );
   }

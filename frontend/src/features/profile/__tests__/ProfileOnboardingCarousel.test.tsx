@@ -128,11 +128,11 @@ describe("ProfileOnboardingCarousel — step progress", () => {
   it("completion percent increases after advancing past welcome", async () => {
     const user = userEvent.setup();
     renderCarousel();
-    const initialPercent = getProfileCompletionPercent(0);
+    const initialPercent = getProfileCompletionPercent("welcome");
     expect(screen.getByText(`${initialPercent}%`)).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: en.app.profile.carousel.stepWelcomeCta }));
-    const namePercent = getProfileCompletionPercent(1);
+    const namePercent = getProfileCompletionPercent("name");
     expect(screen.getByText(`${namePercent}%`)).toBeInTheDocument();
     expect(namePercent).toBeGreaterThan(initialPercent);
   });

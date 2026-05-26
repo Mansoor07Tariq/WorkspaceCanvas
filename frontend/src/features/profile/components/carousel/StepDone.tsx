@@ -3,17 +3,13 @@ import { alpha } from "@mui/material/styles";
 import { CheckCircle, PublicOutlined, WorkspacesOutlined } from "@mui/icons-material";
 import { keyframes } from "@mui/system";
 import { en } from "@/i18n/en";
+import { fadeUp, brandGradient, brandGradientAlpha } from "../../styles/profile.styles";
 import { getAvatarInitials } from "../../utils/avatarFallback";
 
 const popIn = keyframes({
   "0%": { opacity: 0, transform: "scale(0.5)" },
   "70%": { transform: "scale(1.08)" },
   "100%": { opacity: 1, transform: "scale(1)" },
-});
-
-const fadeUp = keyframes({
-  from: { opacity: 0, transform: "translateY(10px)" },
-  to: { opacity: 1, transform: "translateY(0)" },
 });
 
 interface Props {
@@ -74,7 +70,7 @@ export function StepDone({ fullName, email, timezone, avatarPreview, avatarUrl }
           width: "100%",
           p: 2.5,
           borderRadius: 3,
-          background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.05)} 0%, ${alpha(theme.palette.secondary.main, 0.04)} 100%)`,
+          background: brandGradientAlpha(theme, 0.05, 0.04),
           border: "1px solid",
           borderColor: alpha(theme.palette.primary.main, 0.12),
           "@media (prefers-reduced-motion: no-preference)": {
@@ -91,7 +87,7 @@ export function StepDone({ fullName, email, timezone, avatarPreview, avatarUrl }
               width: 72,
               height: 72,
               fontSize: 24,
-              background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.secondary.main} 100%)`,
+              background: brandGradient(theme),
               boxShadow: `0 8px 24px ${alpha(theme.palette.primary.main, 0.3)}`,
             }}
           >
@@ -119,7 +115,7 @@ export function StepDone({ fullName, email, timezone, avatarPreview, avatarUrl }
             )}
             <Chip
               icon={<WorkspacesOutlined sx={{ fontSize: "0.85rem !important" }} />}
-              label="Profile complete"
+              label={c.stepDoneProfileComplete}
               size="small"
               color="success"
               variant="outlined"

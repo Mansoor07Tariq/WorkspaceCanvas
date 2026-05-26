@@ -1,6 +1,7 @@
 import secrets
 import uuid
 from datetime import timedelta
+from typing import TYPE_CHECKING, Protocol
 
 import pyotp
 from django.conf import settings
@@ -10,6 +11,9 @@ from django.db import models
 from django.utils import timezone
 
 from .utils import get_client_ip
+
+if TYPE_CHECKING:
+    from datetime import datetime
 
 
 class User(AbstractUser):
@@ -61,11 +65,50 @@ class User(AbstractUser):
         self.email_verified_at = timezone.now()
         self.save(update_fields=["email_verified", "email_verified_at"])
 
+    def compute_profile_completion(self) -> bool:
+        return bool(self.full_name.strip())
+
+    @staticmethod
+    def normalize_email(email: str) -> str:
+        return email.strip().lower()
+
+
+# ─── Shared mixin ─────────────────────────────────────────────────────────────
+
+
+class _ExpiringTokenContract(Protocol):
+    """Structural contract that subclasses of ExpiringTokenMixin must satisfy."""
+
+    used_at: "datetime | None"
+    expires_at: "datetime"
+
+    def save(self, *, update_fields: list[str]) -> None: ...
+
+
+class ExpiringTokenMixin:
+    """Shared behaviour for token/challenge models with used_at and expires_at."""
+
+    @property
+    def is_used(self: "_ExpiringTokenContract") -> bool:
+        return self.used_at is not None
+
+    @property
+    def is_expired(self: "_ExpiringTokenContract") -> bool:
+        return timezone.now() > self.expires_at
+
+    @property
+    def is_valid(self) -> bool:
+        return not self.is_used and not self.is_expired
+
+    def mark_used(self: "_ExpiringTokenContract") -> None:
+        self.used_at = timezone.now()
+        self.save(update_fields=["used_at"])
+
 
 EMAIL_VERIFICATION_TOKEN_LIFETIME = timedelta(hours=24)
 
 
-class EmailVerificationToken(models.Model):
+class EmailVerificationToken(ExpiringTokenMixin, models.Model):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -81,22 +124,6 @@ class EmailVerificationToken(models.Model):
 
     def __str__(self) -> str:
         return f"Email verification for {self.user.email}"
-
-    @property
-    def is_used(self) -> bool:
-        return self.used_at is not None
-
-    @property
-    def is_expired(self) -> bool:
-        return timezone.now() > self.expires_at
-
-    @property
-    def is_valid(self) -> bool:
-        return not self.is_used and not self.is_expired
-
-    def mark_used(self) -> None:
-        self.used_at = timezone.now()
-        self.save(update_fields=["used_at"])
 
     @classmethod
     def create_for_user(cls, user: "User") -> "EmailVerificationToken":
@@ -179,16 +206,15 @@ class RecoveryCode(models.Model):
 
     @classmethod
     def generate_codes_for_user(cls, user: "User", count: int) -> list[str]:
-        cls.objects.filter(user=user).delete()
-        raw_codes = []
-        for _ in range(count):
-            raw = secrets.token_hex(10)
-            raw_codes.append(raw)
-            cls.objects.create(user=user, code_hash=make_password(raw))
+        RecoveryCode.objects.filter(user=user).delete()
+        raw_codes = [secrets.token_hex(10) for _ in range(count)]
+        RecoveryCode.objects.bulk_create(
+            [RecoveryCode(user=user, code_hash=make_password(raw)) for raw in raw_codes]
+        )
         return raw_codes
 
 
-class MFALoginChallenge(models.Model):
+class MFALoginChallenge(ExpiringTokenMixin, models.Model):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -206,22 +232,6 @@ class MFALoginChallenge(models.Model):
 
     def __str__(self) -> str:
         return f"MFA challenge for {self.user.email}"
-
-    @property
-    def is_used(self) -> bool:
-        return self.used_at is not None
-
-    @property
-    def is_expired(self) -> bool:
-        return timezone.now() > self.expires_at
-
-    @property
-    def is_valid(self) -> bool:
-        return not self.is_used and not self.is_expired
-
-    def mark_used(self) -> None:
-        self.used_at = timezone.now()
-        self.save(update_fields=["used_at"])
 
     @classmethod
     def create_for_user(cls, user: "User", *, request=None) -> "MFALoginChallenge":

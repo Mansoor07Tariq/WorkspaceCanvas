@@ -60,6 +60,11 @@ def _get_json(url: str, *, headers: dict | None = None) -> dict:
     try:
         with urllib.request.urlopen(req, timeout=10) as resp:  # noqa: S310
             return json.loads(resp.read())
+    except json.JSONDecodeError as exc:
+        raise SocialAuthError(
+            "Identity provider returned an unexpected response.",
+            code="provider_error",
+        ) from exc
     except (HTTPError, URLError) as exc:
         raise SocialAuthError(
             "Could not reach identity provider.",
@@ -139,7 +144,7 @@ def verify_google_token(
                 "Google token audience is invalid.", code="invalid_audience"
             )
 
-    picture_url = data.get("picture", "")
+    picture_url = data.get("picture") or ""
     return {
         "provider": "google",
         "provider_user_id": data.get("sub"),

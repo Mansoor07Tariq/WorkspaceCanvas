@@ -1,9 +1,10 @@
 import { useNavigate } from "react-router-dom";
-import { Box, Button, CircularProgress, Typography } from "@mui/material";
+import { Box, Button, Typography } from "@mui/material";
 import { en } from "@/i18n/en";
 import { FormTextField } from "@/components/ui/FormTextField";
 import { LoadingButton } from "@/components/ui/LoadingButton";
 import { ErrorAlert } from "@/components/feedback/ErrorAlert";
+import { LoadingState } from "@/components/feedback/LoadingState";
 import { ROUTES } from "@/routes/paths";
 import { AuthPageShell } from "../components/AuthPageShell";
 import { useMfaSetup } from "../hooks/useMfaSetup";
@@ -13,7 +14,6 @@ import {
   mfaSetupManualCodeSx,
   mfaCodesGridSx,
   mfaCodeItemSx,
-  verifyEmailCenterSx,
 } from "../styles/auth.styles";
 
 export function MfaSetupPage() {
@@ -34,12 +34,7 @@ export function MfaSetupPage() {
   if (step === "loading") {
     return (
       <AuthPageShell title={en.auth.mfaSetup.title}>
-        <Box sx={verifyEmailCenterSx}>
-          <CircularProgress size={40} />
-          <Typography variant="body2" sx={{ color: "text.secondary" }}>
-            {en.auth.mfaSetup.loadingMessage}
-          </Typography>
-        </Box>
+        <LoadingState message={en.auth.mfaSetup.loadingMessage} />
       </AuthPageShell>
     );
   }

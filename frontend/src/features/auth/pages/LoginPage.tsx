@@ -60,16 +60,8 @@ export function LoginPage() {
         </LoadingButton>
       </Box>
       <SocialLoginButtons
-        isGoogleConfigured={social.isGoogleConfigured}
-        isMicrosoftConfigured={social.isMicrosoftConfigured}
-        onGoogleStart={social.startGoogleFlow}
-        onGoogleToken={social.handleGoogleToken}
-        onGoogleError={social.handleGoogleError}
-        onGoogleUnavailable={social.handleGoogleUnavailable}
-        onMicrosoftStart={social.startMicrosoftFlow}
-        onMicrosoftToken={social.handleMicrosoftToken}
-        onMicrosoftError={social.handleMicrosoftError}
-        onMicrosoftUnavailable={social.handleMicrosoftUnavailable}
+        google={social.google}
+        microsoft={social.microsoft}
         loadingProvider={social.loadingProvider}
         generalError={social.generalError}
       />

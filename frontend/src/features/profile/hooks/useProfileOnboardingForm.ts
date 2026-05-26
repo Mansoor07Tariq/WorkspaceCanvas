@@ -1,33 +1,19 @@
 import { useEffect, useRef, useState } from "react";
 import { useForm } from "@/hooks/useForm";
+import { useFormSubmission } from "@/hooks/useFormSubmission";
 import { useAuth } from "@/features/auth/context/AuthContext";
 import { getApiErrorMessage } from "@/lib/api/getApiErrorMessage";
 import { updateProfile, uploadAvatar } from "../api/profileApi";
 import { validateProfileForm } from "../utils/profileValidation";
 import { validateAvatarFile } from "../utils/avatarValidation";
+import { ONBOARDING_STEPS } from "../types/profile.types";
 import type { ProfileFieldErrors } from "../types/profile.types";
-
-export const ONBOARDING_STEPS = [
-  "welcome",
-  "name",
-  "email",
-  "workDetails",
-  "avatar",
-  "done",
-] as const;
-
-export type OnboardingStep = (typeof ONBOARDING_STEPS)[number];
 
 interface TextFields {
   fullName: string;
   jobTitle: string;
   phoneNumber: string;
   timezone: string;
-}
-
-interface SubmissionState {
-  loading: boolean;
-  generalError: string | undefined;
 }
 
 function getInitialTimezone(tz: string | undefined): string {
@@ -39,13 +25,9 @@ function getInitialTimezone(tz: string | undefined): string {
   }
 }
 
-const initialSubmission: SubmissionState = {
-  loading: false,
-  generalError: undefined,
-};
-
 export function useProfileOnboardingForm() {
   const { user, setAuthenticatedUser } = useAuth();
+  const { submission, startSubmission, setGeneralError, endSubmission } = useFormSubmission();
 
   const { fields, setField } = useForm<TextFields>({
     fullName: user?.full_name?.trim() ?? "",
@@ -59,7 +41,6 @@ export function useProfileOnboardingForm() {
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [avatarError, setAvatarError] = useState<string | undefined>(undefined);
-  const [submission, setSubmission] = useState<SubmissionState>(initialSubmission);
   const previewUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -71,7 +52,6 @@ export function useProfileOnboardingForm() {
   }, []);
 
   const currentStep = ONBOARDING_STEPS[stepIndex];
-  // "avatar" is the last step before "done" (index ONBOARDING_STEPS.length - 2 = 4)
   const isLastStep = stepIndex === ONBOARDING_STEPS.length - 2;
 
   function selectAvatarFile(file: File) {
@@ -140,7 +120,7 @@ export function useProfileOnboardingForm() {
   function handleFinish(withAvatar: boolean = true) {
     if (!validateCurrentStep()) return;
     setFieldErrors({});
-    setSubmission({ loading: true, generalError: undefined });
+    startSubmission();
 
     const profileData: Parameters<typeof updateProfile>[0] = {
       full_name: fields.fullName.trim(),
@@ -161,10 +141,10 @@ export function useProfileOnboardingForm() {
         setStepIndex(ONBOARDING_STEPS.length - 1);
       })
       .catch((err: unknown) => {
-        setSubmission((prev) => ({ ...prev, generalError: getApiErrorMessage(err) }));
+        setGeneralError(getApiErrorMessage(err));
       })
       .finally(() => {
-        setSubmission((prev) => ({ ...prev, loading: false }));
+        endSubmission();
       });
   }
 

@@ -1,7 +1,9 @@
+import { useState } from "react";
 import type { ReactNode } from "react";
-import { AppBar, Box, Button, Toolbar, Typography } from "@mui/material";
+import { AppBar, Box, Button, Drawer, IconButton, Toolbar, Typography } from "@mui/material";
+import { MenuOutlined } from "@mui/icons-material";
 import { useAuth } from "@/features/auth/context/AuthContext";
-import { AppSidebar } from "./AppSidebar";
+import { AppSidebar, SIDEBAR_WIDTH } from "./AppSidebar";
 import { en } from "@/i18n/en";
 
 interface Props {
@@ -11,16 +13,30 @@ interface Props {
 
 export function AppShell({ children, onLogout }: Props) {
   const { user } = useAuth();
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   return (
     <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       <AppBar position="static" elevation={1} color="default" sx={{ bgcolor: "background.paper" }}>
         <Toolbar>
+          <IconButton
+            edge="start"
+            color="inherit"
+            aria-label={en.app.shell.openNav}
+            onClick={() => setDrawerOpen(true)}
+            sx={{ mr: 1, display: { md: "none" } }}
+          >
+            <MenuOutlined />
+          </IconButton>
           <Typography variant="h6" sx={{ flexGrow: 1, fontWeight: 700 }}>
             {en.app.shell.brand}
           </Typography>
           {user && (
-            <Typography variant="body2" color="text.secondary" sx={{ mr: 2 }}>
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ mr: 2, display: { xs: "none", sm: "block" } }}
+            >
               {user.email}
             </Typography>
           )}
@@ -29,8 +45,26 @@ export function AppShell({ children, onLogout }: Props) {
           </Button>
         </Toolbar>
       </AppBar>
+
+      {/* Mobile drawer — visible only below md breakpoint */}
+      <Drawer
+        anchor="left"
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        variant="temporary"
+        sx={{
+          display: { md: "none" },
+          "& .MuiDrawer-paper": { width: SIDEBAR_WIDTH, boxSizing: "border-box" },
+        }}
+      >
+        <AppSidebar onNavigate={() => setDrawerOpen(false)} />
+      </Drawer>
+
       <Box sx={{ display: "flex", flexGrow: 1 }}>
-        <AppSidebar />
+        {/* Permanent sidebar — hidden on mobile */}
+        <Box sx={{ display: { xs: "none", md: "flex" } }}>
+          <AppSidebar />
+        </Box>
         <Box component="main" sx={{ flexGrow: 1, minWidth: 0 }}>
           {children}
         </Box>

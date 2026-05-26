@@ -14,6 +14,9 @@ _MFA_PROOF_FAILED = {
     "code": "invalid_mfa_proof",
 }
 
+_SOCIAL_PROVIDERS = [User.AuthProvider.GOOGLE, User.AuthProvider.MICROSOFT]
+_SOCIAL_PROVIDER_CHOICES = [(p.value, p.label) for p in _SOCIAL_PROVIDERS]
+
 
 class MFAStatusSerializer(serializers.Serializer):
     mfa_enabled = serializers.BooleanField(read_only=True)
@@ -59,9 +62,40 @@ class MFAConfirmSerializer(serializers.Serializer):
         )
 
 
+def _validate_mfa_operation(
+    data: dict, *, user: "User", request, require_mfa_enabled: bool = False
+) -> dict:
+    """Shared reauth + MFA-proof validation for disable and regenerate operations."""
+    if require_mfa_enabled and not user.mfa_enabled:
+        raise serializers.ValidationError({"detail": "MFA is not enabled."})
+
+    if not verify_reauth_for_user(
+        user,
+        request=request,
+        password=data.get("password"),
+        provider=data.get("provider"),
+        access_token=data.get("access_token"),
+        id_token=data.get("id_token"),
+    ):
+        raise serializers.ValidationError(_IDENTITY_FAILED)
+
+    token = data.get("token") or ""
+    recovery_code = data.get("recovery_code") or ""
+
+    if not token and not recovery_code:
+        raise serializers.ValidationError(
+            {"detail": "Provide either a TOTP token or a recovery code."}
+        )
+
+    if not _verify_mfa_proof(user, token=token, recovery_code=recovery_code):
+        raise serializers.ValidationError(_MFA_PROOF_FAILED)
+
+    return data
+
+
 class MFADisableSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True, required=False)
-    provider = serializers.ChoiceField(choices=["google", "microsoft"], required=False)
+    provider = serializers.ChoiceField(choices=_SOCIAL_PROVIDER_CHOICES, required=False)
     access_token = serializers.CharField(required=False, allow_blank=True)
     id_token = serializers.CharField(required=False, allow_blank=True)
     token = serializers.CharField(min_length=6, max_length=6, required=False)
@@ -69,29 +103,9 @@ class MFADisableSerializer(serializers.Serializer):
 
     def validate(self, data):
         user: User = self.context["request"].user
-
-        if not verify_reauth_for_user(
-            user,
-            request=self.context.get("request"),
-            password=data.get("password"),
-            provider=data.get("provider"),
-            access_token=data.get("access_token"),
-            id_token=data.get("id_token"),
-        ):
-            raise serializers.ValidationError(_IDENTITY_FAILED)
-
-        token = data.get("token") or ""
-        recovery_code = data.get("recovery_code") or ""
-
-        if not token and not recovery_code:
-            raise serializers.ValidationError(
-                {"detail": "Provide either a TOTP token or a recovery code."}
-            )
-
-        if not _verify_mfa_proof(user, token=token, recovery_code=recovery_code):
-            raise serializers.ValidationError(_MFA_PROOF_FAILED)
-
-        return data
+        return _validate_mfa_operation(
+            data, user=user, request=self.context.get("request")
+        )
 
     def save(self) -> None:
         user: User = self.context["request"].user
@@ -104,7 +118,7 @@ class MFADisableSerializer(serializers.Serializer):
 
 class RecoveryCodeRegenerateSerializer(serializers.Serializer):
     password = serializers.CharField(write_only=True, required=False)
-    provider = serializers.ChoiceField(choices=["google", "microsoft"], required=False)
+    provider = serializers.ChoiceField(choices=_SOCIAL_PROVIDER_CHOICES, required=False)
     access_token = serializers.CharField(required=False, allow_blank=True)
     id_token = serializers.CharField(required=False, allow_blank=True)
     token = serializers.CharField(min_length=6, max_length=6, required=False)
@@ -112,32 +126,12 @@ class RecoveryCodeRegenerateSerializer(serializers.Serializer):
 
     def validate(self, data):
         user: User = self.context["request"].user
-
-        if not user.mfa_enabled:
-            raise serializers.ValidationError({"detail": "MFA is not enabled."})
-
-        if not verify_reauth_for_user(
-            user,
+        return _validate_mfa_operation(
+            data,
+            user=user,
             request=self.context.get("request"),
-            password=data.get("password"),
-            provider=data.get("provider"),
-            access_token=data.get("access_token"),
-            id_token=data.get("id_token"),
-        ):
-            raise serializers.ValidationError(_IDENTITY_FAILED)
-
-        token = data.get("token") or ""
-        recovery_code = data.get("recovery_code") or ""
-
-        if not token and not recovery_code:
-            raise serializers.ValidationError(
-                {"detail": "Provide either a TOTP token or a recovery code."}
-            )
-
-        if not _verify_mfa_proof(user, token=token, recovery_code=recovery_code):
-            raise serializers.ValidationError(_MFA_PROOF_FAILED)
-
-        return data
+            require_mfa_enabled=True,
+        )
 
     def save(self) -> list[str]:
         user: User = self.context["request"].user

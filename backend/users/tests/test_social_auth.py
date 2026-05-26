@@ -14,6 +14,7 @@ from unittest.mock import patch
 import jwt
 import pytest
 from cryptography.hazmat.primitives.asymmetric import rsa
+from django.conf import settings as django_settings
 from PIL import Image
 from rest_framework.test import APIClient
 
@@ -149,13 +150,13 @@ def test_google_creates_new_user(mock_verify, client):
 
 @pytest.mark.django_db
 @patch("users.serializers.verify_google_token", return_value=GOOGLE_IDENTITY)
-def test_google_returns_access_and_refresh_tokens(mock_verify, client):
+def test_google_returns_access_token_and_refresh_cookie(mock_verify, client):
     resp = client.post(
         SOCIAL_URL, {"provider": "google", "id_token": "tok"}, format="json"
     )
     assert resp.status_code == 200
     assert "access" in resp.data
-    assert "refresh" in resp.data
+    assert django_settings.AUTH_COOKIE_NAME in resp.cookies
 
 
 @pytest.mark.django_db
@@ -280,7 +281,7 @@ def test_microsoft_access_token_returns_tokens(mock_verify, client):
         format="json",
     )
     assert "access" in resp.data
-    assert "refresh" in resp.data
+    assert django_settings.AUTH_COOKIE_NAME in resp.cookies
 
 
 @pytest.mark.django_db

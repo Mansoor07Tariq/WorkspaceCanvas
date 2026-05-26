@@ -132,6 +132,7 @@ USE_TZ = True
 # Static files
 
 STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
@@ -153,6 +154,8 @@ CORS_ALLOWED_ORIGINS = [
     ).split(",")
     if origin.strip()
 ]
+# Required for the browser to send the httpOnly refresh cookie cross-origin.
+CORS_ALLOW_CREDENTIALS = True
 
 
 # Content Security Policy (django-csp)
@@ -209,6 +212,16 @@ SIMPLE_JWT = {
 }
 
 
+# ─── Media / uploads ─────────────────────────────────────────────────────────
+
+AVATAR_MAX_BYTES: int = 2 * 1024 * 1024  # 2 MB
+AVATAR_ALLOWED_FORMATS: frozenset[str] = frozenset({"JPEG", "PNG", "WEBP"})
+
+# ─── Localisation ────────────────────────────────────────────────────────────
+
+SUPPORTED_LOCALES: frozenset[str] = frozenset({"en", "en-IE", "en-GB", "en-US"})
+
+
 # Email
 
 EMAIL_BACKEND = os.environ.get(
@@ -244,6 +257,20 @@ MFA_RECOVERY_CODE_COUNT = int(os.environ.get("MFA_RECOVERY_CODE_COUNT", "10"))
 MFA_CHALLENGE_LIFETIME_MINUTES = int(
     os.environ.get("MFA_CHALLENGE_LIFETIME_MINUTES", "5")
 )
+
+RESEND_VERIFICATION_COOLDOWN_SECONDS = int(
+    os.environ.get("RESEND_VERIFICATION_COOLDOWN_SECONDS", "60")
+)
+
+
+# Auth refresh cookie (httpOnly, sent automatically by the browser)
+# Must match SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"] in seconds.
+
+AUTH_COOKIE_NAME = "wsc_rt"
+AUTH_COOKIE_SECURE = not DEBUG  # True in production (HTTPS only)
+AUTH_COOKIE_SAMESITE: str = "Lax"
+AUTH_COOKIE_PATH = "/api/auth/"
+AUTH_COOKIE_MAX_AGE = 7 * 24 * 60 * 60  # 7 days
 
 
 # drf-spectacular

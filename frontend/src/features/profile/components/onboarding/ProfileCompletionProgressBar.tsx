@@ -1,13 +1,15 @@
 import { Box, LinearProgress, Typography } from "@mui/material";
 import { en } from "@/i18n/en";
 import { getProfileCompletionPercent } from "../../utils/onboardingProgress";
+import { completionBarTrackSx, completionPercentSx } from "../../styles/profile.styles";
+import type { OnboardingStep } from "../../types/profile.types";
 
 interface Props {
-  stepIndex: number;
+  step: OnboardingStep;
 }
 
-export function ProfileCompletionProgressBar({ stepIndex }: Props) {
-  const percent = getProfileCompletionPercent(stepIndex);
+export function ProfileCompletionProgressBar({ step }: Props) {
+  const percent = getProfileCompletionPercent(step);
   const label = en.app.profile.carousel.profileCompletion;
 
   return (
@@ -16,10 +18,7 @@ export function ProfileCompletionProgressBar({ stepIndex }: Props) {
         <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
           {label}
         </Typography>
-        <Typography
-          variant="caption"
-          sx={{ fontWeight: 700, color: "primary.main", transition: "all 0.5s ease" }}
-        >
+        <Typography variant="caption" sx={completionPercentSx}>
           {percent}%
         </Typography>
       </Box>
@@ -29,16 +28,7 @@ export function ProfileCompletionProgressBar({ stepIndex }: Props) {
         aria-valuenow={percent}
         aria-valuemin={0}
         aria-valuemax={100}
-        sx={{
-          height: 6,
-          borderRadius: 3,
-          bgcolor: "rgba(37,99,235,0.1)",
-          "& .MuiLinearProgress-bar": {
-            borderRadius: 3,
-            background: "linear-gradient(90deg, #2563EB 0%, #7C3AED 100%)",
-            transition: "transform 0.7s cubic-bezier(0.4,0,0.2,1)",
-          },
-        }}
+        sx={completionBarTrackSx}
       />
     </Box>
   );

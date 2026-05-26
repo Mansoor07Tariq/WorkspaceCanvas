@@ -20,7 +20,7 @@ export function AppPlaceholderPage() {
       {user && !user.is_profile_completed ? (
         <ProfileOnboardingCarousel />
       ) : (
-        <Box sx={{ p: 4, maxWidth: 560, mx: "auto", mt: 6 }}>
+        <Box sx={{ p: { xs: 2, sm: 4 }, maxWidth: 560, mx: "auto", mt: { xs: 3, sm: 6 } }}>
           <Stack spacing={3}>
             <Box>
               <Typography variant="h4" gutterBottom>

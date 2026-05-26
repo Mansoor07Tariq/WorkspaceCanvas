@@ -1,13 +1,25 @@
-import { useMemo } from "react";
-import { Box, Button, Paper, Stack, useTheme } from "@mui/material";
+import { Box, Button, Paper, Stack } from "@mui/material";
 import { alpha } from "@mui/material/styles";
-import { keyframes } from "@mui/system";
+import { useTheme } from "@mui/material";
 import { ErrorAlert } from "@/components/feedback/ErrorAlert";
 import { LoadingButton } from "@/components/ui/LoadingButton";
 import { en } from "@/i18n/en";
 import { useAuth } from "@/features/auth/context/AuthContext";
-import { useProfileOnboardingForm, ONBOARDING_STEPS } from "../hooks/useProfileOnboardingForm";
-import type { OnboardingStep } from "../hooks/useProfileOnboardingForm";
+import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
+import { useProfileOnboardingForm } from "../hooks/useProfileOnboardingForm";
+import { ONBOARDING_STEPS } from "../types/profile.types";
+import type { OnboardingStep } from "../types/profile.types";
+import {
+  stepIn,
+  brandGradient,
+  brandGradientHover,
+  carouselOuterSx,
+  carouselContentSx,
+  carouselPaperSx,
+  carouselNavRowSx,
+  carouselSkipButtonSx,
+  carouselNextButtonSx,
+} from "../styles/profile.styles";
 import { ProfileOnboardingBackground } from "./onboarding/ProfileOnboardingBackground";
 import { ProfileOnboardingProgress } from "./onboarding/ProfileOnboardingProgress";
 import { ProfileCompletionProgressBar } from "./onboarding/ProfileCompletionProgressBar";
@@ -18,22 +30,7 @@ import { StepWorkDetails } from "./carousel/StepWorkDetails";
 import { StepAvatar } from "./carousel/StepAvatar";
 import { StepDone } from "./carousel/StepDone";
 
-const OPTIONAL_STEPS: OnboardingStep[] = ["workDetails", "avatar"];
-
-const stepIn = keyframes({
-  from: { opacity: 0, transform: "translateY(14px)" },
-  to: { opacity: 1, transform: "translateY(0)" },
-});
-
-function usePrefersReducedMotion(): boolean {
-  return useMemo(() => {
-    try {
-      return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    } catch {
-      return false;
-    }
-  }, []);
-}
+const OPTIONAL_STEPS = new Set<OnboardingStep>(["workDetails", "avatar"]);
 
 export function ProfileOnboardingCarousel() {
   const { user } = useAuth();
@@ -61,9 +58,9 @@ export function ProfileOnboardingCarousel() {
   const c = en.app.profile.carousel;
   const isDone = currentStep === "done";
   const isWelcome = currentStep === "welcome";
-  const isOptional = OPTIONAL_STEPS.includes(currentStep);
+  const isOptional = OPTIONAL_STEPS.has(currentStep);
 
-  function renderStep() {
+  function renderStep(): React.ReactNode {
     switch (currentStep) {
       case "welcome":
         return <StepWelcome onStart={goNext} />;
@@ -114,40 +111,21 @@ export function ProfileOnboardingCarousel() {
             avatarUrl={user?.avatar ?? null}
           />
         );
+      default: {
+        const _exhaustive: never = currentStep;
+        return _exhaustive;
+      }
     }
   }
 
   // MUI AppBar is 64px on desktop; fill the remaining viewport height.
   return (
-    <Box
-      sx={{
-        position: "relative",
-        minHeight: "calc(100vh - 64px)",
-        overflow: "hidden",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        px: { xs: 2, sm: 3 },
-        pt: { xs: 3, sm: 4 },
-        pb: 4,
-      }}
-    >
+    <Box sx={carouselOuterSx}>
       {/* Decorative background layer */}
       <ProfileOnboardingBackground />
 
       {/* All content above background */}
-      <Box
-        sx={{
-          position: "relative",
-          zIndex: 1,
-          width: "100%",
-          maxWidth: 560,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          flexGrow: 1,
-        }}
-      >
+      <Box sx={carouselContentSx}>
         {/* Step progress — visible on all steps */}
         <ProfileOnboardingProgress stepIndex={stepIndex} />
 
@@ -155,30 +133,20 @@ export function ProfileOnboardingCarousel() {
         <Paper
           elevation={0}
           sx={{
-            width: "100%",
-            p: { xs: 3, sm: 4, md: 5 },
-            background: `rgba(255, 255, 255, 0.88)`,
-            backdropFilter: "blur(24px)",
-            WebkitBackdropFilter: "blur(24px)",
-            borderRadius: 4,
-            border: "1px solid",
+            ...carouselPaperSx,
             borderColor: alpha(theme.palette.primary.main, 0.1),
-            boxShadow:
-              "0 4px 6px rgba(0,0,0,0.04), 0 16px 48px rgba(37,99,235,0.08), 0 2px 4px rgba(0,0,0,0.04)",
           }}
         >
-          <Stack spacing={3}>
+          <Stack spacing={3} sx={{ flexGrow: 1 }}>
             <ErrorAlert message={submission.generalError} />
 
-            {/* Animated step content */}
+            {/* Animated step content — flexGrow fills the panel so all slides share the same height */}
             <Box
               key={currentStep}
               sx={
                 reducedMotion
-                  ? undefined
-                  : {
-                      animation: `${stepIn} 0.3s ease-out both`,
-                    }
+                  ? { flexGrow: 1 }
+                  : { flexGrow: 1, animation: `${stepIn} 0.3s ease-out both` }
               }
             >
               {renderStep()}
@@ -186,7 +154,7 @@ export function ProfileOnboardingCarousel() {
 
             {/* Navigation — hidden on welcome and done */}
             {!isWelcome && !isDone && (
-              <Stack direction="row" spacing={1.5} sx={{ justifyContent: "space-between", pt: 1 }}>
+              <Stack direction="row" spacing={1.5} sx={carouselNavRowSx}>
                 <Button
                   variant="outlined"
                   onClick={goBack}
@@ -202,7 +170,7 @@ export function ProfileOnboardingCarousel() {
                       variant="text"
                       onClick={isLastStep ? () => handleFinish(false) : goNext}
                       disabled={submission.loading}
-                      sx={{ color: "text.secondary" }}
+                      sx={carouselSkipButtonSx}
                     >
                       {c.skip}
                     </Button>
@@ -221,11 +189,9 @@ export function ProfileOnboardingCarousel() {
                       onClick={goNext}
                       disabled={submission.loading}
                       sx={{
-                        background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.secondary.main} 100%)`,
-                        "&:hover": {
-                          background: `linear-gradient(135deg, ${theme.palette.primary.dark} 0%, ${theme.palette.secondary.dark} 100%)`,
-                        },
-                        minWidth: 90,
+                        ...carouselNextButtonSx,
+                        background: brandGradient(theme),
+                        "&:hover": { background: brandGradientHover(theme) },
                       }}
                     >
                       {c.next}
@@ -240,14 +206,7 @@ export function ProfileOnboardingCarousel() {
         {/* Completion progress bar — shown below the panel on all non-done steps */}
         {!isDone && (
           <Box sx={{ width: "100%", mt: 2.5 }}>
-            <ProfileCompletionProgressBar stepIndex={stepIndex} />
-          </Box>
-        )}
-
-        {/* Steps count context — visible on active steps */}
-        {!isWelcome && !isDone && (
-          <Box sx={{ mt: 1.5, opacity: 0.5 }}>
-            {/* intentionally empty: progress bar + stepper already provide context */}
+            <ProfileCompletionProgressBar step={currentStep} />
           </Box>
         )}
       </Box>

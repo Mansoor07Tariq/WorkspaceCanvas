@@ -1,7 +1,7 @@
 import pytest
 from django.contrib.auth import get_user_model
 
-from accounts.models import Membership, Organization
+from accounts.models import MemberRole, Membership, Organization
 
 User = get_user_model()
 
@@ -30,7 +30,7 @@ def pending_membership(db, owner, pending_org):
     return Membership.objects.create(
         user=owner,
         organization=pending_org,
-        role=Membership.Role.OWNER,
+        role=MemberRole.OWNER,
         status=Membership.Status.PENDING,
     )
 
@@ -46,7 +46,7 @@ def test_approving_organization_activates_owner_membership(
     )
     Membership.objects.filter(
         organization_id__in=org_ids,
-        role=Membership.Role.OWNER,
+        role=MemberRole.OWNER,
     ).update(status=Membership.Status.ACTIVE)
 
     pending_org.refresh_from_db()
@@ -65,7 +65,7 @@ def test_rejecting_organization_disables_owner_membership(
     )
     Membership.objects.filter(
         organization_id__in=org_ids,
-        role=Membership.Role.OWNER,
+        role=MemberRole.OWNER,
     ).update(status=Membership.Status.DISABLED)
 
     pending_org.refresh_from_db()
@@ -86,7 +86,7 @@ def test_suspending_organization_disables_all_memberships(owner, db):
     membership = Membership.objects.create(
         user=owner,
         organization=org,
-        role=Membership.Role.OWNER,
+        role=MemberRole.OWNER,
         status=Membership.Status.ACTIVE,
     )
 

@@ -32,16 +32,15 @@ vi.mock("../api/authApi", () => ({
 
 vi.mock("@/lib/tokenStorage", () => ({
   tokenStorage: {
-    setTokens: vi.fn(),
+    setAccessToken: vi.fn(),
     getAccessToken: vi.fn().mockReturnValue(null),
-    getRefreshToken: vi.fn().mockReturnValue(null),
     clearTokens: vi.fn(),
   },
 }));
 
 const mockVerify = vi.mocked(verifyMfaChallenge);
 const mockGetCurrentUser = vi.mocked(getCurrentUser);
-const mockSetTokens = vi.mocked(tokenStorage.setTokens);
+const mockSetAccessToken = vi.mocked(tokenStorage.setAccessToken);
 const mockClearTokens = vi.mocked(tokenStorage.clearTokens);
 
 const mockUser: CurrentUser = {
@@ -146,7 +145,7 @@ describe("MfaChallengePage — TOTP mode", () => {
   });
 
   it("calls verifyMfaChallenge with challenge_id and token", async () => {
-    mockVerify.mockResolvedValueOnce({ access: "tok-a", refresh: "tok-r" });
+    mockVerify.mockResolvedValueOnce({ access: "tok-a" });
     const user = userEvent.setup();
     renderMfaChallengePage(challengeState);
     await user.type(screen.getByLabelText(en.auth.mfaChallenge.codeLabel), "123456");
@@ -160,18 +159,18 @@ describe("MfaChallengePage — TOTP mode", () => {
   });
 
   it("stores tokens after successful TOTP verification", async () => {
-    mockVerify.mockResolvedValueOnce({ access: "tok-a", refresh: "tok-r" });
+    mockVerify.mockResolvedValueOnce({ access: "tok-a" });
     const user = userEvent.setup();
     renderMfaChallengePage(challengeState);
     await user.type(screen.getByLabelText(en.auth.mfaChallenge.codeLabel), "123456");
     await user.click(screen.getByRole("button", { name: en.auth.mfaChallenge.submit }));
     await waitFor(() => {
-      expect(mockSetTokens).toHaveBeenCalledWith("tok-a", "tok-r");
+      expect(mockSetAccessToken).toHaveBeenCalledWith("tok-a");
     });
   });
 
   it("calls getCurrentUser after storing tokens", async () => {
-    mockVerify.mockResolvedValueOnce({ access: "tok-a", refresh: "tok-r" });
+    mockVerify.mockResolvedValueOnce({ access: "tok-a" });
     const user = userEvent.setup();
     renderMfaChallengePage(challengeState);
     await user.type(screen.getByLabelText(en.auth.mfaChallenge.codeLabel), "123456");
@@ -182,7 +181,7 @@ describe("MfaChallengePage — TOTP mode", () => {
   });
 
   it("calls setAuthenticatedUser with user after getCurrentUser succeeds", async () => {
-    mockVerify.mockResolvedValueOnce({ access: "tok-a", refresh: "tok-r" });
+    mockVerify.mockResolvedValueOnce({ access: "tok-a" });
     const user = userEvent.setup();
     renderMfaChallengePage(challengeState);
     await user.type(screen.getByLabelText(en.auth.mfaChallenge.codeLabel), "123456");
@@ -193,7 +192,7 @@ describe("MfaChallengePage — TOTP mode", () => {
   });
 
   it("navigates to /app after successful TOTP verification", async () => {
-    mockVerify.mockResolvedValueOnce({ access: "tok-a", refresh: "tok-r" });
+    mockVerify.mockResolvedValueOnce({ access: "tok-a" });
     const user = userEvent.setup();
     renderMfaChallengePage(challengeState);
     await user.type(screen.getByLabelText(en.auth.mfaChallenge.codeLabel), "123456");
@@ -204,7 +203,7 @@ describe("MfaChallengePage — TOTP mode", () => {
   });
 
   it("clears tokens and shows error when getCurrentUser fails after MFA verification", async () => {
-    mockVerify.mockResolvedValueOnce({ access: "tok-a", refresh: "tok-r" });
+    mockVerify.mockResolvedValueOnce({ access: "tok-a" });
     mockGetCurrentUser.mockRejectedValueOnce(new ApiError(401, { detail: "Unauthorized." }));
     const user = userEvent.setup();
     renderMfaChallengePage(challengeState);
@@ -224,7 +223,7 @@ describe("MfaChallengePage — TOTP mode", () => {
     await user.type(screen.getByLabelText(en.auth.mfaChallenge.codeLabel), "999999");
     await user.click(screen.getByRole("button", { name: en.auth.mfaChallenge.submit }));
     await waitFor(() => {
-      expect(mockSetTokens).not.toHaveBeenCalled();
+      expect(mockSetAccessToken).not.toHaveBeenCalled();
     });
   });
 
@@ -275,7 +274,7 @@ describe("MfaChallengePage — recovery code mode", () => {
   });
 
   it("calls verifyMfaChallenge with challenge_id and recovery_code", async () => {
-    mockVerify.mockResolvedValueOnce({ access: "tok-a", refresh: "tok-r" });
+    mockVerify.mockResolvedValueOnce({ access: "tok-a" });
     const user = userEvent.setup();
     renderMfaChallengePage(challengeState);
     await user.click(screen.getByRole("button", { name: en.auth.mfaChallenge.useRecoveryCode }));
@@ -290,19 +289,19 @@ describe("MfaChallengePage — recovery code mode", () => {
   });
 
   it("stores tokens after successful recovery code verification", async () => {
-    mockVerify.mockResolvedValueOnce({ access: "tok-a", refresh: "tok-r" });
+    mockVerify.mockResolvedValueOnce({ access: "tok-a" });
     const user = userEvent.setup();
     renderMfaChallengePage(challengeState);
     await user.click(screen.getByRole("button", { name: en.auth.mfaChallenge.useRecoveryCode }));
     await user.type(screen.getByLabelText(en.auth.mfaChallenge.recoveryCodeLabel), "ABCD-1234");
     await user.click(screen.getByRole("button", { name: en.auth.mfaChallenge.submit }));
     await waitFor(() => {
-      expect(mockSetTokens).toHaveBeenCalledWith("tok-a", "tok-r");
+      expect(mockSetAccessToken).toHaveBeenCalledWith("tok-a");
     });
   });
 
   it("navigates to /app after successful recovery code verification", async () => {
-    mockVerify.mockResolvedValueOnce({ access: "tok-a", refresh: "tok-r" });
+    mockVerify.mockResolvedValueOnce({ access: "tok-a" });
     const user = userEvent.setup();
     renderMfaChallengePage(challengeState);
     await user.click(screen.getByRole("button", { name: en.auth.mfaChallenge.useRecoveryCode }));

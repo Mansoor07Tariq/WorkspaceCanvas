@@ -24,7 +24,7 @@ export function useResendVerificationForm() {
   const [fieldErrors, setFieldErrors] = useState<ResendVerificationFieldErrors>({});
   const [submission, setSubmission] = useState<SubmissionState>(initialSubmission);
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  function handleSubmit(e: { preventDefault(): void }) {
     e.preventDefault();
 
     const errors = validateResendVerificationForm(fields.email);

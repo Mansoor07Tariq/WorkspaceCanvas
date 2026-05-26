@@ -17,16 +17,15 @@ vi.mock("../api/authApi", () => ({
 
 vi.mock("@/lib/tokenStorage", () => ({
   tokenStorage: {
-    setTokens: vi.fn(),
+    setAccessToken: vi.fn(),
     getAccessToken: vi.fn().mockReturnValue(null),
-    getRefreshToken: vi.fn().mockReturnValue(null),
     clearTokens: vi.fn(),
   },
 }));
 
 const mockVerifyEmail = vi.mocked(verifyEmail);
 const mockResendVerification = vi.mocked(resendVerification);
-const mockSetTokens = vi.mocked(tokenStorage.setTokens);
+const mockSetAccessToken = vi.mocked(tokenStorage.setAccessToken);
 
 function renderWithToken(token?: string) {
   const url = token ? `${ROUTES.verifyEmail}?token=${token}` : ROUTES.verifyEmail;
@@ -97,7 +96,7 @@ describe("VerifyEmailPage — success state", () => {
     mockVerifyEmail.mockResolvedValueOnce({ detail: "Email verified." });
     renderWithToken("valid-token");
     await screen.findByText(en.auth.verifyEmail.successMessage);
-    expect(mockSetTokens).not.toHaveBeenCalled();
+    expect(mockSetAccessToken).not.toHaveBeenCalled();
   });
 });
 
@@ -229,6 +228,6 @@ describe("VerifyEmailPage — resend form", () => {
     await user.type(screen.getByLabelText(en.auth.fields.email), "user@example.com");
     await user.click(screen.getByRole("button", { name: en.auth.verifyEmail.resendSubmit }));
     await screen.findByText(en.auth.verifyEmail.resendSuccess);
-    expect(mockSetTokens).not.toHaveBeenCalled();
+    expect(mockSetAccessToken).not.toHaveBeenCalled();
   });
 });
