@@ -254,6 +254,75 @@ export const en = {
         "Your organization has been set up. Offices will appear here once you add them.",
       emptyStateAction: "Add your first office",
     },
+    offices: {
+      // Step labels
+      stepWelcome: "Welcome",
+      stepName: "Name",
+      stepLocation: "Location",
+      stepReview: "Review",
+
+      // Welcome step
+      stepWelcomeTitle: "Create your first office",
+      stepWelcomeSubtitle:
+        "This is where your team will build floor maps, manage desks, and book seats.",
+      stepWelcomeCta: "Get started",
+
+      // Name step
+      stepNameTitle: "What's this office called?",
+      stepNameSubtitle: "This name will be visible to everyone in your workspace.",
+      nameLabel: "Office name",
+      namePlaceholder: "Dublin Office",
+      nameRequired: "Office name is required.",
+
+      // Location step
+      stepLocationTitle: "Where is this office?",
+      stepLocationSubtitle: "All fields are optional. Add as much or as little as you like.",
+      addressLine1Label: "Address line 1",
+      addressLine1Placeholder: "123 Main Street",
+      addressLine2Label: "Address line 2",
+      addressLine2Placeholder: "Suite 200",
+      cityLabel: "City",
+      cityPlaceholder: "Dublin",
+      countyOrStateLabel: "County / State",
+      countyOrStatePlaceholder: "County Dublin",
+      countryLabel: "Country",
+      countryPlaceholder: "Ireland",
+      timezoneLabel: "Timezone",
+      timezonePlaceholder: "Europe/Dublin",
+      timezoneHelper: "e.g. Europe/Dublin, America/New_York, UTC",
+      timezoneInvalid: "Enter a valid IANA timezone (e.g. Europe/Dublin, UTC).",
+
+      // Review step
+      stepReviewTitle: "Review and create",
+      stepReviewSubtitle: "Confirm the details below before creating your office.",
+      reviewNameLabel: "Office name",
+      reviewLocationLabel: "Location",
+      reviewTimezoneLabel: "Timezone",
+      reviewLocationNone: "No location added",
+      reviewTimezoneNone: "No timezone set",
+
+      createButton: "Create office",
+      next: "Next",
+      back: "Back",
+      skip: "Skip",
+
+      // List
+      listTitle: "Offices",
+
+      // Empty state
+      emptyStateTitle: "No offices yet",
+      emptyStateSubtitle:
+        "Your organization has been set up. Add your first office to get started.",
+      emptyStateAction: "Add your first office",
+
+      // Office card / list
+      addOffice: "Add office",
+      buildFloorMap: "Build floor map",
+      buildFloorMapTooltip: "Floor map builder is coming next.",
+      noCity: "Location not set",
+      noTimezone: "Timezone not set",
+      activeLabel: "Active",
+    },
     pages: {
       comingSoon: "This feature is coming soon.",
     },

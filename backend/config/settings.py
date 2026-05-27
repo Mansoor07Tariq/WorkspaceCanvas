@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     # Local apps
     "users",
     "accounts",
+    "offices",
 ]
 
 AUTH_USER_MODEL = "users.User"
@@ -198,6 +199,7 @@ REST_FRAMEWORK = {
         "auth_social": os.environ.get("THROTTLE_AUTH_SOCIAL", "10/min"),
         "auth_profile": os.environ.get("THROTTLE_AUTH_PROFILE", "30/min"),
         "org_create": os.environ.get("THROTTLE_ORG_CREATE", "5/hour"),
+        "office_create": os.environ.get("THROTTLE_OFFICE_CREATE", "30/hour"),
     },
 }
 
