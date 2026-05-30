@@ -57,6 +57,8 @@ export function FloorMapCanvas({ objects, selectedObjectId, onSelectObject }: Pr
 
   return (
     <Box
+      role="img"
+      aria-label={c.canvasTitle}
       sx={{
         position: "relative",
         border: "1px solid",
