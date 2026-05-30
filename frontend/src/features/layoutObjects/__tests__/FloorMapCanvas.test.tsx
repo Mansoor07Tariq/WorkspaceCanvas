@@ -23,7 +23,9 @@ vi.mock("react-konva", () => ({
   Layer: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
   Rect: () => null,
   Circle: () => null,
-  Line: () => null,
+  Line: ({ points }: { points?: number[] }) => (
+    <div data-testid="grid-line" data-points={JSON.stringify(points)} />
+  ),
   Text: ({ text }: { text?: string }) => (text ? <span>{text}</span> : null),
   Group: ({
     children,
@@ -235,6 +237,54 @@ describe("FloorMapCanvas", () => {
     expect(w).toBeCloseTo(120);
     expect(h).toBeCloseTo(60);
     expect(rot).toBe(30);
+  });
+
+  // ─── Grid visibility tests ────────────────────────────────────────────────
+
+  it("renders grid lines when showGrid is true (default)", () => {
+    render(<FloorMapCanvas objects={[]} selectedObjectId={null} onSelectObject={vi.fn()} />);
+    // With the mocked Line, grid lines render as divs with data-testid="grid-line"
+    expect(screen.getAllByTestId("grid-line").length).toBeGreaterThan(0);
+  });
+
+  it("renders no grid lines when showGrid is false", () => {
+    render(
+      <FloorMapCanvas
+        objects={[]}
+        selectedObjectId={null}
+        onSelectObject={vi.fn()}
+        showGrid={false}
+      />
+    );
+    expect(screen.queryAllByTestId("grid-line").length).toBe(0);
+  });
+
+  it("renders different number of grid lines for gridSize=40 vs gridSize=10", () => {
+    const { unmount } = render(
+      <FloorMapCanvas
+        objects={[]}
+        selectedObjectId={null}
+        onSelectObject={vi.fn()}
+        showGrid={true}
+        gridSize={40}
+      />
+    );
+    const linesAt40 = screen.getAllByTestId("grid-line").length;
+    unmount();
+
+    render(
+      <FloorMapCanvas
+        objects={[]}
+        selectedObjectId={null}
+        onSelectObject={vi.fn()}
+        showGrid={true}
+        gridSize={10}
+      />
+    );
+    const linesAt10 = screen.getAllByTestId("grid-line").length;
+
+    // Smaller grid size → more lines
+    expect(linesAt10).toBeGreaterThan(linesAt40);
   });
 
   // ─── Accessibility tests ──────────────────────────────────────────────────

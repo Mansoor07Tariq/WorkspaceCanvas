@@ -1,16 +1,19 @@
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useMemo } from "react";
 import { Stage, Layer, Rect, Line, Transformer } from "react-konva";
 import { Box, Typography } from "@mui/material";
 import type Konva from "konva";
 import { en } from "@/i18n/en";
-import { MIN_OBJECT_SIZE } from "../utils/coordinateHelpers";
+import {
+  CANVAS_WIDTH,
+  CANVAS_HEIGHT,
+  DEFAULT_GRID_SIZE,
+  MIN_OBJECT_SIZE,
+} from "../utils/coordinateHelpers";
 import { LayoutObjectCanvasNode } from "./LayoutObjectCanvasNode";
 import type { LayoutObject } from "../types/layoutObject.types";
 
-export const CANVAS_WIDTH = 1000;
-export const CANVAS_HEIGHT = 640;
+export { CANVAS_WIDTH, CANVAS_HEIGHT };
 
-const GRID_STEP = 50;
 const GRID_COLOR = "#E5E7EB";
 const CANVAS_BG = "#FAFAFA";
 const BOUNDARY_COLOR = "#D1D5DB";
@@ -33,33 +36,8 @@ interface Props {
   ) => void;
   savingObjectIds?: ReadonlySet<number>;
   onKeyDown?: (e: React.KeyboardEvent<HTMLDivElement>) => void;
-}
-
-function buildGridLines() {
-  const lines = [];
-  for (let x = GRID_STEP; x < CANVAS_WIDTH; x += GRID_STEP) {
-    lines.push(
-      <Line
-        key={`v${x}`}
-        points={[x, 0, x, CANVAS_HEIGHT]}
-        stroke={GRID_COLOR}
-        strokeWidth={0.5}
-        listening={false}
-      />
-    );
-  }
-  for (let y = GRID_STEP; y < CANVAS_HEIGHT; y += GRID_STEP) {
-    lines.push(
-      <Line
-        key={`h${y}`}
-        points={[0, y, CANVAS_WIDTH, y]}
-        stroke={GRID_COLOR}
-        strokeWidth={0.5}
-        listening={false}
-      />
-    );
-  }
-  return lines;
+  showGrid?: boolean;
+  gridSize?: number;
 }
 
 export function FloorMapCanvas({
@@ -71,6 +49,8 @@ export function FloorMapCanvas({
   onObjectTransformEnd,
   savingObjectIds,
   onKeyDown,
+  showGrid = true,
+  gridSize = DEFAULT_GRID_SIZE,
 }: Props) {
   const transformerRef = useRef<Konva.Transformer>(null);
   const nodeRefs = useRef<Map<number, Konva.Group>>(new Map());
@@ -90,6 +70,35 @@ export function FloorMapCanvas({
       onSelectObject(null);
     }
   }
+
+  // Memoize grid lines so they only rebuild when showGrid or gridSize changes
+  const gridLines = useMemo(() => {
+    if (!showGrid) return [];
+    const lines = [];
+    for (let x = gridSize; x < CANVAS_WIDTH; x += gridSize) {
+      lines.push(
+        <Line
+          key={`v${x}`}
+          points={[x, 0, x, CANVAS_HEIGHT]}
+          stroke={GRID_COLOR}
+          strokeWidth={0.5}
+          listening={false}
+        />
+      );
+    }
+    for (let y = gridSize; y < CANVAS_HEIGHT; y += gridSize) {
+      lines.push(
+        <Line
+          key={`h${y}`}
+          points={[0, y, CANVAS_WIDTH, y]}
+          stroke={GRID_COLOR}
+          strokeWidth={0.5}
+          listening={false}
+        />
+      );
+    }
+    return lines;
+  }, [showGrid, gridSize]);
 
   return (
     <Box
@@ -122,7 +131,7 @@ export function FloorMapCanvas({
       >
         <Layer listening={false}>
           <Rect width={CANVAS_WIDTH} height={CANVAS_HEIGHT} fill={CANVAS_BG} />
-          {buildGridLines()}
+          {gridLines}
           <Rect
             x={2}
             y={2}

@@ -6,6 +6,14 @@ import {
   buildTransformPatch,
   calculateTransformResult,
   MIN_OBJECT_SIZE,
+  CANVAS_WIDTH,
+  CANVAS_HEIGHT,
+  clamp,
+  clampObjectPosition,
+  clampObjectTransform,
+  snapToGrid,
+  snapObjectToGrid,
+  snapSizeToGrid,
 } from "../utils/coordinateHelpers";
 import type { LayoutObjectType } from "../types/layoutObject.types";
 
@@ -159,6 +167,281 @@ describe("calculateTransformResult", () => {
     expect(result.height).toBeCloseTo(50);
     expect(result.x).toBeCloseTo(100);
     expect(result.y).toBeCloseTo(150);
+  });
+});
+
+// ─── clamp ────────────────────────────────────────────────────────────────────
+
+describe("clamp", () => {
+  it("returns value when within range", () => {
+    expect(clamp(50, 0, 100)).toBe(50);
+  });
+
+  it("clamps below minimum", () => {
+    expect(clamp(-10, 0, 100)).toBe(0);
+  });
+
+  it("clamps above maximum", () => {
+    expect(clamp(150, 0, 100)).toBe(100);
+  });
+
+  it("returns min when min === max", () => {
+    expect(clamp(50, 30, 30)).toBe(30);
+  });
+
+  it("handles negative ranges", () => {
+    expect(clamp(-5, -20, -1)).toBe(-5);
+    expect(clamp(0, -20, -1)).toBe(-1);
+  });
+
+  // ─── NaN / non-finite safety ─────────────────────────────────────────────
+
+  it("returns min for NaN value", () => {
+    expect(clamp(NaN, 5, 100)).toBe(5);
+  });
+
+  it("clamps Infinity to max", () => {
+    // Math.min(Infinity, 100) = 100 — handled correctly without NaN guard
+    expect(clamp(Infinity, 0, 100)).toBe(100);
+  });
+
+  it("clamps -Infinity to min", () => {
+    expect(clamp(-Infinity, 0, 100)).toBe(0);
+  });
+});
+
+// ─── clampObjectPosition ──────────────────────────────────────────────────────
+
+describe("clampObjectPosition", () => {
+  const W = CANVAS_WIDTH; // 1000
+  const H = CANVAS_HEIGHT; // 640
+  const objW = 80;
+  const objH = 50;
+
+  it("allows valid position unchanged", () => {
+    const r = clampObjectPosition(200, 300, objW, objH, W, H);
+    expect(r.x).toBe(200);
+    expect(r.y).toBe(300);
+  });
+
+  it("clamps x to 0 when dragged beyond left edge", () => {
+    const r = clampObjectPosition(-50, 100, objW, objH, W, H);
+    expect(r.x).toBe(0);
+  });
+
+  it("clamps y to 0 when dragged beyond top edge", () => {
+    const r = clampObjectPosition(100, -30, objW, objH, W, H);
+    expect(r.y).toBe(0);
+  });
+
+  it("clamps x to canvasWidth - width when dragged past right edge", () => {
+    const r = clampObjectPosition(2000, 100, objW, objH, W, H);
+    expect(r.x).toBe(W - objW); // 920
+  });
+
+  it("clamps y to canvasHeight - height when dragged past bottom edge", () => {
+    const r = clampObjectPosition(100, 5000, objW, objH, W, H);
+    expect(r.y).toBe(H - objH); // 590
+  });
+
+  it("anchors at 0 when object is wider than canvas", () => {
+    const r = clampObjectPosition(100, 100, W + 100, objH, W, H);
+    expect(r.x).toBe(0);
+  });
+
+  it("anchors at 0 when object is taller than canvas", () => {
+    const r = clampObjectPosition(100, 100, objW, H + 100, W, H);
+    expect(r.y).toBe(0);
+  });
+
+  it("returns (0, 0) for negative coords at exact canvas size object", () => {
+    const r = clampObjectPosition(-999, -999, W, H, W, H);
+    expect(r.x).toBe(0);
+    expect(r.y).toBe(0);
+  });
+});
+
+// ─── clampObjectTransform ─────────────────────────────────────────────────────
+
+describe("clampObjectTransform", () => {
+  const W = CANVAS_WIDTH;
+  const H = CANVAS_HEIGHT;
+
+  it("clips width to canvas width", () => {
+    const r = clampObjectTransform(0, 0, W + 200, 50, W, H);
+    expect(r.width).toBe(W);
+  });
+
+  it("clips height to canvas height", () => {
+    const r = clampObjectTransform(0, 0, 80, H + 200, W, H);
+    expect(r.height).toBe(H);
+  });
+
+  it("clamps position after size clip", () => {
+    // Object bigger than canvas → size clips to canvas size → position anchors at 0
+    const r = clampObjectTransform(500, 400, W + 200, H + 200, W, H);
+    expect(r.width).toBe(W);
+    expect(r.height).toBe(H);
+    expect(r.x).toBe(0);
+    expect(r.y).toBe(0);
+  });
+
+  it("preserves normal values unchanged", () => {
+    const r = clampObjectTransform(100, 100, 80, 50, W, H);
+    expect(r).toEqual({ x: 100, y: 100, width: 80, height: 50 });
+  });
+});
+
+// ─── snapToGrid ───────────────────────────────────────────────────────────────
+
+describe("snapToGrid", () => {
+  it("snaps 13 to 20 with grid size 20", () => {
+    expect(snapToGrid(13, 20)).toBe(20);
+  });
+
+  it("snaps 9 to 0 with grid size 20 (rounds down)", () => {
+    // 9/20 = 0.45 → Math.round(0.45) = 0 → 0
+    expect(snapToGrid(9, 20)).toBe(0);
+  });
+
+  it("snaps 10 to 10 with grid size 10", () => {
+    expect(snapToGrid(10, 10)).toBe(10);
+  });
+
+  it("snaps 15 to 20 with grid size 20 (ties round up in JS)", () => {
+    // 15/20 = 0.75 → Math.round(0.75) = 1 → 20
+    expect(snapToGrid(15, 20)).toBe(20);
+  });
+
+  it("snaps 100 to 100 when already on grid", () => {
+    expect(snapToGrid(100, 20)).toBe(100);
+  });
+
+  it("handles 0 input", () => {
+    expect(snapToGrid(0, 20)).toBe(0);
+  });
+
+  it("returns value unchanged when gridSize <= 0", () => {
+    expect(snapToGrid(13, 0)).toBe(13);
+    expect(snapToGrid(13, -5)).toBe(13);
+  });
+
+  // ─── NaN / non-finite safety ─────────────────────────────────────────────
+
+  it("returns 0 for NaN value", () => {
+    expect(snapToGrid(NaN, 20)).toBe(0);
+  });
+
+  it("returns 0 for Infinity value", () => {
+    expect(snapToGrid(Infinity, 20)).toBe(0);
+  });
+
+  it("returns 0 for -Infinity value", () => {
+    expect(snapToGrid(-Infinity, 20)).toBe(0);
+  });
+
+  it("returns value unchanged for NaN gridSize", () => {
+    expect(snapToGrid(13, NaN)).toBe(13);
+  });
+
+  it("returns value unchanged for Infinity gridSize", () => {
+    expect(snapToGrid(13, Infinity)).toBe(13);
+  });
+
+  it("works with grid size 10", () => {
+    expect(snapToGrid(14, 10)).toBe(10);
+    expect(snapToGrid(15, 10)).toBe(20);
+    expect(snapToGrid(16, 10)).toBe(20);
+  });
+
+  it("works with grid size 40", () => {
+    expect(snapToGrid(21, 40)).toBe(40);
+    expect(snapToGrid(19, 40)).toBe(0);
+  });
+});
+
+// ─── snapObjectToGrid ─────────────────────────────────────────────────────────
+
+describe("snapObjectToGrid", () => {
+  it("snaps both axes independently", () => {
+    // snapToGrid(13, 20) = Math.round(0.65)*20 = 20
+    // snapToGrid(27, 20) = Math.round(1.35)*20 = 20
+    const r = snapObjectToGrid(13, 27, 20);
+    expect(r.x).toBe(20);
+    expect(r.y).toBe(20);
+  });
+
+  it("leaves already-aligned values unchanged", () => {
+    const r = snapObjectToGrid(100, 200, 20);
+    expect(r.x).toBe(100);
+    expect(r.y).toBe(200);
+  });
+});
+
+// ─── snapSizeToGrid ───────────────────────────────────────────────────────────
+
+describe("snapSizeToGrid", () => {
+  it("snaps width and height to nearest grid", () => {
+    const r = snapSizeToGrid(83, 47, 20);
+    expect(r.width).toBe(80);
+    expect(r.height).toBe(40);
+  });
+
+  it("never returns below MIN_OBJECT_SIZE", () => {
+    // snapToGrid(3, 20) = 0 → must floor to MIN_OBJECT_SIZE
+    const r = snapSizeToGrid(3, 3, 20);
+    expect(r.width).toBeGreaterThanOrEqual(MIN_OBJECT_SIZE);
+    expect(r.height).toBeGreaterThanOrEqual(MIN_OBJECT_SIZE);
+  });
+
+  it("respects custom minSize", () => {
+    const r = snapSizeToGrid(3, 3, 20, 25);
+    expect(r.width).toBeGreaterThanOrEqual(25);
+    expect(r.height).toBeGreaterThanOrEqual(25);
+  });
+
+  it("does not reduce below minimum even when snap rounds to 0", () => {
+    const r = snapSizeToGrid(1, 1, 20);
+    expect(r.width).toBe(MIN_OBJECT_SIZE);
+    expect(r.height).toBe(MIN_OBJECT_SIZE);
+  });
+});
+
+// ─── snap + clamp together ────────────────────────────────────────────────────
+
+describe("snap then clamp ordering", () => {
+  const W = CANVAS_WIDTH;
+  const H = CANVAS_HEIGHT;
+  const objW = 80;
+  const objH = 50;
+
+  it("snap first, then clamp: snapped value that would exceed canvas is clamped", () => {
+    // Object at x=925 (near right edge): snapToGrid(925, 20)=920, clamp(920,0,920)=920 ✓
+    const snapped = snapObjectToGrid(925, 100, 20);
+    const { x } = clampObjectPosition(snapped.x, snapped.y, objW, objH, W, H);
+    expect(x).toBe(920); // canvasWidth - objW
+  });
+
+  it("snap first, then clamp: negative value snaps to 0 then clamps to 0", () => {
+    const snapped = snapObjectToGrid(-9, 0, 20);
+    const { x } = clampObjectPosition(snapped.x, snapped.y, objW, objH, W, H);
+    expect(x).toBe(0);
+  });
+
+  it("final position is always inside canvas bounds after snap+clamp", () => {
+    const cases = [
+      { rawX: -50, rawY: -50 },
+      { rawX: 2000, rawY: 2000 },
+      { rawX: 500, rawY: 300 },
+    ];
+    for (const { rawX, rawY } of cases) {
+      const snapped = snapObjectToGrid(rawX, rawY, 20);
+      const { x, y } = clampObjectPosition(snapped.x, snapped.y, objW, objH, W, H);
+      expect(x).toBeGreaterThanOrEqual(0);
+      expect(y).toBeGreaterThanOrEqual(0);
+      expect(x).toBeLessThanOrEqual(W - objW);
+      expect(y).toBeLessThanOrEqual(H - objH);
+    }
   });
 });
 

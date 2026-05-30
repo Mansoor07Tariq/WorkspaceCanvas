@@ -15,13 +15,22 @@ import { useLayoutObjects } from "@/features/layoutObjects/hooks/useLayoutObject
 import { useLayoutObjectForm } from "@/features/layoutObjects/hooks/useLayoutObjectForm";
 import { updateLayoutObject } from "@/features/layoutObjects/api/layoutObjectApi";
 import {
+  CANVAS_WIDTH,
+  CANVAS_HEIGHT,
+  DEFAULT_GRID_SIZE,
   buildMovePatch,
   buildTransformPatch,
+  clampObjectPosition,
+  clampObjectTransform,
+  snapToGrid,
+  snapObjectToGrid,
+  snapSizeToGrid,
 } from "@/features/layoutObjects/utils/coordinateHelpers";
 import { LayoutObjectLibrary } from "@/features/layoutObjects/components/LayoutObjectLibrary";
 import { LayoutObjectCreateForm } from "@/features/layoutObjects/components/LayoutObjectCreateForm";
 import { LayoutObjectInspector } from "@/features/layoutObjects/components/LayoutObjectInspector";
 import { LayoutObjectList } from "@/features/layoutObjects/components/LayoutObjectList";
+import { LayoutCanvasToolbar } from "@/features/layoutObjects/components/LayoutCanvasToolbar";
 import { ApiError } from "@/lib/api/apiClient";
 import type { LayoutObjectType } from "@/features/layoutObjects/types/layoutObject.types";
 
@@ -65,6 +74,11 @@ export function FloorLayoutPage() {
   const [savedObjectId, setSavedObjectId] = useState<number | null>(null);
   const savedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // ─── Canvas editor settings (local UI state — not persisted to backend) ───
+  const [showGrid, setShowGrid] = useState(true);
+  const [snapToGridEnabled, setSnapToGridEnabled] = useState(false);
+  const [gridSize, setGridSize] = useState(DEFAULT_GRID_SIZE);
+
   const { objects, loading, error, refresh, updateObjectLocally, setSaving, savingObjectIds } =
     useLayoutObjects(isNaN(officeId) ? 0 : officeId, isNaN(floorId) ? 0 : floorId);
 
@@ -81,8 +95,6 @@ export function FloorLayoutPage() {
     };
   }, []);
 
-  // These helpers are regular functions — not hooks — so they can appear anywhere.
-  // Defined before the early return so the useCallback deps can reference them safely.
   function flashSaved(id: number) {
     if (savedTimeoutRef.current) clearTimeout(savedTimeoutRef.current);
     setSavedObjectId(id);
@@ -93,14 +105,14 @@ export function FloorLayoutPage() {
     return err instanceof ApiError && err.status === 403 ? c.movePermissionError : c.moveError;
   }
 
-  // All useCallback hooks must appear before any early return (Rules of Hooks).
+  // ─── Core move PATCH — receives final coordinates (already snapped/clamped) ─
   const handleObjectMove = useCallback(
-    async (objectId: number, newX: number, newY: number) => {
+    async (objectId: number, x: number, y: number) => {
       if (savingObjectIds.has(objectId)) return;
       const prevObj = objects.find((o) => o.id === objectId);
       if (!prevObj) return;
 
-      const patch = buildMovePatch(newX, newY);
+      const patch = buildMovePatch(x, y);
       updateObjectLocally(objectId, patch);
       setSaving(objectId, true);
       setLayoutSaveError(undefined);
@@ -118,20 +130,59 @@ export function FloorLayoutPage() {
     [officeId, floorId, objects, savingObjectIds, updateObjectLocally, setSaving]
   );
 
+  // ─── Drag-end wrapper — applies snap (both axes) then clamp ───────────────
+  const handleObjectDragEnd = useCallback(
+    (objectId: number, rawX: number, rawY: number) => {
+      const prevObj = objects.find((o) => o.id === objectId);
+      if (!prevObj) return;
+      const w = parseFloat(prevObj.width);
+      const h = parseFloat(prevObj.height);
+
+      // Snap first, then clamp so the final position is always inside canvas
+      const { x: sx, y: sy } = snapToGridEnabled
+        ? snapObjectToGrid(rawX, rawY, gridSize)
+        : { x: rawX, y: rawY };
+      const { x, y } = clampObjectPosition(sx, sy, w, h, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+      handleObjectMove(objectId, x, y);
+    },
+    [objects, snapToGridEnabled, gridSize, handleObjectMove]
+  );
+
+  // ─── Transform PATCH — applies snap + clamp then persists ─────────────────
   const handleObjectTransform = useCallback(
     async (
       objectId: number,
-      newX: number,
-      newY: number,
-      newWidth: number,
-      newHeight: number,
-      newRotation: number
+      rawX: number,
+      rawY: number,
+      rawWidth: number,
+      rawHeight: number,
+      rawRotation: number
     ) => {
       if (savingObjectIds.has(objectId)) return;
       const prevObj = objects.find((o) => o.id === objectId);
       if (!prevObj) return;
 
-      const patch = buildTransformPatch(newX, newY, newWidth, newHeight, newRotation);
+      // Snap size, then position; then clamp both to canvas
+      let w = rawWidth;
+      let h = rawHeight;
+      let x = rawX;
+      let y = rawY;
+      if (snapToGridEnabled) {
+        const snappedSize = snapSizeToGrid(w, h, gridSize);
+        w = snappedSize.width;
+        h = snappedSize.height;
+        x = snapToGrid(x, gridSize);
+        y = snapToGrid(y, gridSize);
+      }
+      const {
+        x: fx,
+        y: fy,
+        width: fw,
+        height: fh,
+      } = clampObjectTransform(x, y, w, h, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+      const patch = buildTransformPatch(fx, fy, fw, fh, rawRotation);
       updateObjectLocally(objectId, patch);
       setSaving(objectId, true);
       setLayoutSaveError(undefined);
@@ -152,24 +203,53 @@ export function FloorLayoutPage() {
         setSaving(objectId, false);
       }
     },
-    [officeId, floorId, objects, savingObjectIds, updateObjectLocally, setSaving]
+    [
+      officeId,
+      floorId,
+      objects,
+      savingObjectIds,
+      updateObjectLocally,
+      setSaving,
+      snapToGridEnabled,
+      gridSize,
+    ]
   );
 
+  // ─── Keyboard handler — axis-specific snap + clamp ────────────────────────
+  //
+  // e.repeat is ignored to prevent PATCH flooding (Option A from spec).
+  // When snap is enabled the step equals gridSize so one keypress = one grid cell.
+  // Snap is applied only to the axis that moved to avoid jumping the perpendicular axis.
   const handleCanvasKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLDivElement>) => {
       if (!selectedObjectId || !canManageLayout) return;
       const isArrow = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key);
       if (!isArrow) return;
-      if (e.repeat) return; // ignore auto-repeat to prevent PATCH flooding
+      if (e.repeat) return;
       e.preventDefault();
-      const step = e.shiftKey ? KEYBOARD_STEP_SHIFT : KEYBOARD_STEP;
+
       const obj = objects.find((o) => o.id === selectedObjectId);
       if (!obj) return;
+      const w = parseFloat(obj.width);
+      const h = parseFloat(obj.height);
+
+      const step = snapToGridEnabled ? gridSize : e.shiftKey ? KEYBOARD_STEP_SHIFT : KEYBOARD_STEP;
       const dx = e.key === "ArrowLeft" ? -step : e.key === "ArrowRight" ? step : 0;
       const dy = e.key === "ArrowUp" ? -step : e.key === "ArrowDown" ? step : 0;
-      handleObjectMove(selectedObjectId, parseFloat(obj.x) + dx, parseFloat(obj.y) + dy);
+
+      let rawX = parseFloat(obj.x) + dx;
+      let rawY = parseFloat(obj.y) + dy;
+
+      // Snap only the axis that moved — avoids the stationary axis jumping to the grid
+      if (snapToGridEnabled) {
+        if (dx !== 0) rawX = snapToGrid(rawX, gridSize);
+        if (dy !== 0) rawY = snapToGrid(rawY, gridSize);
+      }
+
+      const { x, y } = clampObjectPosition(rawX, rawY, w, h, CANVAS_WIDTH, CANVAS_HEIGHT);
+      handleObjectMove(selectedObjectId, x, y);
     },
-    [selectedObjectId, canManageLayout, objects, handleObjectMove]
+    [selectedObjectId, canManageLayout, objects, handleObjectMove, snapToGridEnabled, gridSize]
   );
 
   // All hooks complete — now safe to do early returns.
@@ -183,10 +263,10 @@ export function FloorLayoutPage() {
 
   const canvasFallback = (
     <Box
-      role="img"
-      aria-label={c.canvasAriaLabel}
+      role="status"
+      aria-label={c.canvasLoading}
       sx={{
-        height: CANVAS_HEIGHT_APPROX,
+        height: CANVAS_HEIGHT,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -290,7 +370,7 @@ export function FloorLayoutPage() {
 
       {canManageLayout && selectedObjectId !== null && (
         <Typography variant="caption" color="text.secondary" sx={{ mx: { xs: 2, sm: 3 }, mb: 0.5 }}>
-          {c.keyboardHint}
+          {snapToGridEnabled ? c.keyboardHintSnap : c.keyboardHint}
         </Typography>
       )}
 
@@ -316,18 +396,29 @@ export function FloorLayoutPage() {
             </Stack>
           </Grid>
 
-          {/* Center: floor map canvas (lazy-loaded) */}
+          {/* Center: toolbar + floor map canvas (canvas lazy-loaded) */}
           <Grid size={{ xs: 12, md: 6 }}>
+            <LayoutCanvasToolbar
+              showGrid={showGrid}
+              onShowGridChange={setShowGrid}
+              snapEnabled={snapToGridEnabled}
+              onSnapChange={setSnapToGridEnabled}
+              gridSize={gridSize}
+              onGridSizeChange={setGridSize}
+              canManageLayout={canManageLayout}
+            />
             <Suspense fallback={canvasFallback}>
               <FloorMapCanvas
                 objects={objects}
                 selectedObjectId={selectedObjectId}
                 onSelectObject={setSelectedObjectId}
                 canManageLayout={canManageLayout}
-                onObjectDragEnd={handleObjectMove}
+                onObjectDragEnd={handleObjectDragEnd}
                 onObjectTransformEnd={handleObjectTransform}
                 savingObjectIds={savingObjectIds}
                 onKeyDown={handleCanvasKeyDown}
+                showGrid={showGrid}
+                gridSize={gridSize}
               />
             </Suspense>
           </Grid>
@@ -359,6 +450,3 @@ export function FloorLayoutPage() {
     </Box>
   );
 }
-
-// Approximate canvas height used for the Suspense fallback placeholder
-const CANVAS_HEIGHT_APPROX = 640;
