@@ -165,7 +165,7 @@ describe("buildLayoutObjectPayload", () => {
   });
 
   it("does not include office_id or floor_id", () => {
-    const payload = buildLayoutObjectPayload(baseFields) as Record<string, unknown>;
+    const payload = buildLayoutObjectPayload(baseFields) as unknown as Record<string, unknown>;
     expect("office_id" in payload).toBe(false);
     expect("floor_id" in payload).toBe(false);
   });

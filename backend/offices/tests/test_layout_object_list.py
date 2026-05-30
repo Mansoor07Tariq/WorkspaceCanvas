@@ -97,7 +97,9 @@ def other_floor(db, other_office):
 
 @pytest.fixture
 def owner_user(db, active_org):
-    user = User.objects.create_user(email="owner@example.com", password="pass123")
+    user = User.objects.create_user(
+        username="owner@example.com", email="owner@example.com", password="pass123"
+    )
     Membership.objects.create(
         user=user,
         organization=active_org,
@@ -109,7 +111,9 @@ def owner_user(db, active_org):
 
 @pytest.fixture
 def member_user(db, active_org):
-    user = User.objects.create_user(email="member@example.com", password="pass123")
+    user = User.objects.create_user(
+        username="member@example.com", email="member@example.com", password="pass123"
+    )
     Membership.objects.create(
         user=user,
         organization=active_org,
@@ -121,7 +125,11 @@ def member_user(db, active_org):
 
 @pytest.fixture
 def inactive_member_user(db, active_org):
-    user = User.objects.create_user(email="inactive@example.com", password="pass123")
+    user = User.objects.create_user(
+        username="inactive@example.com",
+        email="inactive@example.com",
+        password="pass123",
+    )
     Membership.objects.create(
         user=user,
         organization=active_org,
@@ -141,7 +149,9 @@ def test_list_unauthenticated(client, active_office, active_floor):
 
 
 def test_list_no_membership(client, active_office, active_floor):
-    user = User.objects.create_user(email="none@example.com", password="pass")
+    user = User.objects.create_user(
+        username="none@example.com", email="none@example.com", password="pass"
+    )
     client.force_authenticate(user=user)
     url = layout_url(active_office.id, active_floor.id)
     response = client.get(url)

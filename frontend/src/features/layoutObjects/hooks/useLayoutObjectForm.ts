@@ -33,10 +33,11 @@ export function useLayoutObjectForm({ officeId, floorId, onCreated }: UseLayoutO
     setFieldsState((prev) => ({ ...prev, [key]: value }));
     setFieldErrors((prev) => ({ ...prev, [key]: undefined }));
     if (key === "object_type" && value) {
-      const newFields = makeDefaultFields(value as LayoutObjectType);
+      const objectType = value as LayoutObjectType;
+      const newFields = makeDefaultFields(objectType);
       setFieldsState((prev) => ({
         ...prev,
-        object_type: value,
+        object_type: objectType,
         width: prev.width !== "80" ? prev.width : newFields.width,
         height: prev.height !== "50" ? prev.height : newFields.height,
       }));
