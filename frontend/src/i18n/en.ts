@@ -425,7 +425,6 @@ export const en = {
       canvasEmptyTitle: "Nothing on this floor yet",
       canvasEmptySubtitle: "Add objects from the library to start building the layout.",
       canvasLoading: "Loading map canvas…",
-      keyboardHint: "Arrow keys move the selected object. Hold Shift to move 10 px.",
 
       // Inspector
       inspectorTitle: "Inspector",
@@ -443,10 +442,19 @@ export const en = {
       inspectorSaving: "Saving…",
       inspectorSaved: "Saved",
 
+      // Canvas toolbar (grid / snap controls)
+      toolbarShowGrid: "Show grid",
+      toolbarSnapToGrid: "Snap to grid",
+      toolbarGridSize: "Grid size:",
+
       // Drag / transform persistence
       moveError: "Could not save layout changes. Please try again.",
       movePermissionError: "You do not have permission to edit this layout.",
       readOnlyBanner: "You can view this layout, but only owners and admins can make changes.",
+
+      // Keyboard movement hints
+      keyboardHint: "Tap arrow keys to move. Hold Shift for 10 px steps.",
+      keyboardHintSnap: "Tap arrow keys to move by one grid step.",
     },
     pages: {
       comingSoon: "This feature is coming soon.",

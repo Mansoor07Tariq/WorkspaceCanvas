@@ -5,6 +5,21 @@
 export const MIN_OBJECT_SIZE = 10;
 
 /**
+ * Logical canvas dimensions shared across canvas rendering and coordinate clamping.
+ * These are the source of truth — FloorMapCanvas.tsx and FloorLayoutPage.tsx both
+ * import from here so they cannot diverge.
+ */
+export const CANVAS_WIDTH = 1000;
+export const CANVAS_HEIGHT = 640;
+
+/** Available grid sizes (px). */
+export const CANVAS_GRID_SIZES = [10, 20, 40] as const;
+/** Default grid size when the editor first opens. */
+export const DEFAULT_GRID_SIZE = 20;
+
+// ─── Formatting ──────────────────────────────────────────────────────────────
+
+/**
  * Format a canvas coordinate number as a 2-decimal string for the backend
  * DecimalField API (e.g. 100.5 → "100.50").
  *
@@ -14,6 +29,8 @@ export function formatCoordinate(value: number): string {
   if (!Number.isFinite(value)) return "0.00";
   return value.toFixed(2);
 }
+
+// ─── Center / top-left conversion ────────────────────────────────────────────
 
 /**
  * Convert a Konva Group's center-point position back to the top-left (x, y)
@@ -36,6 +53,8 @@ export function getTopLeftFromCenterPosition(
     y: centerY - height / 2,
   };
 }
+
+// ─── Patch builders ───────────────────────────────────────────────────────────
 
 /**
  * Build the PATCH payload for a position-only move (drag / keyboard).
@@ -66,6 +85,8 @@ export function buildTransformPatch(
   };
 }
 
+// ─── Transform result ─────────────────────────────────────────────────────────
+
 /**
  * Calculate the corrected layout object dimensions after a Konva Transformer
  * operation.
@@ -95,4 +116,112 @@ export function calculateTransformResult(
   const newHeight = Math.max(minSize, oldHeight * scaleY);
   const { x, y } = getTopLeftFromCenterPosition(centerX, centerY, newWidth, newHeight);
   return { x, y, width: newWidth, height: newHeight, rotation };
+}
+
+// ─── Boundary clamping ────────────────────────────────────────────────────────
+
+/**
+ * Clamp a numeric value to [min, max] inclusive.
+ *
+ * NaN inputs return min. Infinity/-Infinity are handled correctly by
+ * Math.min/Math.max (Infinity clamps to max, -Infinity clamps to min).
+ */
+export function clamp(value: number, min: number, max: number): number {
+  if (Number.isNaN(value)) return min;
+  return Math.min(Math.max(value, min), max);
+}
+
+/**
+ * Clamp an object's top-left position so it stays within the canvas bounds.
+ *
+ * Uses the unrotated bounding box for simplicity. Precise rotated-boundary
+ * collision is deferred to a later PR.
+ *
+ * When the object is wider/taller than the canvas it is anchored at 0 so it
+ * at least remains partially visible.
+ */
+export function clampObjectPosition(
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  canvasWidth: number,
+  canvasHeight: number
+): { x: number; y: number } {
+  return {
+    x: clamp(x, 0, Math.max(0, canvasWidth - width)),
+    y: clamp(y, 0, Math.max(0, canvasHeight - height)),
+  };
+}
+
+/**
+ * Clamp object dimensions so the object does not exceed the canvas, then clamp
+ * position. Returns updated x, y, width, and height.
+ *
+ * Used after a resize/transform to prevent objects from growing larger than the
+ * canvas.
+ */
+export function clampObjectTransform(
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  canvasWidth: number,
+  canvasHeight: number
+): { x: number; y: number; width: number; height: number } {
+  const clampedWidth = Math.min(width, canvasWidth);
+  const clampedHeight = Math.min(height, canvasHeight);
+  const { x: cx, y: cy } = clampObjectPosition(
+    x,
+    y,
+    clampedWidth,
+    clampedHeight,
+    canvasWidth,
+    canvasHeight
+  );
+  return { x: cx, y: cy, width: clampedWidth, height: clampedHeight };
+}
+
+// ─── Grid snapping ────────────────────────────────────────────────────────────
+
+/**
+ * Snap a single value to the nearest grid increment.
+ *
+ * - Returns 0 for non-finite value (NaN / Infinity).
+ * - Returns value unchanged for non-finite or non-positive gridSize.
+ * - Midpoints round up (standard JS Math.round behaviour, e.g. 10 on a 20 px
+ *   grid snaps to 20 when the value is exactly 10).
+ */
+export function snapToGrid(value: number, gridSize: number): number {
+  if (!Number.isFinite(value)) return 0;
+  if (!Number.isFinite(gridSize) || gridSize <= 0) return value;
+  return Math.round(value / gridSize) * gridSize;
+}
+
+/**
+ * Snap an object's top-left position (both axes) to the nearest grid point.
+ */
+export function snapObjectToGrid(x: number, y: number, gridSize: number): { x: number; y: number } {
+  return {
+    x: snapToGrid(x, gridSize),
+    y: snapToGrid(y, gridSize),
+  };
+}
+
+/**
+ * Snap object dimensions to the nearest grid unit while respecting the minimum
+ * allowed size.
+ *
+ * Snap is applied independently per axis; the result is never below minSize.
+ */
+export function snapSizeToGrid(
+  width: number,
+  height: number,
+  gridSize: number,
+  minSize = MIN_OBJECT_SIZE
+): { width: number; height: number } {
+  return {
+    width: Math.max(minSize, snapToGrid(width, gridSize)),
+    height: Math.max(minSize, snapToGrid(height, gridSize)),
+  };
 }
