@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate, useLocation, Navigate } from "react-router-dom";
 import { Alert, Box, Button, Chip, Grid, Stack, Typography } from "@mui/material";
 import { ArrowBackOutlined } from "@mui/icons-material";
@@ -31,6 +31,8 @@ import { LayoutObjectCreateForm } from "@/features/layoutObjects/components/Layo
 import { LayoutObjectInspector } from "@/features/layoutObjects/components/LayoutObjectInspector";
 import { LayoutObjectList } from "@/features/layoutObjects/components/LayoutObjectList";
 import { LayoutCanvasToolbar } from "@/features/layoutObjects/components/LayoutCanvasToolbar";
+import { useDesks } from "@/features/desks/hooks/useDesks";
+import { DeskResourcePanel } from "@/features/desks/components/DeskResourcePanel";
 import { ApiError } from "@/lib/api/apiClient";
 import type { LayoutObjectType } from "@/features/layoutObjects/types/layoutObject.types";
 
@@ -81,6 +83,16 @@ export function FloorLayoutPage() {
 
   const { objects, loading, error, refresh, updateObjectLocally, setSaving, savingObjectIds } =
     useLayoutObjects(isNaN(officeId) ? 0 : officeId, isNaN(floorId) ? 0 : floorId);
+
+  const { desks, refresh: refreshDesks } = useDesks(
+    isNaN(officeId) ? 0 : officeId,
+    isNaN(floorId) ? 0 : floorId
+  );
+
+  const bookableObjectIds = useMemo(
+    () => new Set(desks.map((desk) => desk.layout_object)),
+    [desks]
+  );
 
   const { fields, setField, fieldErrors, submission, handleCreate } = useLayoutObjectForm({
     officeId: isNaN(officeId) ? 0 : officeId,
@@ -419,6 +431,7 @@ export function FloorLayoutPage() {
                 onKeyDown={handleCanvasKeyDown}
                 showGrid={showGrid}
                 gridSize={gridSize}
+                bookableObjectIds={bookableObjectIds}
               />
             </Suspense>
           </Grid>
@@ -431,6 +444,16 @@ export function FloorLayoutPage() {
                 isSaving={isSelectedSaving}
                 isSaved={isSelectedSaved}
               />
+              <DeskResourcePanel
+                key={selectedObject?.id ?? "none"}
+                selectedObject={selectedObject}
+                desks={desks}
+                officeId={officeId}
+                floorId={floorId}
+                canManageLayout={canManageLayout}
+                onDeskCreated={refreshDesks}
+                onDeskDeleted={refreshDesks}
+              />
               <LayoutObjectList
                 officeId={officeId}
                 floorId={floorId}
@@ -442,6 +465,7 @@ export function FloorLayoutPage() {
                   refresh();
                 }}
                 canManageLayout={canManageLayout}
+                bookableObjectIds={bookableObjectIds}
               />
             </Stack>
           </Grid>

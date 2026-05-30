@@ -24,15 +24,29 @@ interface Props {
     newRotation: number
   ) => void;
   isSaving?: boolean;
+  /** True when an active Desk resource is linked to this layout object. */
+  hasDesk?: boolean;
 }
 
 const LABEL_FONT_SIZE = 11;
 const LABEL_PADDING = 3;
 const LABEL_FILL = "#1F2937";
 
+const DESK_DOT_RADIUS = 5;
+const DESK_DOT_COLOR = "#16A34A"; // green-600
+
 export const LayoutObjectCanvasNode = forwardRef<Konva.Group, Props>(
   function LayoutObjectCanvasNode(
-    { obj, isSelected, onSelect, draggable = false, onDragEnd, onTransformEnd, isSaving = false },
+    {
+      obj,
+      isSelected,
+      onSelect,
+      draggable = false,
+      onDragEnd,
+      onTransformEnd,
+      isSaving = false,
+      hasDesk = false,
+    },
     ref
   ) {
     const w = parseFloat(obj.width);
@@ -160,6 +174,15 @@ export const LayoutObjectCanvasNode = forwardRef<Konva.Group, Props>(
           wrap="none"
           listening={false}
         />
+        {hasDesk && (
+          <Circle
+            x={w / 2 - DESK_DOT_RADIUS - 2}
+            y={-h / 2 + DESK_DOT_RADIUS + 2}
+            radius={DESK_DOT_RADIUS}
+            fill={DESK_DOT_COLOR}
+            listening={false}
+          />
+        )}
       </Group>
     );
   }

@@ -456,6 +456,42 @@ export const en = {
       keyboardHint: "Tap arrow keys to move. Hold Shift for 10 px steps.",
       keyboardHintSnap: "Tap arrow keys to move by one grid step.",
     },
+    desks: {
+      // Panel
+      panelTitle: "Desk Resource",
+      notDeskCapable: "This object type cannot be set up as a bookable desk.",
+      noDesk: "Not yet set up as a bookable desk.",
+      createAction: "Set up as bookable desk",
+      deactivateAction: "Remove desk",
+
+      // Form labels
+      nameLabel: "Desk name",
+      namePlaceholder: "e.g. Desk A1",
+      nameRequired: "Desk name is required.",
+      codeLabel: "Code (optional)",
+      codePlaceholder: "e.g. A1",
+      statusLabel: "Status",
+      amenitiesLabel: "Amenities",
+      notesLabel: "Notes",
+      notesPlaceholder: "Any additional notes…",
+      submitCreate: "Create desk",
+
+      // Status display
+      statusAvailable: "Available",
+      statusUnavailable: "Unavailable",
+      statusMaintenance: "Maintenance",
+
+      // Amenities checkboxes
+      amenityMonitor: "Monitor",
+      amenityDockingStation: "Docking station",
+      amenityStandingDesk: "Standing desk",
+      amenityNearWindow: "Near window",
+
+      // Feedback
+      bookableBadge: "Bookable",
+      createError: "Could not create desk. Please try again.",
+      deactivateError: "Could not remove desk. Please try again.",
+    },
     pages: {
       comingSoon: "This feature is coming soon.",
     },
