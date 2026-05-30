@@ -4,10 +4,11 @@ import type { LayoutObject } from "@/features/layoutObjects/types/layoutObject.t
 import type { Desk } from "../types/desk.types";
 
 vi.mock("../api/deskApi");
-import { createDesk, deleteDesk } from "../api/deskApi";
+import { createDesk, deleteDesk, updateDesk } from "../api/deskApi";
 
 const mockCreateDesk = vi.mocked(createDesk);
 const mockDeleteDesk = vi.mocked(deleteDesk);
+const mockUpdateDesk = vi.mocked(updateDesk);
 
 import { DeskResourcePanel } from "../components/DeskResourcePanel";
 
@@ -61,6 +62,7 @@ const defaultProps = {
   floorId: 3,
   canManageLayout: true,
   onDeskCreated: vi.fn(),
+  onDeskUpdated: vi.fn(),
   onDeskDeleted: vi.fn(),
 };
 
@@ -233,6 +235,129 @@ describe("DeskResourcePanel", () => {
     // The "not capable" message has no badge; in this test object IS capable but no desk
     // so we check the no-desk state has no badge
     expect(screen.queryByText(/^bookable$/i)).not.toBeInTheDocument();
+  });
+
+  it("shows Edit desk button for owner/admin when desk exists", () => {
+    const obj = makeLayoutObject();
+    const desk = makeDesk();
+    render(
+      <DeskResourcePanel
+        {...defaultProps}
+        selectedObject={obj}
+        desks={[desk]}
+        canManageLayout={true}
+      />
+    );
+    expect(screen.getByTestId("desk-edit-button")).toBeInTheDocument();
+  });
+
+  it("hides Edit desk button for members", () => {
+    const obj = makeLayoutObject();
+    const desk = makeDesk();
+    render(
+      <DeskResourcePanel
+        {...defaultProps}
+        selectedObject={obj}
+        desks={[desk]}
+        canManageLayout={false}
+      />
+    );
+    expect(screen.queryByTestId("desk-edit-button")).not.toBeInTheDocument();
+  });
+
+  it("clicking Edit desk button shows edit form with current values", () => {
+    const obj = makeLayoutObject();
+    const desk = makeDesk({ name: "Desk Z9", code: "Z9" });
+    render(<DeskResourcePanel {...defaultProps} selectedObject={obj} desks={[desk]} />);
+    fireEvent.click(screen.getByTestId("desk-edit-button"));
+    expect(screen.getByTestId("desk-edit-form")).toBeInTheDocument();
+    expect(screen.getByTestId("desk-edit-name-input")).toHaveValue("Desk Z9");
+    expect(screen.getByTestId("desk-edit-code-input")).toHaveValue("Z9");
+  });
+
+  it("successful edit calls onDeskUpdated and returns to view mode", async () => {
+    mockUpdateDesk.mockResolvedValue(makeDesk({ name: "Updated Name" }));
+    const onDeskUpdated = vi.fn();
+    const obj = makeLayoutObject();
+    const desk = makeDesk();
+    render(
+      <DeskResourcePanel
+        {...defaultProps}
+        selectedObject={obj}
+        desks={[desk]}
+        onDeskUpdated={onDeskUpdated}
+      />
+    );
+    fireEvent.click(screen.getByTestId("desk-edit-button"));
+    fireEvent.click(screen.getByTestId("desk-edit-submit"));
+    await waitFor(() => expect(onDeskUpdated).toHaveBeenCalled());
+    expect(screen.queryByTestId("desk-edit-form")).not.toBeInTheDocument();
+  });
+
+  it("failed edit shows error and stays in edit mode", async () => {
+    mockUpdateDesk.mockRejectedValue(new Error("Server error"));
+    const obj = makeLayoutObject();
+    const desk = makeDesk();
+    render(<DeskResourcePanel {...defaultProps} selectedObject={obj} desks={[desk]} />);
+    fireEvent.click(screen.getByTestId("desk-edit-button"));
+    fireEvent.click(screen.getByTestId("desk-edit-submit"));
+    await waitFor(() => expect(screen.getByText(/could not update desk/i)).toBeInTheDocument());
+    expect(screen.getByTestId("desk-edit-form")).toBeInTheDocument();
+  });
+
+  it("Cancel in edit mode returns to view mode", () => {
+    const obj = makeLayoutObject();
+    const desk = makeDesk();
+    render(<DeskResourcePanel {...defaultProps} selectedObject={obj} desks={[desk]} />);
+    fireEvent.click(screen.getByTestId("desk-edit-button"));
+    expect(screen.getByTestId("desk-edit-form")).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("desk-edit-cancel"));
+    expect(screen.queryByTestId("desk-edit-form")).not.toBeInTheDocument();
+    expect(screen.getByTestId("desk-edit-button")).toBeInTheDocument();
+  });
+
+  it("member cannot see edit button and sees only details", () => {
+    const obj = makeLayoutObject();
+    const desk = makeDesk({ name: "Read-only Desk" });
+    render(
+      <DeskResourcePanel
+        {...defaultProps}
+        selectedObject={obj}
+        desks={[desk]}
+        canManageLayout={false}
+      />
+    );
+    expect(screen.getByText("Read-only Desk")).toBeInTheDocument();
+    expect(screen.queryByTestId("desk-edit-button")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("desk-deactivate-button")).not.toBeInTheDocument();
+  });
+
+  it("bookable badge remains visible after successful edit save", async () => {
+    mockUpdateDesk.mockResolvedValue(makeDesk({ name: "Updated Name" }));
+    const obj = makeLayoutObject();
+    const desk = makeDesk();
+    render(<DeskResourcePanel {...defaultProps} selectedObject={obj} desks={[desk]} />);
+    expect(screen.getByText(/bookable/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("desk-edit-button"));
+    expect(screen.getByText(/bookable/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("desk-edit-submit"));
+    await waitFor(() => expect(screen.queryByTestId("desk-edit-form")).not.toBeInTheDocument());
+    expect(screen.getByText(/bookable/i)).toBeInTheDocument();
+  });
+
+  it("member never sees edit form even when desk exists (defense-in-depth guard)", () => {
+    const obj = makeLayoutObject();
+    const desk = makeDesk();
+    render(
+      <DeskResourcePanel
+        {...defaultProps}
+        selectedObject={obj}
+        desks={[desk]}
+        canManageLayout={false}
+      />
+    );
+    expect(screen.queryByTestId("desk-edit-form")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("desk-edit-button")).not.toBeInTheDocument();
   });
 
   it("form default name updates when switching to a different desk-capable object", () => {

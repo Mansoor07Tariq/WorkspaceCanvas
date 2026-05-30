@@ -18,7 +18,7 @@ vi.mock("@/lib/api/apiClient", () => ({
 }));
 
 import { api } from "@/lib/api/apiClient";
-import { createDesk, deleteDesk, listDesks, updateDesk } from "../api/deskApi";
+import { createDesk, deleteDesk, getDesk, listDesks, updateDesk } from "../api/deskApi";
 
 const mockApi = api as {
   get: ReturnType<typeof vi.fn>;
@@ -55,6 +55,14 @@ describe("deskApi", () => {
     expect("organization" in sentPayload).toBe(false);
     expect("office" in sentPayload).toBe(false);
     expect("floor" in sentPayload).toBe(false);
+  });
+
+  // ─── getDesk ────────────────────────────────────────────────────────────────
+
+  it("getDesk calls GET with correct detail URL", () => {
+    mockApi.get.mockResolvedValue({});
+    getDesk(1, 3, 7);
+    expect(mockApi.get).toHaveBeenCalledWith("/api/offices/1/floors/3/desks/7/");
   });
 
   // ─── updateDesk ─────────────────────────────────────────────────────────────

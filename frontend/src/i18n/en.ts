@@ -475,6 +475,11 @@ export const en = {
       notesLabel: "Notes",
       notesPlaceholder: "Any additional notes…",
       submitCreate: "Create desk",
+      editAction: "Edit desk",
+      submitEdit: "Save changes",
+      cancelEdit: "Cancel",
+      editError: "Could not update desk. Please try again.",
+      editErrorPermission: "You do not have permission to edit this desk.",
 
       // Status display
       statusAvailable: "Available",

@@ -16,6 +16,7 @@ import type { Desk } from "../types/desk.types";
 import { getDeskForLayoutObject, isDeskCapableLayoutObject } from "../utils/deskHelpers";
 import { DeskBadge } from "./DeskBadge";
 import { DeskCreateForm } from "./DeskCreateForm";
+import { DeskEditForm } from "./DeskEditForm";
 import { DeskStatusChip } from "./DeskStatusChip";
 
 const c = en.app.desks;
@@ -27,6 +28,7 @@ interface Props {
   floorId: number;
   canManageLayout: boolean;
   onDeskCreated: () => void;
+  onDeskUpdated: () => void;
   onDeskDeleted: () => void;
 }
 
@@ -59,8 +61,10 @@ export function DeskResourcePanel({
   floorId,
   canManageLayout,
   onDeskCreated,
+  onDeskUpdated,
   onDeskDeleted,
 }: Props) {
+  const [mode, setMode] = useState<"view" | "edit">("view");
   const [deactivating, setDeactivating] = useState(false);
   const [deactivateError, setDeactivateError] = useState<string | undefined>();
 
@@ -81,6 +85,11 @@ export function DeskResourcePanel({
     } finally {
       setDeactivating(false);
     }
+  }
+
+  function handleSaved() {
+    setMode("view");
+    onDeskUpdated();
   }
 
   return (
@@ -119,7 +128,17 @@ export function DeskResourcePanel({
         </>
       )}
 
-      {isCapable && desk && (
+      {isCapable && desk && canManageLayout && mode === "edit" && (
+        <DeskEditForm
+          desk={desk}
+          officeId={officeId}
+          floorId={floorId}
+          onSaved={handleSaved}
+          onCancel={() => setMode("view")}
+        />
+      )}
+
+      {isCapable && desk && mode === "view" && (
         <Stack spacing={1.25}>
           <DetailRow label={c.nameLabel} value={desk.name} />
           {desk.code && <DetailRow label={c.codeLabel} value={desk.code} />}
@@ -157,6 +176,14 @@ export function DeskResourcePanel({
           {canManageLayout && (
             <>
               <Divider />
+              <Button
+                size="small"
+                variant="outlined"
+                onClick={() => setMode("edit")}
+                data-testid="desk-edit-button"
+              >
+                {c.editAction}
+              </Button>
               {deactivateError && (
                 <Alert
                   severity="error"

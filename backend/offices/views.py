@@ -517,6 +517,19 @@ class DeskDetailView(APIView):
             )
         return desk, None
 
+    def get(
+        self, request: Request, office_id: int, floor_id: int, desk_id: int
+    ) -> Response:
+        membership = get_first_active_membership(request.user)
+        if membership is None:
+            return Response(
+                {"detail": _NO_MEMBERSHIP}, status=status.HTTP_403_FORBIDDEN
+            )
+        desk, err = self._get_desk(membership, office_id, floor_id, desk_id)
+        if err is not None:
+            return err
+        return Response(DeskResponseSerializer(desk).data)
+
     def patch(
         self, request: Request, office_id: int, floor_id: int, desk_id: int
     ) -> Response:
