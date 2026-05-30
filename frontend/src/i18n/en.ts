@@ -361,11 +361,63 @@ export const en = {
       // Floor card
       level: "Level",
       activeLabel: "Active",
-      buildMap: "Build map",
-      buildMapTooltip: "Map builder coming next.",
+      manageLayout: "Manage layout",
 
       // Office detail page
       backToOffices: "Back to offices",
+    },
+    layoutObjects: {
+      // Page
+      pageTitle: "Floor layout",
+      backToFloors: "Back to floors",
+
+      // Object library
+      libraryTitle: "Object library",
+
+      // Empty state
+      emptyStateTitle: "No layout objects yet",
+      emptyStateSubtitle:
+        "Add objects like desks, tables, doors, windows, plants, and meeting pods to start shaping this floor.",
+
+      // Create form
+      createFormTitle: "Add object",
+      objectTypeLabel: "Object type",
+      objectTypeRequired: "Select an object type.",
+      labelLabel: "Label",
+      labelPlaceholder: "e.g. Desk A1",
+      labelMaxLength: "Label must be 120 characters or fewer.",
+      xLabel: "X position",
+      yLabel: "Y position",
+      widthLabel: "Width",
+      heightLabel: "Height",
+      rotationLabel: "Rotation (deg)",
+      isBookableLabel: "Bookable",
+      positionRequired: "Position is required.",
+      positionInvalid: "Enter a valid number.",
+      sizeRequired: "Size is required.",
+      sizePositive: "Must be greater than 0.",
+      sizeInvalid: "Enter a valid number.",
+      rotationInvalid: "Enter a valid number.",
+      addButton: "Add object",
+
+      // Object list
+      listTitle: "Layout objects",
+      typeColumn: "Type",
+      labelColumn: "Label",
+      positionColumn: "Position",
+      sizeColumn: "Size (W × H)",
+      rotationColumn: "Rotation",
+      bookableColumn: "Bookable",
+      deleteButton: "Delete",
+
+      // Categories
+      categoryWorkstations: "Workstations",
+      categorySeating: "Seating",
+      categoryTables: "Tables",
+      categoryRoomsZones: "Rooms & Zones",
+      categoryStructure: "Structure",
+      categoryFacilities: "Facilities",
+      categoryDecor: "Decor",
     },
     pages: {
       comingSoon: "This feature is coming soon.",

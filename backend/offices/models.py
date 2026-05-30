@@ -88,3 +88,98 @@ class Floor(models.Model):
             slug = f"{base}-{suffix}"
             suffix += 1
         return slug
+
+
+class FloorLayoutObject(models.Model):
+    class ObjectType(models.TextChoices):
+        # Workstations
+        DESK = "desk", "Desk"
+        STANDING_DESK = "standing_desk", "Standing Desk"
+        HOT_DESK = "hot_desk", "Hot Desk"
+        PRIVATE_DESK = "private_desk", "Private Desk"
+
+        # Seating
+        CHAIR = "chair", "Chair"
+        OFFICE_CHAIR = "office_chair", "Office Chair"
+        MEETING_CHAIR = "meeting_chair", "Meeting Chair"
+        LOUNGE_CHAIR = "lounge_chair", "Lounge Chair"
+        BENCH = "bench", "Bench"
+        SOFA = "sofa", "Sofa"
+
+        # Tables
+        TABLE = "table", "Table"
+        LUNCH_TABLE = "lunch_table", "Lunch Table"
+        BOARDROOM_TABLE = "boardroom_table", "Boardroom Table"
+        COFFEE_TABLE = "coffee_table", "Coffee Table"
+
+        # Rooms / zones
+        ROOM = "room", "Room"
+        MEETING_ROOM = "meeting_room", "Meeting Room"
+        QUIET_ROOM = "quiet_room", "Quiet Room"
+        FOCUS_ZONE = "focus_zone", "Focus Zone"
+        PHONE_BOOTH = "phone_booth", "Phone Booth"
+        MEETING_POD = "meeting_pod", "Meeting Pod"
+
+        # Structure
+        WALL = "wall", "Wall"
+        DOOR = "door", "Door"
+        WINDOW = "window", "Window"
+        COLUMN = "column", "Column"
+        PARTITION = "partition", "Partition"
+
+        # Facilities
+        TOILET = "toilet", "Toilet"
+        SINK = "sink", "Sink"
+        KITCHEN_SINK = "kitchen_sink", "Kitchen Sink"
+        CABINET = "cabinet", "Cabinet"
+        LOCKER = "locker", "Locker"
+        PRINTER = "printer", "Printer"
+        TV = "tv", "TV"
+        WHITEBOARD = "whiteboard", "Whiteboard"
+
+        # Decor / utility
+        PLANT = "plant", "Plant"
+        LABEL = "label", "Label"
+        SHAPE = "shape", "Shape"
+
+    floor = models.ForeignKey(
+        Floor,
+        on_delete=models.CASCADE,
+        related_name="layout_objects",
+    )
+    object_type = models.CharField(
+        max_length=40,
+        choices=ObjectType.choices,
+    )
+    label = models.CharField(max_length=120, blank=True)
+
+    x = models.DecimalField(max_digits=10, decimal_places=2)
+    y = models.DecimalField(max_digits=10, decimal_places=2)
+    width = models.DecimalField(max_digits=10, decimal_places=2)
+    height = models.DecimalField(max_digits=10, decimal_places=2)
+    rotation = models.DecimalField(max_digits=6, decimal_places=2, default=0)
+
+    is_bookable = models.BooleanField(default=False)
+    metadata = models.JSONField(default=dict, blank=True)
+
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["created_at"]
+        indexes = [
+            models.Index(fields=["floor"], name="layout_obj_floor_idx"),
+            models.Index(
+                fields=["floor", "object_type"],
+                name="layout_obj_floor_type_idx",
+            ),
+            models.Index(
+                fields=["floor", "is_active"],
+                name="layout_obj_floor_active_idx",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        label_part = f" — {self.label}" if self.label else ""
+        return f"{self.get_object_type_display()}{label_part} (Floor {self.floor_id})"

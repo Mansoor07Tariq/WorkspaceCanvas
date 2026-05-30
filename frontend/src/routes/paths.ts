@@ -7,6 +7,7 @@ export const ROUTES = {
   mfaSetup: "/app/mfa/setup",
   offices: "/app/offices",
   officeDetail: "/app/offices/:officeId",
+  floorLayout: "/app/offices/:officeId/floors/:floorId/layout",
   bookings: "/app/bookings",
   events: "/app/events",
   people: "/app/people",
@@ -14,4 +15,8 @@ export const ROUTES = {
 
 export function officeDetailPath(officeId: number): string {
   return `/app/offices/${officeId}`;
+}
+
+export function floorLayoutPath(officeId: number, floorId: number): string {
+  return `/app/offices/${officeId}/floors/${floorId}/layout`;
 }
