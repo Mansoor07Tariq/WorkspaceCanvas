@@ -26,8 +26,22 @@ vi.mock("react-konva", () => ({
   Circle: () => null,
   Line: () => null,
   Text: ({ text }: { text?: string }) => (text ? <span>{text}</span> : null),
-  Group: ({ children, onClick }: { children?: React.ReactNode; onClick?: () => void }) => (
-    <div data-testid="canvas-object-group" onClick={onClick}>
+  Group: ({
+    children,
+    onClick,
+    onDragEnd,
+    draggable,
+  }: {
+    children?: React.ReactNode;
+    onClick?: () => void;
+    onDragEnd?: (e: { target: { x: () => number; y: () => number } }) => void;
+    draggable?: boolean;
+  }) => (
+    <div
+      data-testid={draggable ? "canvas-object-group-draggable" : "canvas-object-group"}
+      onClick={onClick}
+      onMouseUp={() => onDragEnd?.({ target: { x: () => 140, y: () => 175 } })}
+    >
       {children}
     </div>
   ),
@@ -84,7 +98,7 @@ describe("FloorMapCanvas", () => {
         onSelectObject={vi.fn()}
       />
     );
-    expect(screen.getAllByTestId("canvas-object-group")).toHaveLength(2);
+    expect(screen.getAllByTestId(/canvas-object-group/).length).toBe(2);
   });
 
   it("calls onSelectObject with object id when canvas object is clicked", () => {
@@ -96,7 +110,7 @@ describe("FloorMapCanvas", () => {
         onSelectObject={onSelectObject}
       />
     );
-    fireEvent.click(screen.getByTestId("canvas-object-group"));
+    fireEvent.click(screen.getByTestId(/canvas-object-group/));
     expect(onSelectObject).toHaveBeenCalledWith(7);
   });
 
@@ -133,5 +147,49 @@ describe("FloorMapCanvas", () => {
       />
     );
     expect(screen.getByText("DSK")).toBeInTheDocument();
+  });
+
+  // ─── Drag tests ───────────────────────────────────────────────────────────
+
+  it("renders non-draggable groups when canManageLayout is false", () => {
+    render(
+      <FloorMapCanvas
+        objects={[makeObj()]}
+        selectedObjectId={null}
+        onSelectObject={vi.fn()}
+        canManageLayout={false}
+      />
+    );
+    expect(screen.getByTestId("canvas-object-group")).toBeInTheDocument();
+    expect(screen.queryByTestId("canvas-object-group-draggable")).not.toBeInTheDocument();
+  });
+
+  it("renders draggable groups when canManageLayout is true", () => {
+    render(
+      <FloorMapCanvas
+        objects={[makeObj()]}
+        selectedObjectId={null}
+        onSelectObject={vi.fn()}
+        canManageLayout={true}
+      />
+    );
+    expect(screen.getByTestId("canvas-object-group-draggable")).toBeInTheDocument();
+  });
+
+  it("calls onObjectDragEnd with top-left coordinates after drag", () => {
+    const onObjectDragEnd = vi.fn();
+    // Object: x=100, y=150, w=80, h=50 → center=(140, 175)
+    // Mock drag ends at center (140, 175) → top-left should be (100, 150)
+    render(
+      <FloorMapCanvas
+        objects={[makeObj({ id: 5, x: "100.00", y: "150.00", width: "80.00", height: "50.00" })]}
+        selectedObjectId={null}
+        onSelectObject={vi.fn()}
+        canManageLayout={true}
+        onObjectDragEnd={onObjectDragEnd}
+      />
+    );
+    fireEvent.mouseUp(screen.getByTestId("canvas-object-group-draggable"));
+    expect(onObjectDragEnd).toHaveBeenCalledWith(5, 100, 150);
   });
 });

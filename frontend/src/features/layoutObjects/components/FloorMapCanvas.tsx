@@ -18,6 +18,9 @@ interface Props {
   objects: LayoutObject[];
   selectedObjectId: number | null;
   onSelectObject: (id: number | null) => void;
+  canManageLayout?: boolean;
+  onObjectDragEnd?: (objectId: number, newX: number, newY: number) => void;
+  savingObjectIds?: ReadonlySet<number>;
 }
 
 function buildGridLines() {
@@ -47,7 +50,14 @@ function buildGridLines() {
   return lines;
 }
 
-export function FloorMapCanvas({ objects, selectedObjectId, onSelectObject }: Props) {
+export function FloorMapCanvas({
+  objects,
+  selectedObjectId,
+  onSelectObject,
+  canManageLayout = false,
+  onObjectDragEnd,
+  savingObjectIds,
+}: Props) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function handleStageClick(e: any) {
     if (e.target === e.target.getStage()) {
@@ -95,6 +105,9 @@ export function FloorMapCanvas({ objects, selectedObjectId, onSelectObject }: Pr
               obj={obj}
               isSelected={obj.id === selectedObjectId}
               onSelect={() => onSelectObject(obj.id)}
+              draggable={canManageLayout}
+              onDragEnd={onObjectDragEnd}
+              isSaving={savingObjectIds?.has(obj.id)}
             />
           ))}
         </Layer>

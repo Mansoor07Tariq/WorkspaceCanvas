@@ -437,6 +437,12 @@ export const en = {
       inspectorNoLabel: "(no label)",
       inspectorYes: "Yes",
       inspectorNo: "No",
+      inspectorSaving: "Saving…",
+
+      // Drag / move persistence
+      moveError: "Could not save position. Please try again.",
+      movePermissionError: "You do not have permission to edit this layout.",
+      readOnlyBanner: "You can view this layout, but only owners and admins can make changes.",
     },
     pages: {
       comingSoon: "This feature is coming soon.",

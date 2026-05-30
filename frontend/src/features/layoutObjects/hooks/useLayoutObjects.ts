@@ -7,21 +7,43 @@ interface State {
   objects: LayoutObject[];
   loading: boolean;
   error: string | undefined;
+  savingObjectIds: ReadonlySet<number>;
 }
 
 type Action =
   | { type: "fetch_start" }
   | { type: "fetch_success"; payload: LayoutObject[] }
-  | { type: "fetch_error"; payload: string };
+  | { type: "fetch_error"; payload: string }
+  | { type: "patch_object"; id: number; patch: Partial<LayoutObject> }
+  | { type: "set_saving"; id: number; saving: boolean };
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
     case "fetch_start":
       return { ...state, loading: true, error: undefined };
     case "fetch_success":
-      return { objects: action.payload, loading: false, error: undefined };
+      return {
+        objects: action.payload,
+        loading: false,
+        error: undefined,
+        savingObjectIds: new Set(),
+      };
     case "fetch_error":
       return { ...state, loading: false, error: action.payload };
+    case "patch_object":
+      return {
+        ...state,
+        objects: state.objects.map((o) => (o.id === action.id ? { ...o, ...action.patch } : o)),
+      };
+    case "set_saving": {
+      const next = new Set(state.savingObjectIds);
+      if (action.saving) {
+        next.add(action.id);
+      } else {
+        next.delete(action.id);
+      }
+      return { ...state, savingObjectIds: next };
+    }
   }
 }
 
@@ -29,6 +51,7 @@ const initialState: State = {
   objects: [],
   loading: true,
   error: undefined,
+  savingObjectIds: new Set(),
 };
 
 export function useLayoutObjects(officeId: number, floorId: number) {
@@ -37,6 +60,14 @@ export function useLayoutObjects(officeId: number, floorId: number) {
 
   function refresh() {
     setTick((t) => t + 1);
+  }
+
+  function updateObjectLocally(id: number, patch: Partial<LayoutObject>) {
+    dispatch({ type: "patch_object", id, patch });
+  }
+
+  function setSaving(id: number, saving: boolean) {
+    dispatch({ type: "set_saving", id, saving });
   }
 
   useEffect(() => {
@@ -57,5 +88,5 @@ export function useLayoutObjects(officeId: number, floorId: number) {
     };
   }, [officeId, floorId, tick]);
 
-  return { ...state, refresh };
+  return { ...state, refresh, updateObjectLocally, setSaving };
 }

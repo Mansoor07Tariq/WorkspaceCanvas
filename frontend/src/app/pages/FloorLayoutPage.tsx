@@ -1,18 +1,23 @@
 import { useState } from "react";
 import { useParams, useNavigate, useLocation, Navigate } from "react-router-dom";
-import { Box, Button, Chip, Grid, Stack, Typography } from "@mui/material";
+import { Alert, Box, Button, Chip, Grid, Stack, Typography } from "@mui/material";
 import { ArrowBackOutlined } from "@mui/icons-material";
 import { LoadingState } from "@/components/feedback/LoadingState";
 import { ErrorAlert } from "@/components/feedback/ErrorAlert";
 import { en } from "@/i18n/en";
 import { ROUTES, officeDetailPath } from "@/routes/paths";
+import { useAuth } from "@/features/auth";
+import { getFirstActiveMembership } from "@/features/organizations/utils/membershipUtils";
 import { useLayoutObjects } from "@/features/layoutObjects/hooks/useLayoutObjects";
 import { useLayoutObjectForm } from "@/features/layoutObjects/hooks/useLayoutObjectForm";
+import { updateLayoutObject } from "@/features/layoutObjects/api/layoutObjectApi";
+import { formatCoordinate } from "@/features/layoutObjects/utils/coordinateHelpers";
 import { LayoutObjectLibrary } from "@/features/layoutObjects/components/LayoutObjectLibrary";
 import { LayoutObjectCreateForm } from "@/features/layoutObjects/components/LayoutObjectCreateForm";
 import { FloorMapCanvas } from "@/features/layoutObjects/components/FloorMapCanvas";
 import { LayoutObjectInspector } from "@/features/layoutObjects/components/LayoutObjectInspector";
 import { LayoutObjectList } from "@/features/layoutObjects/components/LayoutObjectList";
+import { ApiError } from "@/lib/api/apiClient";
 import type { LayoutObjectType } from "@/features/layoutObjects/types/layoutObject.types";
 
 const c = en.app.layoutObjects;
@@ -35,12 +40,15 @@ export function FloorLayoutPage() {
   const officeId = parseInt(officeIdParam ?? "", 10);
   const floorId = parseInt(floorIdParam ?? "", 10);
 
-  const [selectedObjectId, setSelectedObjectId] = useState<number | null>(null);
+  const { user } = useAuth();
+  const membership = getFirstActiveMembership(user);
+  const canManageLayout = membership?.role === "owner" || membership?.role === "admin";
 
-  const { objects, loading, error, refresh } = useLayoutObjects(
-    isNaN(officeId) ? 0 : officeId,
-    isNaN(floorId) ? 0 : floorId
-  );
+  const [selectedObjectId, setSelectedObjectId] = useState<number | null>(null);
+  const [moveError, setMoveError] = useState<string | undefined>(undefined);
+
+  const { objects, loading, error, refresh, updateObjectLocally, setSaving, savingObjectIds } =
+    useLayoutObjects(isNaN(officeId) ? 0 : officeId, isNaN(floorId) ? 0 : floorId);
 
   const { fields, setField, fieldErrors, submission, handleCreate } = useLayoutObjectForm({
     officeId: isNaN(officeId) ? 0 : officeId,
@@ -52,7 +60,35 @@ export function FloorLayoutPage() {
     return <Navigate to={ROUTES.offices} replace />;
   }
 
+  async function handleObjectMove(objectId: number, newX: number, newY: number) {
+    if (savingObjectIds.has(objectId)) return;
+
+    const prevObj = objects.find((o) => o.id === objectId);
+    if (!prevObj) return;
+
+    const xStr = formatCoordinate(newX);
+    const yStr = formatCoordinate(newY);
+
+    updateObjectLocally(objectId, { x: xStr, y: yStr });
+    setSaving(objectId, true);
+    setMoveError(undefined);
+
+    try {
+      await updateLayoutObject(officeId, floorId, objectId, { x: xStr, y: yStr });
+    } catch (err) {
+      updateObjectLocally(objectId, { x: prevObj.x, y: prevObj.y });
+      if (err instanceof ApiError && err.status === 403) {
+        setMoveError(c.movePermissionError);
+      } else {
+        setMoveError(c.moveError);
+      }
+    } finally {
+      setSaving(objectId, false);
+    }
+  }
+
   const selectedObject = objects.find((o) => o.id === selectedObjectId) ?? null;
+  const isSelectedSaving = selectedObjectId !== null && savingObjectIds.has(selectedObjectId);
 
   const header = (
     <Box sx={{ px: { xs: 2, sm: 3 }, pt: { xs: 2, sm: 3 }, pb: 1.5 }}>
@@ -123,23 +159,42 @@ export function FloorLayoutPage() {
   return (
     <Box sx={{ minHeight: "100%", display: "flex", flexDirection: "column" }}>
       {header}
+
+      {!canManageLayout && (
+        <Alert severity="info" sx={{ mx: { xs: 2, sm: 3 }, mb: 1 }}>
+          {c.readOnlyBanner}
+        </Alert>
+      )}
+
+      {moveError && (
+        <Alert
+          severity="error"
+          onClose={() => setMoveError(undefined)}
+          sx={{ mx: { xs: 2, sm: 3 }, mb: 1 }}
+        >
+          {moveError}
+        </Alert>
+      )}
+
       <Box sx={{ flex: 1, px: { xs: 2, sm: 3 }, pb: { xs: 2, sm: 3 } }}>
         <Grid container spacing={2} sx={{ alignItems: "flex-start" }}>
-          {/* Left: library + create form */}
+          {/* Left: library (+ create form for owners/admins) */}
           <Grid size={{ xs: 12, md: 3 }}>
             <Stack spacing={2}>
               <LayoutObjectLibrary
                 selectedType={fields.object_type}
                 onSelect={(type: LayoutObjectType) => setField("object_type", type)}
               />
-              <LayoutObjectCreateForm
-                fields={fields}
-                fieldErrors={fieldErrors}
-                submissionLoading={submission.loading}
-                submissionError={submission.generalError}
-                onFieldChange={setField}
-                onSubmit={handleCreate}
-              />
+              {canManageLayout && (
+                <LayoutObjectCreateForm
+                  fields={fields}
+                  fieldErrors={fieldErrors}
+                  submissionLoading={submission.loading}
+                  submissionError={submission.generalError}
+                  onFieldChange={setField}
+                  onSubmit={handleCreate}
+                />
+              )}
             </Stack>
           </Grid>
 
@@ -149,13 +204,16 @@ export function FloorLayoutPage() {
               objects={objects}
               selectedObjectId={selectedObjectId}
               onSelectObject={setSelectedObjectId}
+              canManageLayout={canManageLayout}
+              onObjectDragEnd={handleObjectMove}
+              savingObjectIds={savingObjectIds}
             />
           </Grid>
 
           {/* Right: inspector + list */}
           <Grid size={{ xs: 12, md: 3 }}>
             <Stack spacing={2}>
-              <LayoutObjectInspector object={selectedObject} />
+              <LayoutObjectInspector object={selectedObject} isSaving={isSelectedSaving} />
               <LayoutObjectList
                 officeId={officeId}
                 floorId={floorId}
@@ -166,6 +224,7 @@ export function FloorLayoutPage() {
                   setSelectedObjectId(null);
                   refresh();
                 }}
+                canManageLayout={canManageLayout}
               />
             </Stack>
           </Grid>

@@ -11,6 +11,7 @@ interface Props {
   onSelect?: (id: number) => void;
   onDelete: (id: number) => void;
   deleteDisabled?: boolean;
+  canDelete?: boolean;
 }
 
 export function LayoutObjectListItem({
@@ -19,6 +20,7 @@ export function LayoutObjectListItem({
   onSelect,
   onDelete,
   deleteDisabled,
+  canDelete = true,
 }: Props) {
   return (
     <Box
@@ -46,22 +48,24 @@ export function LayoutObjectListItem({
             {obj.is_bookable && <> &nbsp;·&nbsp; {c.bookableColumn}</>}
           </Typography>
         </Box>
-        <Tooltip title={c.deleteButton}>
-          <span>
-            <IconButton
-              size="small"
-              color="error"
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete(obj.id);
-              }}
-              disabled={deleteDisabled}
-              aria-label={c.deleteButton}
-            >
-              <DeleteOutlined fontSize="small" />
-            </IconButton>
-          </span>
-        </Tooltip>
+        {canDelete && (
+          <Tooltip title={c.deleteButton}>
+            <span>
+              <IconButton
+                size="small"
+                color="error"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete(obj.id);
+                }}
+                disabled={deleteDisabled}
+                aria-label={c.deleteButton}
+              >
+                <DeleteOutlined fontSize="small" />
+              </IconButton>
+            </span>
+          </Tooltip>
+        )}
       </Stack>
     </Box>
   );

@@ -89,4 +89,14 @@ describe("LayoutObjectInspector", () => {
     render(<LayoutObjectInspector object={mockObject} />);
     expect(screen.queryByText(/metadata/i)).not.toBeInTheDocument();
   });
+
+  it("shows saving chip when isSaving=true", () => {
+    render(<LayoutObjectInspector object={mockObject} isSaving={true} />);
+    expect(screen.getByText(/saving/i)).toBeInTheDocument();
+  });
+
+  it("does not show saving chip when isSaving=false", () => {
+    render(<LayoutObjectInspector object={mockObject} isSaving={false} />);
+    expect(screen.queryByText(/saving/i)).not.toBeInTheDocument();
+  });
 });
