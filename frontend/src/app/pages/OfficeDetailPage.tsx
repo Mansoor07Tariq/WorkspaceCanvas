@@ -85,7 +85,7 @@ export function OfficeDetailPage() {
       ) : floors.length === 0 ? (
         <FloorsEmptyState onAddFloor={() => setMode("create")} />
       ) : (
-        <FloorsList floors={floors} onAddFloor={() => setMode("create")} />
+        <FloorsList floors={floors} officeId={officeId} onAddFloor={() => setMode("create")} />
       )}
     </Box>
   );

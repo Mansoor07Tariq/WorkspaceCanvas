@@ -7,7 +7,7 @@ from accounts.models import MemberRole, Membership
 if TYPE_CHECKING:
     from django.contrib.auth.models import AbstractBaseUser
 
-    from .models import Office
+    from .models import Floor, Office
 
 
 def get_first_active_membership(user: AbstractBaseUser) -> Membership | None:
@@ -36,4 +36,13 @@ def get_office_for_membership(membership: Membership, office_id: int) -> Office 
             is_active=True,
         )
     except Office.DoesNotExist:
+        return None
+
+
+def get_floor_for_office(office: Office, floor_id: int) -> Floor | None:
+    from .models import Floor
+
+    try:
+        return Floor.objects.get(pk=floor_id, office=office, is_active=True)
+    except Floor.DoesNotExist:
         return None

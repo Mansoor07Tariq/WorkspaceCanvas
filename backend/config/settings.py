@@ -201,6 +201,9 @@ REST_FRAMEWORK = {
         "org_create": os.environ.get("THROTTLE_ORG_CREATE", "5/hour"),
         "office_create": os.environ.get("THROTTLE_OFFICE_CREATE", "30/hour"),
         "floor_create": os.environ.get("THROTTLE_FLOOR_CREATE", "60/hour"),
+        "layout_object_write": os.environ.get(
+            "THROTTLE_LAYOUT_OBJECT_WRITE", "120/hour"
+        ),
     },
 }
 

@@ -9,6 +9,7 @@ import {
 import { AppPlaceholderPage } from "@/app/pages/AppPlaceholderPage";
 import { AppOfficesPage } from "@/app/pages/AppOfficesPage";
 import { OfficeDetailPage } from "@/app/pages/OfficeDetailPage";
+import { FloorLayoutPage } from "@/app/pages/FloorLayoutPage";
 import { ComingSoonPage } from "@/app/pages/ComingSoonPage";
 import { ProtectedRoute } from "@/routes/ProtectedRoute";
 import { en } from "@/i18n/en";
@@ -51,6 +52,14 @@ export function AppRouter() {
           element={
             <ProtectedRoute>
               <OfficeDetailPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.floorLayout}
+          element={
+            <ProtectedRoute>
+              <FloorLayoutPage />
             </ProtectedRoute>
           }
         />

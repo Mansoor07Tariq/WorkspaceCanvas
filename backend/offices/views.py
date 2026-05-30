@@ -9,17 +9,21 @@ from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
-from .models import Floor, Office
+from .models import Floor, FloorLayoutObject, Office
 from .permissions import (
     get_first_active_membership,
+    get_floor_for_office,
     get_office_for_membership,
     user_can_manage_offices,
 )
 from .serializers import (
     CreateFloorSerializer,
+    CreateLayoutObjectSerializer,
     CreateOfficeSerializer,
     FloorResponseSerializer,
+    LayoutObjectResponseSerializer,
     OfficeResponseSerializer,
+    UpdateLayoutObjectSerializer,
 )
 
 _MAX_SLUG_RETRIES = 5
@@ -221,3 +225,148 @@ class FloorListCreateView(APIView):
             {"detail": _FLOOR_SLUG_ERROR},
             status=status.HTTP_409_CONFLICT,
         )
+
+
+_WRITE_METHODS = frozenset({"POST", "PATCH", "DELETE"})
+
+
+class _LayoutObjectWriteThrottle(ScopedRateThrottle):
+    """Applies the layout_object_write throttle scope on write requests."""
+
+    scope = "layout_object_write"
+
+    def allow_request(self, request: Request, view: APIView) -> bool:  # type: ignore[override]
+        if request.method not in _WRITE_METHODS:
+            return True
+        return super().allow_request(request, view)
+
+
+class LayoutObjectListCreateView(APIView):
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [_LayoutObjectWriteThrottle]
+
+    def get(self, request: Request, office_id: int, floor_id: int) -> Response:
+        membership = get_first_active_membership(request.user)
+        if membership is None:
+            return Response(
+                {"detail": _NO_MEMBERSHIP}, status=status.HTTP_403_FORBIDDEN
+            )
+        office = get_office_for_membership(membership, office_id)
+        if office is None:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+        floor = get_floor_for_office(office, floor_id)
+        if floor is None:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+        objects = FloorLayoutObject.objects.filter(floor=floor, is_active=True)
+        return Response(LayoutObjectResponseSerializer(objects, many=True).data)
+
+    def post(self, request: Request, office_id: int, floor_id: int) -> Response:
+        membership = get_first_active_membership(request.user)
+        if membership is None:
+            return Response(
+                {"detail": _NO_MEMBERSHIP}, status=status.HTTP_403_FORBIDDEN
+            )
+        office = get_office_for_membership(membership, office_id)
+        if office is None:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+        floor = get_floor_for_office(office, floor_id)
+        if floor is None:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+        if not user_can_manage_offices(membership):
+            return Response(
+                {"detail": _NO_MANAGE_OFFICES}, status=status.HTTP_403_FORBIDDEN
+            )
+        serializer = CreateLayoutObjectSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        data = serializer.validated_data
+        obj = FloorLayoutObject.objects.create(
+            floor=floor,
+            object_type=data["object_type"],
+            label=data["label"],
+            x=data["x"],
+            y=data["y"],
+            width=data["width"],
+            height=data["height"],
+            rotation=data["rotation"],
+            is_bookable=data["is_bookable"],
+            metadata=data["metadata"],
+        )
+        return Response(
+            LayoutObjectResponseSerializer(obj).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class LayoutObjectDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [_LayoutObjectWriteThrottle]
+
+    def _get_object(
+        self,
+        membership,
+        office_id: int,
+        floor_id: int,
+        object_id: int,
+    ):
+        office = get_office_for_membership(membership, office_id)
+        if office is None:
+            return None, Response(
+                {"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND
+            )
+        floor = get_floor_for_office(office, floor_id)
+        if floor is None:
+            return None, Response(
+                {"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND
+            )
+        try:
+            obj = FloorLayoutObject.objects.get(
+                pk=object_id, floor=floor, is_active=True
+            )
+        except FloorLayoutObject.DoesNotExist:
+            return None, Response(
+                {"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND
+            )
+        return obj, None
+
+    def patch(
+        self, request: Request, office_id: int, floor_id: int, object_id: int
+    ) -> Response:
+        membership = get_first_active_membership(request.user)
+        if membership is None:
+            return Response(
+                {"detail": _NO_MEMBERSHIP}, status=status.HTTP_403_FORBIDDEN
+            )
+        if not user_can_manage_offices(membership):
+            return Response(
+                {"detail": _NO_MANAGE_OFFICES}, status=status.HTTP_403_FORBIDDEN
+            )
+        obj, err = self._get_object(membership, office_id, floor_id, object_id)
+        if err is not None:
+            return err
+        serializer = UpdateLayoutObjectSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        for field, value in serializer.validated_data.items():
+            setattr(obj, field, value)
+        obj.save()
+        return Response(LayoutObjectResponseSerializer(obj).data)
+
+    def delete(
+        self, request: Request, office_id: int, floor_id: int, object_id: int
+    ) -> Response:
+        membership = get_first_active_membership(request.user)
+        if membership is None:
+            return Response(
+                {"detail": _NO_MEMBERSHIP}, status=status.HTTP_403_FORBIDDEN
+            )
+        if not user_can_manage_offices(membership):
+            return Response(
+                {"detail": _NO_MANAGE_OFFICES}, status=status.HTTP_403_FORBIDDEN
+            )
+        obj, err = self._get_object(membership, office_id, floor_id, object_id)
+        if err is not None:
+            return err
+        obj.is_active = False
+        obj.save()
+        return Response(status=status.HTTP_204_NO_CONTENT)

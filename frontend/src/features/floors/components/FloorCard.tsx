@@ -1,14 +1,19 @@
-import { Box, Chip, Stack, Tooltip, Typography } from "@mui/material";
+import { Box, Button, Chip, Stack, Typography } from "@mui/material";
+import { useNavigate } from "react-router-dom";
 import { en } from "@/i18n/en";
+import { floorLayoutPath } from "@/routes/paths";
 import type { Floor } from "../types/floor.types";
 
 const c = en.app.floors;
 
 interface Props {
   floor: Floor;
+  officeId: number;
 }
 
-export function FloorCard({ floor }: Props) {
+export function FloorCard({ floor, officeId }: Props) {
+  const navigate = useNavigate();
+
   return (
     <Box
       sx={{
@@ -37,22 +42,18 @@ export function FloorCard({ floor }: Props) {
         <Typography variant="body2" color="text.secondary">
           {c.level} {floor.level_number}
         </Typography>
-        <Tooltip title={c.buildMapTooltip} arrow>
-          <span>
-            <Typography
-              variant="body2"
-              sx={{
-                color: "text.disabled",
-                cursor: "default",
-                display: "inline-block",
-                fontSize: "0.75rem",
-                mt: 0.5,
-              }}
-            >
-              {c.buildMap} →
-            </Typography>
-          </span>
-        </Tooltip>
+        <Button
+          variant="text"
+          size="small"
+          onClick={() =>
+            navigate(floorLayoutPath(officeId, floor.id), {
+              state: { floorName: floor.name, levelNumber: floor.level_number },
+            })
+          }
+          sx={{ alignSelf: "flex-start", fontSize: "0.75rem", p: 0, minWidth: 0 }}
+        >
+          {c.manageLayout} →
+        </Button>
       </Stack>
     </Box>
   );

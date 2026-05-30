@@ -4,7 +4,7 @@ import zoneinfo
 
 from rest_framework import serializers
 
-from .models import Floor, Office
+from .models import Floor, FloorLayoutObject, Office
 
 _VALID_TIMEZONES: frozenset[str] = frozenset(zoneinfo.available_timezones())
 
@@ -92,3 +92,100 @@ class FloorResponseSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
+
+
+_OPT_DECIMAL_10 = {"max_digits": 10, "decimal_places": 2, "required": False}
+_OPT_DECIMAL_6 = {"max_digits": 6, "decimal_places": 2, "required": False}
+
+
+class CreateLayoutObjectSerializer(serializers.Serializer):
+    object_type = serializers.ChoiceField(choices=FloorLayoutObject.ObjectType.choices)
+    label = serializers.CharField(
+        max_length=120, required=False, allow_blank=True, default=""
+    )
+    x = serializers.DecimalField(max_digits=10, decimal_places=2)
+    y = serializers.DecimalField(max_digits=10, decimal_places=2)
+    width = serializers.DecimalField(max_digits=10, decimal_places=2)
+    height = serializers.DecimalField(max_digits=10, decimal_places=2)
+    rotation = serializers.DecimalField(
+        max_digits=6, decimal_places=2, required=False, default=0
+    )
+    is_bookable = serializers.BooleanField(required=False, default=False)
+    metadata = serializers.JSONField(required=False, default=dict)
+
+    def validate_label(self, value: str) -> str:
+        return value.strip()
+
+    def validate_width(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("Width must be greater than 0.")
+        return value
+
+    def validate_height(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("Height must be greater than 0.")
+        return value
+
+    def validate_metadata(self, value):
+        if not isinstance(value, dict):
+            raise serializers.ValidationError("Metadata must be a JSON object.")
+        return value
+
+
+class UpdateLayoutObjectSerializer(serializers.Serializer):
+    object_type = serializers.ChoiceField(
+        choices=FloorLayoutObject.ObjectType.choices, required=False
+    )
+    label = serializers.CharField(max_length=120, required=False, allow_blank=True)
+    x = serializers.DecimalField(**_OPT_DECIMAL_10)
+    y = serializers.DecimalField(**_OPT_DECIMAL_10)
+    width = serializers.DecimalField(**_OPT_DECIMAL_10)
+    height = serializers.DecimalField(**_OPT_DECIMAL_10)
+    rotation = serializers.DecimalField(**_OPT_DECIMAL_6)
+    is_bookable = serializers.BooleanField(required=False)
+    metadata = serializers.JSONField(required=False)
+
+    def validate_label(self, value: str) -> str:
+        return value.strip()
+
+    def validate_width(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("Width must be greater than 0.")
+        return value
+
+    def validate_height(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("Height must be greater than 0.")
+        return value
+
+    def validate_metadata(self, value):
+        if not isinstance(value, dict):
+            raise serializers.ValidationError("Metadata must be a JSON object.")
+        return value
+
+
+class LayoutObjectResponseSerializer(serializers.ModelSerializer):
+    object_type_display = serializers.SerializerMethodField()
+
+    class Meta:
+        model = FloorLayoutObject
+        fields = [
+            "id",
+            "floor",
+            "object_type",
+            "object_type_display",
+            "label",
+            "x",
+            "y",
+            "width",
+            "height",
+            "rotation",
+            "is_bookable",
+            "metadata",
+            "is_active",
+            "created_at",
+            "updated_at",
+        ]
+
+    def get_object_type_display(self, obj: FloorLayoutObject) -> str:
+        return obj.get_object_type_display()

@@ -8,10 +8,11 @@ const c = en.app.floors;
 
 interface Props {
   floors: Floor[];
+  officeId: number;
   onAddFloor: () => void;
 }
 
-export function FloorsList({ floors, onAddFloor }: Props) {
+export function FloorsList({ floors, officeId, onAddFloor }: Props) {
   return (
     <Box sx={{ p: { xs: 2, sm: 3 } }}>
       <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center", mb: 3 }}>
@@ -25,7 +26,7 @@ export function FloorsList({ floors, onAddFloor }: Props) {
       <Grid container spacing={2}>
         {floors.map((floor) => (
           <Grid key={floor.id} size={{ xs: 12, sm: 6, md: 4 }}>
-            <FloorCard floor={floor} />
+            <FloorCard floor={floor} officeId={officeId} />
           </Grid>
         ))}
       </Grid>
