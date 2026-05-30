@@ -14,6 +14,7 @@ interface Props {
   selectedObjectId?: number | null;
   onSelectObject?: (id: number) => void;
   onDeleted: () => void;
+  canManageLayout?: boolean;
 }
 
 export function LayoutObjectList({
@@ -23,6 +24,7 @@ export function LayoutObjectList({
   selectedObjectId = null,
   onSelectObject,
   onDeleted,
+  canManageLayout = true,
 }: Props) {
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
@@ -52,6 +54,7 @@ export function LayoutObjectList({
             onSelect={onSelectObject}
             onDelete={handleDelete}
             deleteDisabled={deletingId === obj.id}
+            canDelete={canManageLayout}
           />
         ))}
       </Stack>
