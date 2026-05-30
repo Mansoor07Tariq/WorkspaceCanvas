@@ -35,4 +35,11 @@ export {
   SELECTED_STROKE_WIDTH,
 } from "./utils/layoutObjectRenderConfig";
 export type { RenderConfig, CanvasShape } from "./utils/layoutObjectRenderConfig";
-export { formatCoordinate, getTopLeftFromCenterPosition } from "./utils/coordinateHelpers";
+export {
+  formatCoordinate,
+  getTopLeftFromCenterPosition,
+  buildMovePatch,
+  buildTransformPatch,
+  calculateTransformResult,
+  MIN_OBJECT_SIZE,
+} from "./utils/coordinateHelpers";

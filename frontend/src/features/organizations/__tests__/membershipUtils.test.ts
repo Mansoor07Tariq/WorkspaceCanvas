@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { hasActiveMembership } from "../utils/membershipUtils";
+import { canManageWorkspaceContent, hasActiveMembership } from "../utils/membershipUtils";
 import type { CurrentUser } from "@/features/auth/types/auth.types";
 
 function makeUser(overrides: Partial<CurrentUser> = {}): CurrentUser {
@@ -23,6 +23,32 @@ function makeUser(overrides: Partial<CurrentUser> = {}): CurrentUser {
     ...overrides,
   };
 }
+
+describe("canManageWorkspaceContent", () => {
+  it("returns true for owner role", () => {
+    expect(canManageWorkspaceContent("owner")).toBe(true);
+  });
+
+  it("returns true for admin role", () => {
+    expect(canManageWorkspaceContent("admin")).toBe(true);
+  });
+
+  it("returns false for member role", () => {
+    expect(canManageWorkspaceContent("member")).toBe(false);
+  });
+
+  it("returns false for undefined role", () => {
+    expect(canManageWorkspaceContent(undefined)).toBe(false);
+  });
+
+  it("returns false for empty string", () => {
+    expect(canManageWorkspaceContent("")).toBe(false);
+  });
+
+  it("returns false for unknown role string", () => {
+    expect(canManageWorkspaceContent("superadmin")).toBe(false);
+  });
+});
 
 describe("hasActiveMembership", () => {
   it("returns false for null user", () => {

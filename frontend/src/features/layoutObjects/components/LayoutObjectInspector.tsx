@@ -7,6 +7,7 @@ const c = en.app.layoutObjects;
 interface Props {
   object: LayoutObject | null;
   isSaving?: boolean;
+  isSaved?: boolean;
 }
 
 interface RowProps {
@@ -31,7 +32,7 @@ function InspectorRow({ label, value }: RowProps) {
   );
 }
 
-export function LayoutObjectInspector({ object, isSaving = false }: Props) {
+export function LayoutObjectInspector({ object, isSaving = false, isSaved = false }: Props) {
   return (
     <Paper variant="outlined" sx={{ p: 2 }}>
       <Stack
@@ -46,6 +47,15 @@ export function LayoutObjectInspector({ object, isSaving = false }: Props) {
             label={c.inspectorSaving}
             size="small"
             color="warning"
+            variant="outlined"
+            sx={{ height: 20, fontSize: "0.7rem" }}
+          />
+        )}
+        {!isSaving && isSaved && (
+          <Chip
+            label={c.inspectorSaved}
+            size="small"
+            color="success"
             variant="outlined"
             sx={{ height: 20, fontSize: "0.7rem" }}
           />
