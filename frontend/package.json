@@ -23,8 +23,10 @@
     "@react-oauth/google": "^0.13.5",
     "@tailwindcss/vite": "^4.3.0",
     "@types/react-router-dom": "^5.3.3",
+    "konva": "^10.3.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
+    "react-konva": "^19.2.4",
     "react-router-dom": "^7.15.1"
   },
   "devDependencies": {

@@ -11,10 +11,19 @@ interface Props {
   officeId: number;
   floorId: number;
   objects: LayoutObject[];
+  selectedObjectId?: number | null;
+  onSelectObject?: (id: number) => void;
   onDeleted: () => void;
 }
 
-export function LayoutObjectList({ officeId, floorId, objects, onDeleted }: Props) {
+export function LayoutObjectList({
+  officeId,
+  floorId,
+  objects,
+  selectedObjectId = null,
+  onSelectObject,
+  onDeleted,
+}: Props) {
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
   async function handleDelete(id: number) {
@@ -39,6 +48,8 @@ export function LayoutObjectList({ officeId, floorId, objects, onDeleted }: Prop
           <LayoutObjectListItem
             key={obj.id}
             obj={obj}
+            isSelected={obj.id === selectedObjectId}
+            onSelect={onSelectObject}
             onDelete={handleDelete}
             deleteDisabled={deletingId === obj.id}
           />
