@@ -1,7 +1,9 @@
-import { Box, Chip, Stack, Tooltip, Typography } from "@mui/material";
+import { Box, Button, Chip, Stack, Typography } from "@mui/material";
 import { LocationOnOutlined, AccessTimeOutlined } from "@mui/icons-material";
 import { alpha } from "@mui/material/styles";
+import { useNavigate } from "react-router-dom";
 import { en } from "@/i18n/en";
+import { officeDetailPath } from "@/routes/paths";
 import type { Office } from "../types/office.types";
 
 const c = en.app.offices;
@@ -16,6 +18,8 @@ function locationSummary(office: Office): string {
 }
 
 export function OfficeCard({ office }: Props) {
+  const navigate = useNavigate();
+
   return (
     <Box
       sx={{
@@ -61,22 +65,14 @@ export function OfficeCard({ office }: Props) {
             </Stack>
           )}
         </Stack>
-        <Tooltip title={c.buildFloorMapTooltip} arrow>
-          <span>
-            <Typography
-              variant="body2"
-              sx={{
-                color: "text.disabled",
-                cursor: "default",
-                display: "inline-block",
-                fontSize: "0.75rem",
-                mt: 0.5,
-              }}
-            >
-              {c.buildFloorMap} →
-            </Typography>
-          </span>
-        </Tooltip>
+        <Button
+          variant="text"
+          size="small"
+          onClick={() => navigate(officeDetailPath(office.id))}
+          sx={{ alignSelf: "flex-start", fontSize: "0.75rem", p: 0, minWidth: 0 }}
+        >
+          {c.manageFloors} →
+        </Button>
       </Stack>
     </Box>
   );

@@ -200,6 +200,7 @@ REST_FRAMEWORK = {
         "auth_profile": os.environ.get("THROTTLE_AUTH_PROFILE", "30/min"),
         "org_create": os.environ.get("THROTTLE_ORG_CREATE", "5/hour"),
         "office_create": os.environ.get("THROTTLE_OFFICE_CREATE", "30/hour"),
+        "floor_create": os.environ.get("THROTTLE_FLOOR_CREATE", "60/hour"),
     },
 }
 

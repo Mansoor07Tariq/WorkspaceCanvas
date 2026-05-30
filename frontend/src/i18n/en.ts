@@ -317,11 +317,55 @@ export const en = {
 
       // Office card / list
       addOffice: "Add office",
-      buildFloorMap: "Build floor map",
-      buildFloorMapTooltip: "Floor map builder is coming next.",
+      manageFloors: "Manage floors",
       noCity: "Location not set",
       noTimezone: "Timezone not set",
       activeLabel: "Active",
+    },
+    floors: {
+      // Step labels
+      stepDetails: "Floor details",
+      stepReview: "Review",
+
+      // Details step
+      stepDetailsTitle: "Floor details",
+      stepDetailsSubtitle: "Enter the floor name and level number.",
+      nameLabel: "Floor name",
+      namePlaceholder: "Ground Floor",
+      nameRequired: "Floor name is required.",
+      levelLabel: "Level number",
+      levelPlaceholder: "0",
+      levelHelper: "Use 0 for ground floor, 1 for first floor, -1 for basement.",
+      levelInvalid: "Level number must be an integer.",
+
+      // Review step
+      stepReviewTitle: "Review and create",
+      stepReviewSubtitle: "Confirm the details below before creating your floor.",
+      reviewNameLabel: "Floor name",
+      reviewLevelLabel: "Level number",
+
+      createButton: "Create floor",
+      next: "Next",
+      back: "Back",
+      cancel: "Cancel",
+
+      // List
+      listTitle: "Floors",
+      addFloor: "Add floor",
+
+      // Empty state
+      emptyStateTitle: "No floors yet",
+      emptyStateSubtitle: "Create your first floor before building a map or adding desks.",
+      emptyStateAction: "Create first floor",
+
+      // Floor card
+      level: "Level",
+      activeLabel: "Active",
+      buildMap: "Build map",
+      buildMapTooltip: "Map builder coming next.",
+
+      // Office detail page
+      backToOffices: "Back to offices",
     },
     pages: {
       comingSoon: "This feature is coming soon.",

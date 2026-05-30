@@ -4,7 +4,7 @@ import zoneinfo
 
 from rest_framework import serializers
 
-from .models import Office
+from .models import Floor, Office
 
 _VALID_TIMEZONES: frozenset[str] = frozenset(zoneinfo.available_timezones())
 
@@ -62,6 +62,32 @@ class OfficeResponseSerializer(serializers.ModelSerializer):
             "county_or_state",
             "country",
             "timezone",
+            "is_active",
+            "created_at",
+            "updated_at",
+        ]
+
+
+class CreateFloorSerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=255)
+    level_number = serializers.IntegerField(required=False, default=0)
+
+    def validate_name(self, value: str) -> str:
+        stripped = value.strip()
+        if not stripped:
+            raise serializers.ValidationError("Floor name is required.")
+        return stripped
+
+
+class FloorResponseSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Floor
+        fields = [
+            "id",
+            "office",
+            "name",
+            "slug",
+            "level_number",
             "is_active",
             "created_at",
             "updated_at",
