@@ -421,8 +421,11 @@ export const en = {
 
       // Canvas
       canvasTitle: "Floor map",
+      canvasAriaLabel: "Floor map canvas",
       canvasEmptyTitle: "Nothing on this floor yet",
       canvasEmptySubtitle: "Add objects from the library to start building the layout.",
+      canvasLoading: "Loading map canvas…",
+      keyboardHint: "Arrow keys move the selected object. Hold Shift to move 10 px.",
 
       // Inspector
       inspectorTitle: "Inspector",
@@ -438,9 +441,10 @@ export const en = {
       inspectorYes: "Yes",
       inspectorNo: "No",
       inspectorSaving: "Saving…",
+      inspectorSaved: "Saved",
 
-      // Drag / move persistence
-      moveError: "Could not save position. Please try again.",
+      // Drag / transform persistence
+      moveError: "Could not save layout changes. Please try again.",
       movePermissionError: "You do not have permission to edit this layout.",
       readOnlyBanner: "You can view this layout, but only owners and admins can make changes.",
     },

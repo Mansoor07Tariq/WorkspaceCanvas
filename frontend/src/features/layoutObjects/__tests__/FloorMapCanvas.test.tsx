@@ -10,7 +10,6 @@ vi.mock("react-konva", () => ({
     children?: React.ReactNode;
     onClick?: (e: { target: { getStage: () => unknown } }) => void;
   }) => {
-    // Simulate clicking the stage background: target.getStage() === target
     function handleClick() {
       const target = { getStage: () => target };
       onClick?.({ target });
@@ -30,21 +29,43 @@ vi.mock("react-konva", () => ({
     children,
     onClick,
     onDragEnd,
+    onTransformEnd,
     draggable,
   }: {
     children?: React.ReactNode;
     onClick?: () => void;
     onDragEnd?: (e: { target: { x: () => number; y: () => number } }) => void;
+    onTransformEnd?: (e: {
+      target: {
+        x: () => number;
+        y: () => number;
+        scaleX: () => number;
+        scaleY: () => number;
+        rotation: () => number;
+      };
+    }) => void;
     draggable?: boolean;
   }) => (
     <div
       data-testid={draggable ? "canvas-object-group-draggable" : "canvas-object-group"}
       onClick={onClick}
       onMouseUp={() => onDragEnd?.({ target: { x: () => 140, y: () => 175 } })}
+      onDoubleClick={() =>
+        onTransformEnd?.({
+          target: {
+            x: () => 140,
+            y: () => 175,
+            scaleX: () => 1.5,
+            scaleY: () => 1.2,
+            rotation: () => 30,
+          },
+        })
+      }
     >
       {children}
     </div>
   ),
+  Transformer: () => null,
 }));
 
 import { FloorMapCanvas } from "../components/FloorMapCanvas";
@@ -69,9 +90,7 @@ const makeObj = (overrides: Partial<LayoutObject> = {}): LayoutObject => ({
 });
 
 describe("FloorMapCanvas", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+  beforeEach(() => vi.clearAllMocks());
 
   it("renders the stage", () => {
     render(<FloorMapCanvas objects={[]} selectedObjectId={null} onSelectObject={vi.fn()} />);
@@ -93,7 +112,7 @@ describe("FloorMapCanvas", () => {
   it("renders one group per object", () => {
     render(
       <FloorMapCanvas
-        objects={[makeObj({ id: 1 }), makeObj({ id: 2, label: "Desk B" })]}
+        objects={[makeObj({ id: 1 }), makeObj({ id: 2, label: "B" })]}
         selectedObjectId={null}
         onSelectObject={vi.fn()}
       />
@@ -101,7 +120,7 @@ describe("FloorMapCanvas", () => {
     expect(screen.getAllByTestId(/canvas-object-group/).length).toBe(2);
   });
 
-  it("calls onSelectObject with object id when canvas object is clicked", () => {
+  it("calls onSelectObject with id when canvas object is clicked", () => {
     const onSelectObject = vi.fn();
     render(
       <FloorMapCanvas
@@ -127,7 +146,7 @@ describe("FloorMapCanvas", () => {
     expect(onSelectObject).toHaveBeenCalledWith(null);
   });
 
-  it("renders label text from object label", () => {
+  it("renders object label text", () => {
     render(
       <FloorMapCanvas
         objects={[makeObj({ label: "My Desk" })]}
@@ -151,7 +170,7 @@ describe("FloorMapCanvas", () => {
 
   // ─── Drag tests ───────────────────────────────────────────────────────────
 
-  it("renders non-draggable groups when canManageLayout is false", () => {
+  it("renders non-draggable group when canManageLayout is false", () => {
     render(
       <FloorMapCanvas
         objects={[makeObj()]}
@@ -164,7 +183,7 @@ describe("FloorMapCanvas", () => {
     expect(screen.queryByTestId("canvas-object-group-draggable")).not.toBeInTheDocument();
   });
 
-  it("renders draggable groups when canManageLayout is true", () => {
+  it("renders draggable group when canManageLayout is true", () => {
     render(
       <FloorMapCanvas
         objects={[makeObj()]}
@@ -176,10 +195,10 @@ describe("FloorMapCanvas", () => {
     expect(screen.getByTestId("canvas-object-group-draggable")).toBeInTheDocument();
   });
 
-  it("calls onObjectDragEnd with top-left coordinates after drag", () => {
+  it("calls onObjectDragEnd with top-left coordinates (not center) after drag", () => {
     const onObjectDragEnd = vi.fn();
-    // Object: x=100, y=150, w=80, h=50 → center=(140, 175)
-    // Mock drag ends at center (140, 175) → top-left should be (100, 150)
+    // Object x=100, y=150, w=80, h=50 → center=(140,175)
+    // Mock drag ends at center (140,175) → top-left must be (100,150)
     render(
       <FloorMapCanvas
         objects={[makeObj({ id: 5, x: "100.00", y: "150.00", width: "80.00", height: "50.00" })]}
@@ -191,5 +210,53 @@ describe("FloorMapCanvas", () => {
     );
     fireEvent.mouseUp(screen.getByTestId("canvas-object-group-draggable"));
     expect(onObjectDragEnd).toHaveBeenCalledWith(5, 100, 150);
+  });
+
+  // ─── Transform tests ──────────────────────────────────────────────────────
+
+  it("calls onObjectTransformEnd with correct dimensions after transform", () => {
+    const onObjectTransformEnd = vi.fn();
+    // Object: w=80, h=50; scaleX=1.5, scaleY=1.2 → newW=120, newH=60
+    // new center (140,175) → top-left=(140-60, 175-30)=(80,145)
+    render(
+      <FloorMapCanvas
+        objects={[makeObj({ id: 9, x: "100.00", y: "150.00", width: "80.00", height: "50.00" })]}
+        selectedObjectId={null}
+        onSelectObject={vi.fn()}
+        canManageLayout={true}
+        onObjectTransformEnd={onObjectTransformEnd}
+      />
+    );
+    fireEvent.doubleClick(screen.getByTestId("canvas-object-group-draggable"));
+    const [id, x, y, w, h, rot] = onObjectTransformEnd.mock.calls[0];
+    expect(id).toBe(9);
+    expect(x).toBeCloseTo(80);
+    expect(y).toBeCloseTo(145);
+    expect(w).toBeCloseTo(120);
+    expect(h).toBeCloseTo(60);
+    expect(rot).toBe(30);
+  });
+
+  // ─── Accessibility tests ──────────────────────────────────────────────────
+
+  it("canvas wrapper has role=img and aria-label", () => {
+    render(<FloorMapCanvas objects={[]} selectedObjectId={null} onSelectObject={vi.fn()} />);
+    expect(screen.getByRole("img", { name: /floor map canvas/i })).toBeInTheDocument();
+  });
+
+  it("calls onKeyDown when a key is pressed on the canvas wrapper", () => {
+    const onKeyDown = vi.fn();
+    render(
+      <FloorMapCanvas
+        objects={[]}
+        selectedObjectId={null}
+        onSelectObject={vi.fn()}
+        onKeyDown={onKeyDown}
+      />
+    );
+    fireEvent.keyDown(screen.getByRole("img", { name: /floor map canvas/i }), {
+      key: "ArrowRight",
+    });
+    expect(onKeyDown).toHaveBeenCalled();
   });
 });

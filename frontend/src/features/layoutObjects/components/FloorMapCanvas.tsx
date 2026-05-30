@@ -1,6 +1,9 @@
-import { Stage, Layer, Rect, Line } from "react-konva";
+import { useRef, useEffect } from "react";
+import { Stage, Layer, Rect, Line, Transformer } from "react-konva";
 import { Box, Typography } from "@mui/material";
+import type Konva from "konva";
 import { en } from "@/i18n/en";
+import { MIN_OBJECT_SIZE } from "../utils/coordinateHelpers";
 import { LayoutObjectCanvasNode } from "./LayoutObjectCanvasNode";
 import type { LayoutObject } from "../types/layoutObject.types";
 
@@ -20,7 +23,16 @@ interface Props {
   onSelectObject: (id: number | null) => void;
   canManageLayout?: boolean;
   onObjectDragEnd?: (objectId: number, newX: number, newY: number) => void;
+  onObjectTransformEnd?: (
+    objectId: number,
+    newX: number,
+    newY: number,
+    newWidth: number,
+    newHeight: number,
+    newRotation: number
+  ) => void;
   savingObjectIds?: ReadonlySet<number>;
+  onKeyDown?: (e: React.KeyboardEvent<HTMLDivElement>) => void;
 }
 
 function buildGridLines() {
@@ -56,8 +68,22 @@ export function FloorMapCanvas({
   onSelectObject,
   canManageLayout = false,
   onObjectDragEnd,
+  onObjectTransformEnd,
   savingObjectIds,
+  onKeyDown,
 }: Props) {
+  const transformerRef = useRef<Konva.Transformer>(null);
+  const nodeRefs = useRef<Map<number, Konva.Group>>(new Map());
+
+  // Attach/detach Transformer whenever selection or edit capability changes
+  useEffect(() => {
+    const tr = transformerRef.current;
+    if (!tr) return;
+    const node = selectedObjectId !== null ? nodeRefs.current.get(selectedObjectId) : null;
+    tr.nodes(node && canManageLayout ? [node] : []);
+    tr.getLayer()?.batchDraw();
+  }, [selectedObjectId, canManageLayout]);
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function handleStageClick(e: any) {
     if (e.target === e.target.getStage()) {
@@ -68,7 +94,9 @@ export function FloorMapCanvas({
   return (
     <Box
       role="img"
-      aria-label={c.canvasTitle}
+      aria-label={c.canvasAriaLabel}
+      tabIndex={0}
+      onKeyDown={onKeyDown}
       sx={{
         position: "relative",
         border: "1px solid",
@@ -77,6 +105,12 @@ export function FloorMapCanvas({
         overflow: "auto",
         lineHeight: 0,
         bgcolor: CANVAS_BG,
+        outline: "none",
+        "&:focus-visible": {
+          outline: "2px solid",
+          outlineColor: "primary.main",
+          outlineOffset: 2,
+        },
       }}
     >
       <Stage
@@ -104,14 +138,32 @@ export function FloorMapCanvas({
           {objects.map((obj) => (
             <LayoutObjectCanvasNode
               key={obj.id}
+              ref={(node) => {
+                if (node) nodeRefs.current.set(obj.id, node);
+                else nodeRefs.current.delete(obj.id);
+              }}
               obj={obj}
               isSelected={obj.id === selectedObjectId}
               onSelect={() => onSelectObject(obj.id)}
               draggable={canManageLayout}
               onDragEnd={onObjectDragEnd}
+              onTransformEnd={onObjectTransformEnd}
               isSaving={savingObjectIds?.has(obj.id)}
             />
           ))}
+          {/* Transformer visible only for owners/admins */}
+          {canManageLayout && (
+            <Transformer
+              ref={transformerRef}
+              rotateEnabled={true}
+              boundBoxFunc={(oldBox, newBox) => {
+                if (newBox.width < MIN_OBJECT_SIZE || newBox.height < MIN_OBJECT_SIZE) {
+                  return oldBox;
+                }
+                return newBox;
+              }}
+            />
+          )}
         </Layer>
       </Stage>
 

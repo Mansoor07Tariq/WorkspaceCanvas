@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useNavigate, useLocation, Navigate } from "react-router-dom";
 import { Alert, Box, Button, Chip, Grid, Stack, Typography } from "@mui/material";
 import { ArrowBackOutlined } from "@mui/icons-material";
@@ -7,18 +7,27 @@ import { ErrorAlert } from "@/components/feedback/ErrorAlert";
 import { en } from "@/i18n/en";
 import { ROUTES, officeDetailPath } from "@/routes/paths";
 import { useAuth } from "@/features/auth";
-import { getFirstActiveMembership } from "@/features/organizations/utils/membershipUtils";
+import {
+  getFirstActiveMembership,
+  canManageWorkspaceContent,
+} from "@/features/organizations/utils/membershipUtils";
 import { useLayoutObjects } from "@/features/layoutObjects/hooks/useLayoutObjects";
 import { useLayoutObjectForm } from "@/features/layoutObjects/hooks/useLayoutObjectForm";
 import { updateLayoutObject } from "@/features/layoutObjects/api/layoutObjectApi";
 import { formatCoordinate } from "@/features/layoutObjects/utils/coordinateHelpers";
 import { LayoutObjectLibrary } from "@/features/layoutObjects/components/LayoutObjectLibrary";
 import { LayoutObjectCreateForm } from "@/features/layoutObjects/components/LayoutObjectCreateForm";
-import { FloorMapCanvas } from "@/features/layoutObjects/components/FloorMapCanvas";
 import { LayoutObjectInspector } from "@/features/layoutObjects/components/LayoutObjectInspector";
 import { LayoutObjectList } from "@/features/layoutObjects/components/LayoutObjectList";
 import { ApiError } from "@/lib/api/apiClient";
 import type { LayoutObjectType } from "@/features/layoutObjects/types/layoutObject.types";
+
+// Konva is large — lazy-load so it stays out of the initial bundle
+const FloorMapCanvas = lazy(() =>
+  import("@/features/layoutObjects/components/FloorMapCanvas").then((m) => ({
+    default: m.FloorMapCanvas,
+  }))
+);
 
 const c = en.app.layoutObjects;
 const cf = en.app.floors;
@@ -27,6 +36,10 @@ interface FloorRouteState {
   floorName?: string;
   levelNumber?: number;
 }
+
+const SAVED_DISPLAY_MS = 2000;
+const KEYBOARD_STEP = 1;
+const KEYBOARD_STEP_SHIFT = 10;
 
 export function FloorLayoutPage() {
   const { officeId: officeIdParam, floorId: floorIdParam } = useParams<{
@@ -42,10 +55,12 @@ export function FloorLayoutPage() {
 
   const { user } = useAuth();
   const membership = getFirstActiveMembership(user);
-  const canManageLayout = membership?.role === "owner" || membership?.role === "admin";
+  const canManageLayout = canManageWorkspaceContent(membership?.role);
 
   const [selectedObjectId, setSelectedObjectId] = useState<number | null>(null);
   const [moveError, setMoveError] = useState<string | undefined>(undefined);
+  const [savedObjectId, setSavedObjectId] = useState<number | null>(null);
+  const savedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { objects, loading, error, refresh, updateObjectLocally, setSaving, savingObjectIds } =
     useLayoutObjects(isNaN(officeId) ? 0 : officeId, isNaN(floorId) ? 0 : floorId);
@@ -56,39 +71,139 @@ export function FloorLayoutPage() {
     onCreated: () => refresh(),
   });
 
+  // Clear saved timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (savedTimeoutRef.current) clearTimeout(savedTimeoutRef.current);
+    };
+  }, []);
+
+  // These helpers are regular functions — not hooks — so they can appear anywhere.
+  // Defined before the early return so the useCallback deps can reference them safely.
+  function flashSaved(id: number) {
+    if (savedTimeoutRef.current) clearTimeout(savedTimeoutRef.current);
+    setSavedObjectId(id);
+    savedTimeoutRef.current = setTimeout(() => setSavedObjectId(null), SAVED_DISPLAY_MS);
+  }
+
+  function buildMoveError(err: unknown): string {
+    return err instanceof ApiError && err.status === 403 ? c.movePermissionError : c.moveError;
+  }
+
+  // All useCallback hooks must appear before any early return (Rules of Hooks).
+  const handleObjectMove = useCallback(
+    async (objectId: number, newX: number, newY: number) => {
+      if (savingObjectIds.has(objectId)) return;
+      const prevObj = objects.find((o) => o.id === objectId);
+      if (!prevObj) return;
+
+      const patch = { x: formatCoordinate(newX), y: formatCoordinate(newY) };
+      updateObjectLocally(objectId, patch);
+      setSaving(objectId, true);
+      setMoveError(undefined);
+
+      try {
+        await updateLayoutObject(officeId, floorId, objectId, patch);
+        flashSaved(objectId);
+      } catch (err) {
+        updateObjectLocally(objectId, { x: prevObj.x, y: prevObj.y });
+        setMoveError(buildMoveError(err));
+      } finally {
+        setSaving(objectId, false);
+      }
+    },
+    [officeId, floorId, objects, savingObjectIds, updateObjectLocally, setSaving]
+  );
+
+  const handleObjectTransform = useCallback(
+    async (
+      objectId: number,
+      newX: number,
+      newY: number,
+      newWidth: number,
+      newHeight: number,
+      newRotation: number
+    ) => {
+      if (savingObjectIds.has(objectId)) return;
+      const prevObj = objects.find((o) => o.id === objectId);
+      if (!prevObj) return;
+
+      const patch = {
+        x: formatCoordinate(newX),
+        y: formatCoordinate(newY),
+        width: formatCoordinate(newWidth),
+        height: formatCoordinate(newHeight),
+        rotation: formatCoordinate(newRotation),
+      };
+      updateObjectLocally(objectId, patch);
+      setSaving(objectId, true);
+      setMoveError(undefined);
+
+      try {
+        await updateLayoutObject(officeId, floorId, objectId, patch);
+        flashSaved(objectId);
+      } catch (err) {
+        updateObjectLocally(objectId, {
+          x: prevObj.x,
+          y: prevObj.y,
+          width: prevObj.width,
+          height: prevObj.height,
+          rotation: prevObj.rotation,
+        });
+        setMoveError(buildMoveError(err));
+      } finally {
+        setSaving(objectId, false);
+      }
+    },
+    [officeId, floorId, objects, savingObjectIds, updateObjectLocally, setSaving]
+  );
+
+  const handleCanvasKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (!selectedObjectId || !canManageLayout) return;
+      const isArrow = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key);
+      if (!isArrow) return;
+      if (e.repeat) return; // ignore auto-repeat to prevent PATCH flooding
+      e.preventDefault();
+      const step = e.shiftKey ? KEYBOARD_STEP_SHIFT : KEYBOARD_STEP;
+      const obj = objects.find((o) => o.id === selectedObjectId);
+      if (!obj) return;
+      const dx = e.key === "ArrowLeft" ? -step : e.key === "ArrowRight" ? step : 0;
+      const dy = e.key === "ArrowUp" ? -step : e.key === "ArrowDown" ? step : 0;
+      handleObjectMove(selectedObjectId, parseFloat(obj.x) + dx, parseFloat(obj.y) + dy);
+    },
+    [selectedObjectId, canManageLayout, objects, handleObjectMove]
+  );
+
+  // All hooks complete — now safe to do early returns.
   if (isNaN(officeId) || isNaN(floorId)) {
     return <Navigate to={ROUTES.offices} replace />;
   }
 
-  async function handleObjectMove(objectId: number, newX: number, newY: number) {
-    if (savingObjectIds.has(objectId)) return;
-
-    const prevObj = objects.find((o) => o.id === objectId);
-    if (!prevObj) return;
-
-    const xStr = formatCoordinate(newX);
-    const yStr = formatCoordinate(newY);
-
-    updateObjectLocally(objectId, { x: xStr, y: yStr });
-    setSaving(objectId, true);
-    setMoveError(undefined);
-
-    try {
-      await updateLayoutObject(officeId, floorId, objectId, { x: xStr, y: yStr });
-    } catch (err) {
-      updateObjectLocally(objectId, { x: prevObj.x, y: prevObj.y });
-      if (err instanceof ApiError && err.status === 403) {
-        setMoveError(c.movePermissionError);
-      } else {
-        setMoveError(c.moveError);
-      }
-    } finally {
-      setSaving(objectId, false);
-    }
-  }
-
   const selectedObject = objects.find((o) => o.id === selectedObjectId) ?? null;
   const isSelectedSaving = selectedObjectId !== null && savingObjectIds.has(selectedObjectId);
+  const isSelectedSaved = selectedObjectId !== null && savedObjectId === selectedObjectId;
+
+  const canvasFallback = (
+    <Box
+      role="img"
+      aria-label={c.canvasAriaLabel}
+      sx={{
+        height: CANVAS_HEIGHT_APPROX,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        border: "1px solid",
+        borderColor: "divider",
+        borderRadius: 1,
+        bgcolor: "background.default",
+      }}
+    >
+      <Typography variant="body2" color="text.secondary">
+        {c.canvasLoading}
+      </Typography>
+    </Box>
+  );
 
   const header = (
     <Box sx={{ px: { xs: 2, sm: 3 }, pt: { xs: 2, sm: 3 }, pb: 1.5 }}>
@@ -176,9 +291,15 @@ export function FloorLayoutPage() {
         </Alert>
       )}
 
+      {canManageLayout && selectedObjectId !== null && (
+        <Typography variant="caption" color="text.secondary" sx={{ mx: { xs: 2, sm: 3 }, mb: 0.5 }}>
+          {c.keyboardHint}
+        </Typography>
+      )}
+
       <Box sx={{ flex: 1, px: { xs: 2, sm: 3 }, pb: { xs: 2, sm: 3 } }}>
         <Grid container spacing={2} sx={{ alignItems: "flex-start" }}>
-          {/* Left: library (+ create form for owners/admins) */}
+          {/* Left: library + create form (owners/admins only) */}
           <Grid size={{ xs: 12, md: 3 }}>
             <Stack spacing={2}>
               <LayoutObjectLibrary
@@ -198,22 +319,30 @@ export function FloorLayoutPage() {
             </Stack>
           </Grid>
 
-          {/* Center: canvas */}
+          {/* Center: floor map canvas (lazy-loaded) */}
           <Grid size={{ xs: 12, md: 6 }}>
-            <FloorMapCanvas
-              objects={objects}
-              selectedObjectId={selectedObjectId}
-              onSelectObject={setSelectedObjectId}
-              canManageLayout={canManageLayout}
-              onObjectDragEnd={handleObjectMove}
-              savingObjectIds={savingObjectIds}
-            />
+            <Suspense fallback={canvasFallback}>
+              <FloorMapCanvas
+                objects={objects}
+                selectedObjectId={selectedObjectId}
+                onSelectObject={setSelectedObjectId}
+                canManageLayout={canManageLayout}
+                onObjectDragEnd={handleObjectMove}
+                onObjectTransformEnd={handleObjectTransform}
+                savingObjectIds={savingObjectIds}
+                onKeyDown={handleCanvasKeyDown}
+              />
+            </Suspense>
           </Grid>
 
-          {/* Right: inspector + list */}
+          {/* Right: inspector + object list */}
           <Grid size={{ xs: 12, md: 3 }}>
             <Stack spacing={2}>
-              <LayoutObjectInspector object={selectedObject} isSaving={isSelectedSaving} />
+              <LayoutObjectInspector
+                object={selectedObject}
+                isSaving={isSelectedSaving}
+                isSaved={isSelectedSaved}
+              />
               <LayoutObjectList
                 officeId={officeId}
                 floorId={floorId}
@@ -233,3 +362,6 @@ export function FloorLayoutPage() {
     </Box>
   );
 }
+
+// Approximate canvas height used for the Suspense fallback placeholder
+const CANVAS_HEIGHT_APPROX = 640;

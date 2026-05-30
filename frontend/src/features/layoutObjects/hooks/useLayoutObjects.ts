@@ -37,11 +37,8 @@ function reducer(state: State, action: Action): State {
       };
     case "set_saving": {
       const next = new Set(state.savingObjectIds);
-      if (action.saving) {
-        next.add(action.id);
-      } else {
-        next.delete(action.id);
-      }
+      if (action.saving) next.add(action.id);
+      else next.delete(action.id);
       return { ...state, savingObjectIds: next };
     }
   }

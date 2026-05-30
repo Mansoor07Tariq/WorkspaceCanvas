@@ -90,13 +90,24 @@ describe("LayoutObjectInspector", () => {
     expect(screen.queryByText(/metadata/i)).not.toBeInTheDocument();
   });
 
-  it("shows saving chip when isSaving=true", () => {
+  it("shows Saving… chip when isSaving=true", () => {
     render(<LayoutObjectInspector object={mockObject} isSaving={true} />);
     expect(screen.getByText(/saving/i)).toBeInTheDocument();
   });
 
-  it("does not show saving chip when isSaving=false", () => {
+  it("does not show Saving chip when isSaving=false", () => {
     render(<LayoutObjectInspector object={mockObject} isSaving={false} />);
     expect(screen.queryByText(/saving/i)).not.toBeInTheDocument();
+  });
+
+  it("shows Saved chip when isSaved=true and not saving", () => {
+    render(<LayoutObjectInspector object={mockObject} isSaving={false} isSaved={true} />);
+    expect(screen.getByText(/^saved$/i)).toBeInTheDocument();
+  });
+
+  it("does not show Saved chip when isSaving=true even if isSaved=true", () => {
+    render(<LayoutObjectInspector object={mockObject} isSaving={true} isSaved={true} />);
+    expect(screen.queryByText(/^saved$/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/saving/i)).toBeInTheDocument();
   });
 });
