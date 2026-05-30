@@ -6,7 +6,7 @@ import {
   SELECTED_STROKE_WIDTH,
   getLayoutObjectRenderConfig,
 } from "../utils/layoutObjectRenderConfig";
-import { MIN_OBJECT_SIZE, getTopLeftFromCenterPosition } from "../utils/coordinateHelpers";
+import { calculateTransformResult, getTopLeftFromCenterPosition } from "../utils/coordinateHelpers";
 import type { LayoutObject } from "../types/layoutObject.types";
 
 interface Props {
@@ -87,16 +87,16 @@ export const LayoutObjectCanvasNode = forwardRef<Konva.Group, Props>(
         // CRITICAL: reset scale before React re-renders with new dimensions
         node.scaleX(1);
         node.scaleY(1);
-        const newW = Math.max(MIN_OBJECT_SIZE, w * scaleX);
-        const newH = Math.max(MIN_OBJECT_SIZE, h * scaleY);
-        const newRotation = node.rotation();
-        const { x: topLeftX, y: topLeftY } = getTopLeftFromCenterPosition(
+        const { x, y, width, height, rotation } = calculateTransformResult(
           node.x(),
           node.y(),
-          newW,
-          newH
+          w,
+          h,
+          scaleX,
+          scaleY,
+          node.rotation()
         );
-        onTransformEnd(obj.id, topLeftX, topLeftY, newW, newH, newRotation);
+        onTransformEnd(obj.id, x, y, width, height, rotation);
       },
       [obj.id, w, h, onTransformEnd]
     );

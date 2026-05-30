@@ -14,7 +14,10 @@ import {
 import { useLayoutObjects } from "@/features/layoutObjects/hooks/useLayoutObjects";
 import { useLayoutObjectForm } from "@/features/layoutObjects/hooks/useLayoutObjectForm";
 import { updateLayoutObject } from "@/features/layoutObjects/api/layoutObjectApi";
-import { formatCoordinate } from "@/features/layoutObjects/utils/coordinateHelpers";
+import {
+  buildMovePatch,
+  buildTransformPatch,
+} from "@/features/layoutObjects/utils/coordinateHelpers";
 import { LayoutObjectLibrary } from "@/features/layoutObjects/components/LayoutObjectLibrary";
 import { LayoutObjectCreateForm } from "@/features/layoutObjects/components/LayoutObjectCreateForm";
 import { LayoutObjectInspector } from "@/features/layoutObjects/components/LayoutObjectInspector";
@@ -58,7 +61,7 @@ export function FloorLayoutPage() {
   const canManageLayout = canManageWorkspaceContent(membership?.role);
 
   const [selectedObjectId, setSelectedObjectId] = useState<number | null>(null);
-  const [moveError, setMoveError] = useState<string | undefined>(undefined);
+  const [layoutSaveError, setLayoutSaveError] = useState<string | undefined>(undefined);
   const [savedObjectId, setSavedObjectId] = useState<number | null>(null);
   const savedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -97,17 +100,17 @@ export function FloorLayoutPage() {
       const prevObj = objects.find((o) => o.id === objectId);
       if (!prevObj) return;
 
-      const patch = { x: formatCoordinate(newX), y: formatCoordinate(newY) };
+      const patch = buildMovePatch(newX, newY);
       updateObjectLocally(objectId, patch);
       setSaving(objectId, true);
-      setMoveError(undefined);
+      setLayoutSaveError(undefined);
 
       try {
         await updateLayoutObject(officeId, floorId, objectId, patch);
         flashSaved(objectId);
       } catch (err) {
         updateObjectLocally(objectId, { x: prevObj.x, y: prevObj.y });
-        setMoveError(buildMoveError(err));
+        setLayoutSaveError(buildMoveError(err));
       } finally {
         setSaving(objectId, false);
       }
@@ -128,16 +131,10 @@ export function FloorLayoutPage() {
       const prevObj = objects.find((o) => o.id === objectId);
       if (!prevObj) return;
 
-      const patch = {
-        x: formatCoordinate(newX),
-        y: formatCoordinate(newY),
-        width: formatCoordinate(newWidth),
-        height: formatCoordinate(newHeight),
-        rotation: formatCoordinate(newRotation),
-      };
+      const patch = buildTransformPatch(newX, newY, newWidth, newHeight, newRotation);
       updateObjectLocally(objectId, patch);
       setSaving(objectId, true);
-      setMoveError(undefined);
+      setLayoutSaveError(undefined);
 
       try {
         await updateLayoutObject(officeId, floorId, objectId, patch);
@@ -150,7 +147,7 @@ export function FloorLayoutPage() {
           height: prevObj.height,
           rotation: prevObj.rotation,
         });
-        setMoveError(buildMoveError(err));
+        setLayoutSaveError(buildMoveError(err));
       } finally {
         setSaving(objectId, false);
       }
@@ -281,13 +278,13 @@ export function FloorLayoutPage() {
         </Alert>
       )}
 
-      {moveError && (
+      {layoutSaveError && (
         <Alert
           severity="error"
-          onClose={() => setMoveError(undefined)}
+          onClose={() => setLayoutSaveError(undefined)}
           sx={{ mx: { xs: 2, sm: 3 }, mb: 1 }}
         >
-          {moveError}
+          {layoutSaveError}
         </Alert>
       )}
 

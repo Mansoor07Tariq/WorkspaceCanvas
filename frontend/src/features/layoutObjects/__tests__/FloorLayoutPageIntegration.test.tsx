@@ -1,11 +1,11 @@
 /**
- * Integration tests for FloorLayoutPage drag/transform optimistic update and rollback.
+ * Integration tests for FloorLayoutPage drag/transform/keyboard optimistic update and rollback.
  *
  * Strategy: mock react-konva (canvas), useAuth, and the layout object API.
- * Trigger drag/transform via the FloorMapCanvas mock's callbacks.
+ * Trigger drag/transform/keyboard via the FloorMapCanvas mock's callbacks.
  * Assert local state updates, PATCH calls, rollback on failure, and saved feedback.
  */
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { ApiError } from "@/lib/api/apiError";
@@ -27,7 +27,7 @@ vi.mock("react-konva", () => ({
   Transformer: () => null,
 }));
 
-// Mock the entire FloorMapCanvas so we can control drag/transform callbacks
+// Mock the entire FloorMapCanvas so we can control drag/transform/keyboard callbacks
 vi.mock("@/features/layoutObjects/components/FloorMapCanvas", () => ({
   FloorMapCanvas: ({
     objects,
@@ -35,6 +35,7 @@ vi.mock("@/features/layoutObjects/components/FloorMapCanvas", () => ({
     onObjectDragEnd,
     onObjectTransformEnd,
     savingObjectIds,
+    onKeyDown,
   }: {
     objects: { id: number; x: string; y: string; width: string; height: string }[];
     onSelectObject: (id: number | null) => void;
@@ -48,8 +49,9 @@ vi.mock("@/features/layoutObjects/components/FloorMapCanvas", () => ({
       r: number
     ) => void;
     savingObjectIds?: ReadonlySet<number>;
+    onKeyDown?: (e: React.KeyboardEvent<HTMLDivElement>) => void;
   }) => (
-    <div data-testid="floor-map-canvas">
+    <div data-testid="floor-map-canvas" onKeyDown={onKeyDown} tabIndex={0}>
       {objects.map((obj) => (
         <div key={obj.id} data-testid={`canvas-obj-${obj.id}`}>
           <span data-testid={`obj-x-${obj.id}`}>{obj.x}</span>
@@ -78,13 +80,16 @@ vi.mock("@/features/layoutObjects/components/FloorMapCanvas", () => ({
   CANVAS_HEIGHT: 640,
 }));
 
+// Controllable auth mock — default to owner; override per-test via mockUseAuth.mockReturnValueOnce
+const { mockUseAuth } = vi.hoisted(() => {
+  const mockUseAuth = vi.fn().mockReturnValue({
+    user: { id: 1, memberships: [{ role: "owner", has_active_access: true }] },
+  });
+  return { mockUseAuth };
+});
+
 vi.mock("@/features/auth", () => ({
-  useAuth: () => ({
-    user: {
-      id: 1,
-      memberships: [{ role: "owner", has_active_access: true }],
-    },
-  }),
+  useAuth: mockUseAuth,
 }));
 
 vi.mock("@/features/layoutObjects/api/layoutObjectApi");
@@ -133,6 +138,9 @@ function renderPage() {
 describe("FloorLayoutPage drag/transform integration", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockUseAuth.mockReturnValue({
+      user: { id: 1, memberships: [{ role: "owner", has_active_access: true }] },
+    });
     mockListLayoutObjects.mockResolvedValue([MOCK_OBJ]);
     mockUpdateLayoutObject.mockResolvedValue({ ...MOCK_OBJ, x: "200.00", y: "300.00" });
   });
@@ -277,5 +285,102 @@ describe("FloorLayoutPage drag/transform integration", () => {
 
     // Only one PATCH call should have been made
     expect(callCount).toBe(1);
+  });
+});
+
+// ─── Keyboard movement integration tests ─────────────────────────────────────
+
+describe("FloorLayoutPage keyboard movement integration", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockUseAuth.mockReturnValue({
+      user: { id: 1, memberships: [{ role: "owner", has_active_access: true }] },
+    });
+    mockListLayoutObjects.mockResolvedValue([MOCK_OBJ]);
+    mockUpdateLayoutObject.mockResolvedValue(MOCK_OBJ);
+  });
+
+  it("ArrowRight moves selected object right by 1 px and calls PATCH", async () => {
+    renderPage();
+    await waitFor(() => screen.getByTestId("select-42"));
+    fireEvent.click(screen.getByTestId("select-42"));
+    // Wait for the keyboard hint — it appears only when an object is selected and canManage=true
+    await waitFor(() => expect(screen.getByText(/arrow keys move/i)).toBeInTheDocument());
+
+    fireEvent.keyDown(screen.getByTestId("floor-map-canvas"), { key: "ArrowRight" });
+
+    await waitFor(() =>
+      expect(mockUpdateLayoutObject).toHaveBeenCalledWith(
+        1,
+        3,
+        42,
+        expect.objectContaining({ x: "101.00", y: "150.00" })
+      )
+    );
+  });
+
+  it("Shift+ArrowDown moves selected object down by 10 px", async () => {
+    renderPage();
+    await waitFor(() => screen.getByTestId("select-42"));
+    fireEvent.click(screen.getByTestId("select-42"));
+    await waitFor(() => expect(screen.getByText(/arrow keys move/i)).toBeInTheDocument());
+
+    fireEvent.keyDown(screen.getByTestId("floor-map-canvas"), {
+      key: "ArrowDown",
+      shiftKey: true,
+    });
+
+    await waitFor(() =>
+      expect(mockUpdateLayoutObject).toHaveBeenCalledWith(
+        1,
+        3,
+        42,
+        expect.objectContaining({ x: "100.00", y: "160.00" })
+      )
+    );
+  });
+
+  it("ArrowLeft with no object selected does not call PATCH", async () => {
+    renderPage();
+    // Wait for canvas to render but do NOT select any object
+    await waitFor(() => screen.getByTestId("floor-map-canvas"));
+
+    fireEvent.keyDown(screen.getByTestId("floor-map-canvas"), { key: "ArrowLeft" });
+
+    expect(mockUpdateLayoutObject).not.toHaveBeenCalled();
+  });
+
+  it("member user cannot keyboard-move an object", async () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: 2, memberships: [{ role: "member", has_active_access: true }] },
+    });
+
+    renderPage();
+    await waitFor(() => screen.getByTestId("select-42"));
+    fireEvent.click(screen.getByTestId("select-42"));
+    // For members, selectedObjectId is set but canManageLayout is false —
+    // the keyboard hint does NOT appear; wait for the canvas to be ready instead
+    await waitFor(() => screen.getByTestId("floor-map-canvas"));
+
+    fireEvent.keyDown(screen.getByTestId("floor-map-canvas"), { key: "ArrowRight" });
+
+    expect(mockUpdateLayoutObject).not.toHaveBeenCalled();
+  });
+
+  it("keyboard move optimistically updates coordinates before PATCH resolves", async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let resolvePatch!: (v: any) => void;
+    mockUpdateLayoutObject.mockReturnValue(new Promise((r) => (resolvePatch = r)));
+
+    renderPage();
+    await waitFor(() => screen.getByTestId("select-42"));
+    fireEvent.click(screen.getByTestId("select-42"));
+    await waitFor(() => expect(screen.getByText(/arrow keys move/i)).toBeInTheDocument());
+
+    fireEvent.keyDown(screen.getByTestId("floor-map-canvas"), { key: "ArrowRight" });
+
+    // Optimistic update: x should be 101.00 before PATCH resolves
+    await waitFor(() => expect(screen.getByTestId("obj-x-42").textContent).toBe("101.00"));
+    resolvePatch(MOCK_OBJ);
   });
 });
