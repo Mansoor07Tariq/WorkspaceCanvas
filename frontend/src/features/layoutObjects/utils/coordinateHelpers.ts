@@ -74,8 +74,12 @@ export function buildTransformPatch(
  * directly. This helper converts scale back into absolute dimensions and
  * recalculates the top-left position from the node's new center.
  *
- * After calling this, you must reset the node's scale to 1 so that React's
- * next render (with the new width/height) displays correctly.
+ * Usage sequence in a transformend handler:
+ *   1. Read node.scaleX() / node.scaleY() into local variables.
+ *   2. Reset node.scaleX(1) / node.scaleY(1) imperatively so that React's next
+ *      render (which will pass the new width/height) does not double-apply the scale.
+ *   3. Call calculateTransformResult with the saved scale values.
+ *   4. Pass the returned x/y/width/height/rotation to the persistence callback.
  */
 export function calculateTransformResult(
   centerX: number,

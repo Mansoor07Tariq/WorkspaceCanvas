@@ -71,8 +71,10 @@ export default defineConfig({
             return "vendor-mui";
           }
 
-          // Lucide icons (if ever added) and MUI icon pack in one cacheable chunk.
-          if (id.includes("/lucide-react/") || id.includes("/@mui/icons-material/")) {
+          // Non-MUI icon libraries (e.g. lucide-react) in their own cacheable chunk.
+          // Note: @mui/icons-material is already matched by the /@mui/ check above
+          // and lives in vendor-mui alongside the rest of MUI.
+          if (id.includes("/lucide-react/")) {
             return "vendor-icons";
           }
 

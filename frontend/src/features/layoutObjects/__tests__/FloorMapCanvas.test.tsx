@@ -239,9 +239,9 @@ describe("FloorMapCanvas", () => {
 
   // ─── Accessibility tests ──────────────────────────────────────────────────
 
-  it("canvas wrapper has role=img and aria-label", () => {
+  it("canvas wrapper has role=region and aria-label", () => {
     render(<FloorMapCanvas objects={[]} selectedObjectId={null} onSelectObject={vi.fn()} />);
-    expect(screen.getByRole("img", { name: /floor map canvas/i })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: /floor map canvas/i })).toBeInTheDocument();
   });
 
   it("calls onKeyDown when a key is pressed on the canvas wrapper", () => {
@@ -254,7 +254,7 @@ describe("FloorMapCanvas", () => {
         onKeyDown={onKeyDown}
       />
     );
-    fireEvent.keyDown(screen.getByRole("img", { name: /floor map canvas/i }), {
+    fireEvent.keyDown(screen.getByRole("region", { name: /floor map canvas/i }), {
       key: "ArrowRight",
     });
     expect(onKeyDown).toHaveBeenCalled();

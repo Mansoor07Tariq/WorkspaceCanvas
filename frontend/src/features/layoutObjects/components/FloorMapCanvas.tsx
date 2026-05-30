@@ -93,7 +93,7 @@ export function FloorMapCanvas({
 
   return (
     <Box
-      role="img"
+      role="region"
       aria-label={c.canvasAriaLabel}
       tabIndex={0}
       onKeyDown={onKeyDown}
