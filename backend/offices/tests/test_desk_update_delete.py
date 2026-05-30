@@ -160,6 +160,171 @@ def other_org_user(db, other_org):
     return user
 
 
+@pytest.fixture
+def inactive_member_user(db, active_org):
+    user = User.objects.create_user(
+        username="inactive@example.com",
+        email="inactive@example.com",
+        password="pass123",
+    )
+    Membership.objects.create(
+        user=user,
+        organization=active_org,
+        role=MemberRole.MEMBER,
+        status=Membership.Status.DISABLED,
+    )
+    return user
+
+
+@pytest.fixture
+def no_membership_user(db):
+    return User.objects.create_user(
+        username="nomember@example.com",
+        email="nomember@example.com",
+        password="pass123",
+    )
+
+
+# ─── GET detail tests ────────────────────────────────────────────────────────
+
+
+def test_get_unauthenticated_returns_401(client, active_office, active_floor, desk):
+    url = desk_detail_url(active_office.id, active_floor.id, desk.id)
+    response = client.get(url)
+    assert response.status_code == 401
+
+
+def test_get_no_membership_returns_403(
+    client, no_membership_user, active_office, active_floor, desk
+):
+    client.force_authenticate(user=no_membership_user)
+    url = desk_detail_url(active_office.id, active_floor.id, desk.id)
+    response = client.get(url)
+    assert response.status_code == 403
+
+
+def test_get_inactive_membership_returns_403(
+    client, inactive_member_user, active_office, active_floor, desk
+):
+    client.force_authenticate(user=inactive_member_user)
+    url = desk_detail_url(active_office.id, active_floor.id, desk.id)
+    response = client.get(url)
+    assert response.status_code == 403
+
+
+def test_get_member_can_retrieve(
+    client, member_user, active_office, active_floor, desk
+):
+    client.force_authenticate(user=member_user)
+    url = desk_detail_url(active_office.id, active_floor.id, desk.id)
+    response = client.get(url)
+    assert response.status_code == 200
+
+
+def test_get_owner_can_retrieve(client, owner_user, active_office, active_floor, desk):
+    client.force_authenticate(user=owner_user)
+    url = desk_detail_url(active_office.id, active_floor.id, desk.id)
+    response = client.get(url)
+    assert response.status_code == 200
+
+
+def test_get_admin_can_retrieve(client, admin_user, active_office, active_floor, desk):
+    client.force_authenticate(user=admin_user)
+    url = desk_detail_url(active_office.id, active_floor.id, desk.id)
+    response = client.get(url)
+    assert response.status_code == 200
+
+
+def test_get_cross_org_returns_404(
+    client, other_org_user, active_office, active_floor, desk
+):
+    client.force_authenticate(user=other_org_user)
+    url = desk_detail_url(active_office.id, active_floor.id, desk.id)
+    response = client.get(url)
+    assert response.status_code == 404
+
+
+def test_get_inactive_desk_returns_404(
+    client, owner_user, active_org, active_office, active_floor, desk_layout_object
+):
+    inactive_desk = Desk.objects.create(
+        organization=active_org,
+        office=active_office,
+        floor=active_floor,
+        layout_object=desk_layout_object,
+        name="Old Desk",
+        is_active=False,
+    )
+    client.force_authenticate(user=owner_user)
+    url = desk_detail_url(active_office.id, active_floor.id, inactive_desk.id)
+    response = client.get(url)
+    assert response.status_code == 404
+
+
+def test_get_nonexistent_desk_returns_404(
+    client, owner_user, active_office, active_floor
+):
+    client.force_authenticate(user=owner_user)
+    url = desk_detail_url(active_office.id, active_floor.id, 99999)
+    response = client.get(url)
+    assert response.status_code == 404
+
+
+def test_get_response_has_all_fields(
+    client, owner_user, active_office, active_floor, desk
+):
+    client.force_authenticate(user=owner_user)
+    url = desk_detail_url(active_office.id, active_floor.id, desk.id)
+    response = client.get(url)
+    assert response.status_code == 200
+    expected = {
+        "id",
+        "organization",
+        "office",
+        "floor",
+        "layout_object",
+        "layout_object_type",
+        "layout_object_label",
+        "name",
+        "code",
+        "status",
+        "status_display",
+        "amenities",
+        "notes",
+        "is_active",
+        "created_at",
+        "updated_at",
+    }
+    assert expected.issubset(response.data.keys())
+
+
+def test_get_includes_layout_object_info(
+    client, owner_user, active_office, active_floor, desk
+):
+    client.force_authenticate(user=owner_user)
+    url = desk_detail_url(active_office.id, active_floor.id, desk.id)
+    response = client.get(url)
+    assert response.status_code == 200
+    assert response.data["layout_object_type"] == "desk"
+    assert response.data["layout_object_label"] == "Desk A1"
+
+
+def test_get_desk_from_other_floor_returns_404(
+    db, client, owner_user, active_office, active_floor, desk
+):
+    # desk belongs to active_floor; request via a sibling floor in the same office
+    second_floor = Floor.objects.create(
+        office=active_office,
+        name="First Floor",
+        slug="first-floor",
+        level_number=1,
+    )
+    client.force_authenticate(user=owner_user)
+    url = desk_detail_url(active_office.id, second_floor.id, desk.id)
+    response = client.get(url)
+    assert response.status_code == 404
+
+
 # ─── PATCH tests ──────────────────────────────────────────────────────────────
 
 

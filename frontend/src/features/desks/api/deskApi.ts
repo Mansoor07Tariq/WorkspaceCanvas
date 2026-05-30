@@ -13,6 +13,10 @@ export function listDesks(officeId: number, floorId: number): Promise<Desk[]> {
   return api.get<Desk[]>(baseUrl(officeId, floorId));
 }
 
+export function getDesk(officeId: number, floorId: number, deskId: number): Promise<Desk> {
+  return api.get<Desk>(detailUrl(officeId, floorId, deskId));
+}
+
 export function createDesk(
   officeId: number,
   floorId: number,

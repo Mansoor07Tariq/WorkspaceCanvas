@@ -452,6 +452,7 @@ export function FloorLayoutPage() {
                 floorId={floorId}
                 canManageLayout={canManageLayout}
                 onDeskCreated={refreshDesks}
+                onDeskUpdated={refreshDesks}
                 onDeskDeleted={refreshDesks}
               />
               <LayoutObjectList
