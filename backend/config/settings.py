@@ -204,6 +204,7 @@ REST_FRAMEWORK = {
         "layout_object_write": os.environ.get(
             "THROTTLE_LAYOUT_OBJECT_WRITE", "120/hour"
         ),
+        "desk_write": os.environ.get("THROTTLE_DESK_WRITE", "120/hour"),
     },
 }
 

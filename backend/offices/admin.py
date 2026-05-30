@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Floor, FloorLayoutObject, Office
+from .models import Desk, Floor, FloorLayoutObject, Office
 
 
 @admin.register(Office)
@@ -44,3 +44,33 @@ class FloorLayoutObjectAdmin(admin.ModelAdmin):
     search_fields = ["label", "floor__name", "floor__office__name"]
     readonly_fields = ["created_at", "updated_at"]
     raw_id_fields = ["floor"]
+
+
+@admin.register(Desk)
+class DeskAdmin(admin.ModelAdmin):
+    list_display = [
+        "id",
+        "name",
+        "code",
+        "office",
+        "floor",
+        "status",
+        "is_active",
+        "updated_at",
+    ]
+    list_filter = ["status", "is_active", "office", "floor"]
+    search_fields = [
+        "name",
+        "code",
+        "office__name",
+        "floor__name",
+        "layout_object__label",
+    ]
+    readonly_fields = [
+        "organization",
+        "office",
+        "floor",
+        "layout_object",
+        "created_at",
+        "updated_at",
+    ]

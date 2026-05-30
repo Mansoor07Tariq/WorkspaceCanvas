@@ -1,6 +1,7 @@
 import { Box, IconButton, Stack, Tooltip, Typography } from "@mui/material";
 import { DeleteOutlined } from "@mui/icons-material";
 import { en } from "@/i18n/en";
+import { DeskBadge } from "@/features/desks/components/DeskBadge";
 import type { LayoutObject } from "../types/layoutObject.types";
 
 const c = en.app.layoutObjects;
@@ -12,6 +13,7 @@ interface Props {
   onDelete: (id: number) => void;
   deleteDisabled?: boolean;
   canDelete?: boolean;
+  hasDesk?: boolean;
 }
 
 export function LayoutObjectListItem({
@@ -21,6 +23,7 @@ export function LayoutObjectListItem({
   onDelete,
   deleteDisabled,
   canDelete = true,
+  hasDesk = false,
 }: Props) {
   return (
     <Box
@@ -38,14 +41,16 @@ export function LayoutObjectListItem({
     >
       <Stack direction="row" sx={{ alignItems: "flex-start", justifyContent: "space-between" }}>
         <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography variant="body2" sx={{ fontWeight: 600 }}>
-            {obj.object_type_display}
-            {obj.label ? ` — ${obj.label}` : ""}
-          </Typography>
+          <Stack direction="row" spacing={0.75} sx={{ alignItems: "center", flexWrap: "wrap" }}>
+            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+              {obj.object_type_display}
+              {obj.label ? ` — ${obj.label}` : ""}
+            </Typography>
+            {hasDesk && <DeskBadge />}
+          </Stack>
           <Typography variant="caption" color="text.secondary" component="div">
             {c.positionColumn}: ({obj.x}, {obj.y}) &nbsp;·&nbsp; {c.sizeColumn}: {obj.width} ×{" "}
             {obj.height} &nbsp;·&nbsp; {c.rotationColumn}: {obj.rotation}°
-            {obj.is_bookable && <> &nbsp;·&nbsp; {c.bookableColumn}</>}
           </Typography>
         </Box>
         {canDelete && (

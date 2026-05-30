@@ -4,7 +4,7 @@ import zoneinfo
 
 from rest_framework import serializers
 
-from .models import Floor, FloorLayoutObject, Office
+from .models import Desk, Floor, FloorLayoutObject, Office
 
 _VALID_TIMEZONES: frozenset[str] = frozenset(zoneinfo.available_timezones())
 
@@ -189,3 +189,94 @@ class LayoutObjectResponseSerializer(serializers.ModelSerializer):
 
     def get_object_type_display(self, obj: FloorLayoutObject) -> str:
         return obj.get_object_type_display()
+
+
+# ─── Desk serializers ─────────────────────────────────────────────────────────
+
+_DESK_STATUS_CHOICES = [(s.value, s.label) for s in Desk.Status]
+_OPT_STR_50 = {"required": False, "allow_blank": True, "default": ""}
+
+
+class CreateDeskSerializer(serializers.Serializer):
+    layout_object = serializers.IntegerField()
+    name = serializers.CharField(max_length=120)
+    code = serializers.CharField(max_length=50, **_OPT_STR_50)
+    status = serializers.ChoiceField(
+        choices=_DESK_STATUS_CHOICES,
+        required=False,
+        default=Desk.Status.AVAILABLE,
+    )
+    amenities = serializers.JSONField(required=False, default=dict)
+    notes = serializers.CharField(required=False, allow_blank=True, default="")
+
+    def validate_name(self, value: str) -> str:
+        stripped = value.strip()
+        if not stripped:
+            raise serializers.ValidationError("Desk name is required.")
+        return stripped
+
+    def validate_code(self, value: str) -> str:
+        return value.strip()
+
+    def validate_amenities(self, value) -> dict:
+        if not isinstance(value, dict):
+            raise serializers.ValidationError("Amenities must be a JSON object.")
+        return value
+
+
+class UpdateDeskSerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=120, required=False)
+    code = serializers.CharField(max_length=50, required=False, allow_blank=True)
+    status = serializers.ChoiceField(choices=_DESK_STATUS_CHOICES, required=False)
+    amenities = serializers.JSONField(required=False)
+    notes = serializers.CharField(required=False, allow_blank=True)
+
+    def validate_name(self, value: str) -> str:
+        stripped = value.strip()
+        if not stripped:
+            raise serializers.ValidationError("Desk name is required.")
+        return stripped
+
+    def validate_code(self, value: str) -> str:
+        return value.strip()
+
+    def validate_amenities(self, value) -> dict:
+        if not isinstance(value, dict):
+            raise serializers.ValidationError("Amenities must be a JSON object.")
+        return value
+
+
+class DeskResponseSerializer(serializers.ModelSerializer):
+    status_display = serializers.SerializerMethodField()
+    layout_object_type = serializers.SerializerMethodField()
+    layout_object_label = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Desk
+        fields = [
+            "id",
+            "organization",
+            "office",
+            "floor",
+            "layout_object",
+            "layout_object_type",
+            "layout_object_label",
+            "name",
+            "code",
+            "status",
+            "status_display",
+            "amenities",
+            "notes",
+            "is_active",
+            "created_at",
+            "updated_at",
+        ]
+
+    def get_status_display(self, obj: Desk) -> str:
+        return obj.get_status_display()
+
+    def get_layout_object_type(self, obj: Desk) -> str:
+        return obj.layout_object.object_type
+
+    def get_layout_object_label(self, obj: Desk) -> str:
+        return obj.layout_object.label

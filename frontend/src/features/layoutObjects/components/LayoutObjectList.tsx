@@ -15,6 +15,7 @@ interface Props {
   onSelectObject?: (id: number) => void;
   onDeleted: () => void;
   canManageLayout?: boolean;
+  bookableObjectIds?: ReadonlySet<number>;
 }
 
 export function LayoutObjectList({
@@ -25,6 +26,7 @@ export function LayoutObjectList({
   onSelectObject,
   onDeleted,
   canManageLayout = true,
+  bookableObjectIds,
 }: Props) {
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
@@ -55,6 +57,7 @@ export function LayoutObjectList({
             onDelete={handleDelete}
             deleteDisabled={deletingId === obj.id}
             canDelete={canManageLayout}
+            hasDesk={bookableObjectIds?.has(obj.id)}
           />
         ))}
       </Stack>

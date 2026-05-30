@@ -1,6 +1,8 @@
 from django.urls import path
 
 from .views import (
+    DeskDetailView,
+    DeskListCreateView,
     FloorListCreateView,
     LayoutObjectDetailView,
     LayoutObjectListCreateView,
@@ -23,5 +25,15 @@ urlpatterns = [
         "<int:office_id>/floors/<int:floor_id>/layout-objects/<int:object_id>/",
         LayoutObjectDetailView.as_view(),
         name="layout-object-detail",
+    ),
+    path(
+        "<int:office_id>/floors/<int:floor_id>/desks/",
+        DeskListCreateView.as_view(),
+        name="desk-list-create",
+    ),
+    path(
+        "<int:office_id>/floors/<int:floor_id>/desks/<int:desk_id>/",
+        DeskDetailView.as_view(),
+        name="desk-detail",
     ),
 ]

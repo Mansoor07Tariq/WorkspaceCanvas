@@ -183,3 +183,95 @@ class FloorLayoutObject(models.Model):
     def __str__(self) -> str:
         label_part = f" — {self.label}" if self.label else ""
         return f"{self.get_object_type_display()}{label_part} (Floor {self.floor_id})"
+
+
+# Layout object types that can be converted into bookable desk resources.
+DESK_CAPABLE_TYPES: frozenset[str] = frozenset(
+    {
+        FloorLayoutObject.ObjectType.DESK,
+        FloorLayoutObject.ObjectType.STANDING_DESK,
+        FloorLayoutObject.ObjectType.HOT_DESK,
+        FloorLayoutObject.ObjectType.PRIVATE_DESK,
+    }
+)
+
+
+class Desk(models.Model):
+    """
+    A bookable workplace resource linked to a FloorLayoutObject.
+
+    Desk represents a real seat/resource that will later support booking.
+    It is intentionally separate from FloorLayoutObject (which is purely visual).
+
+    A ForeignKey (not OneToOneField) is used for layout_object so that a layout
+    object can have multiple historical desk records. At most one active Desk per
+    layout object is enforced by a partial unique constraint.
+    """
+
+    class Status(models.TextChoices):
+        AVAILABLE = "available", "Available"
+        UNAVAILABLE = "unavailable", "Unavailable"
+        MAINTENANCE = "maintenance", "Maintenance"
+
+    organization = models.ForeignKey(
+        "accounts.Organization",
+        on_delete=models.CASCADE,
+        related_name="desks",
+    )
+    office = models.ForeignKey(
+        "offices.Office",
+        on_delete=models.CASCADE,
+        related_name="desks",
+    )
+    floor = models.ForeignKey(
+        "offices.Floor",
+        on_delete=models.CASCADE,
+        related_name="desks",
+    )
+    layout_object = models.ForeignKey(
+        "offices.FloorLayoutObject",
+        on_delete=models.CASCADE,
+        related_name="desks",
+    )
+    name = models.CharField(max_length=120)
+    code = models.CharField(max_length=50, blank=True)
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.AVAILABLE,
+    )
+    amenities = models.JSONField(default=dict, blank=True)
+    notes = models.TextField(blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["name"]
+        indexes = [
+            models.Index(
+                fields=["organization", "is_active"],
+                name="desk_org_active_idx",
+            ),
+            models.Index(
+                fields=["office", "is_active"],
+                name="desk_office_active_idx",
+            ),
+            models.Index(
+                fields=["floor", "is_active"],
+                name="desk_floor_active_idx",
+            ),
+            models.Index(fields=["status"], name="desk_status_idx"),
+        ]
+        constraints = [
+            # At most one active desk per layout object
+            models.UniqueConstraint(
+                fields=["layout_object"],
+                condition=models.Q(is_active=True),
+                name="unique_active_desk_per_layout_object",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        code_part = f" [{self.code}]" if self.code else ""
+        return f"{self.name}{code_part} ({self.office})"

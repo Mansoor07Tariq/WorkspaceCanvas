@@ -38,6 +38,8 @@ interface Props {
   onKeyDown?: (e: React.KeyboardEvent<HTMLDivElement>) => void;
   showGrid?: boolean;
   gridSize?: number;
+  /** IDs of layout objects that have an active linked Desk resource. */
+  bookableObjectIds?: ReadonlySet<number>;
 }
 
 export function FloorMapCanvas({
@@ -51,6 +53,7 @@ export function FloorMapCanvas({
   onKeyDown,
   showGrid = true,
   gridSize = DEFAULT_GRID_SIZE,
+  bookableObjectIds,
 }: Props) {
   const transformerRef = useRef<Konva.Transformer>(null);
   const nodeRefs = useRef<Map<number, Konva.Group>>(new Map());
@@ -158,6 +161,7 @@ export function FloorMapCanvas({
               onDragEnd={onObjectDragEnd}
               onTransformEnd={onObjectTransformEnd}
               isSaving={savingObjectIds?.has(obj.id)}
+              hasDesk={bookableObjectIds?.has(obj.id)}
             />
           ))}
           {/* Transformer visible only for owners/admins */}
