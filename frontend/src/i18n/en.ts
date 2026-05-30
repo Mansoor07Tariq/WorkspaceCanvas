@@ -418,6 +418,25 @@ export const en = {
       categoryStructure: "Structure",
       categoryFacilities: "Facilities",
       categoryDecor: "Decor",
+
+      // Canvas
+      canvasTitle: "Floor map",
+      canvasEmptyTitle: "Nothing on this floor yet",
+      canvasEmptySubtitle: "Add objects from the library to start building the layout.",
+
+      // Inspector
+      inspectorTitle: "Inspector",
+      inspectorEmpty: "Select an object to inspect its details.",
+      inspectorTypeLabel: "Type",
+      inspectorLabelField: "Label",
+      inspectorPosition: "Position",
+      inspectorSize: "Size (W × H)",
+      inspectorRotation: "Rotation (deg)",
+      inspectorBookable: "Bookable",
+      inspectorMetadata: "Metadata",
+      inspectorNoLabel: "(no label)",
+      inspectorYes: "Yes",
+      inspectorNo: "No",
     },
     pages: {
       comingSoon: "This feature is coming soon.",

@@ -7,19 +7,31 @@ const c = en.app.layoutObjects;
 
 interface Props {
   obj: LayoutObject;
+  isSelected?: boolean;
+  onSelect?: (id: number) => void;
   onDelete: (id: number) => void;
   deleteDisabled?: boolean;
 }
 
-export function LayoutObjectListItem({ obj, onDelete, deleteDisabled }: Props) {
+export function LayoutObjectListItem({
+  obj,
+  isSelected = false,
+  onSelect,
+  onDelete,
+  deleteDisabled,
+}: Props) {
   return (
     <Box
+      onClick={() => onSelect?.(obj.id)}
       sx={{
         border: "1px solid",
-        borderColor: "divider",
+        borderColor: isSelected ? "primary.main" : "divider",
         borderRadius: 1.5,
         p: 1.5,
-        bgcolor: "background.paper",
+        bgcolor: isSelected ? "primary.50" : "background.paper",
+        cursor: onSelect ? "pointer" : "default",
+        transition: "border-color 0.15s, background-color 0.15s",
+        "&:hover": onSelect ? { borderColor: "primary.light" } : {},
       }}
     >
       <Stack direction="row" sx={{ alignItems: "flex-start", justifyContent: "space-between" }}>
@@ -39,7 +51,10 @@ export function LayoutObjectListItem({ obj, onDelete, deleteDisabled }: Props) {
             <IconButton
               size="small"
               color="error"
-              onClick={() => onDelete(obj.id)}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(obj.id);
+              }}
               disabled={deleteDisabled}
               aria-label={c.deleteButton}
             >
