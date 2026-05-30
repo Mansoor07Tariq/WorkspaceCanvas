@@ -8,6 +8,7 @@ import {
 } from "@/features/auth";
 import { AppPlaceholderPage } from "@/app/pages/AppPlaceholderPage";
 import { AppOfficesPage } from "@/app/pages/AppOfficesPage";
+import { OfficeDetailPage } from "@/app/pages/OfficeDetailPage";
 import { ComingSoonPage } from "@/app/pages/ComingSoonPage";
 import { ProtectedRoute } from "@/routes/ProtectedRoute";
 import { en } from "@/i18n/en";
@@ -42,6 +43,14 @@ export function AppRouter() {
           element={
             <ProtectedRoute>
               <AppOfficesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.officeDetail}
+          element={
+            <ProtectedRoute>
+              <OfficeDetailPage />
             </ProtectedRoute>
           }
         />
