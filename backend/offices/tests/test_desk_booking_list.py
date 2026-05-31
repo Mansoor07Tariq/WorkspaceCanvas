@@ -371,7 +371,7 @@ def test_only_floor_bookings_returned(
         floor=other_floor,
         desk=other_desk,
         user=member_user,
-        booking_date=datetime.date.today(),
+        booking_date=datetime.date.today() + datetime.timedelta(days=1),
         status=DeskBooking.Status.ACTIVE,
     )
     client.force_authenticate(user=owner_user)

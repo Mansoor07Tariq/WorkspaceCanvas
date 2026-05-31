@@ -398,7 +398,7 @@ def test_inactive_desk_rejected(
     client.force_authenticate(user=member_user)
     url = booking_list_url(active_office.id, active_floor.id)
     response = client.post(url, valid_payload(inactive_desk.id), format="json")
-    assert response.status_code == 400
+    assert response.status_code == 404
 
 
 def test_desk_status_unavailable_rejected(
