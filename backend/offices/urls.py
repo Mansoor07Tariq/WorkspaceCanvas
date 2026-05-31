@@ -1,6 +1,9 @@
 from django.urls import path
 
 from .views import (
+    DeskBookingCancelView,
+    DeskBookingDetailView,
+    DeskBookingListCreateView,
     DeskDetailView,
     DeskListCreateView,
     FloorListCreateView,
@@ -35,5 +38,20 @@ urlpatterns = [
         "<int:office_id>/floors/<int:floor_id>/desks/<int:desk_id>/",
         DeskDetailView.as_view(),
         name="desk-detail",
+    ),
+    path(
+        "<int:office_id>/floors/<int:floor_id>/bookings/",
+        DeskBookingListCreateView.as_view(),
+        name="desk-booking-list-create",
+    ),
+    path(
+        "<int:office_id>/floors/<int:floor_id>/bookings/<int:booking_id>/",
+        DeskBookingDetailView.as_view(),
+        name="desk-booking-detail",
+    ),
+    path(
+        "<int:office_id>/floors/<int:floor_id>/bookings/<int:booking_id>/cancel/",
+        DeskBookingCancelView.as_view(),
+        name="desk-booking-cancel",
     ),
 ]

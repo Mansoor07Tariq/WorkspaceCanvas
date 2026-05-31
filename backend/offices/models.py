@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from django.conf import settings
 from django.db import models
+from django.db.models import Q
 from django.utils.text import slugify
 
 if TYPE_CHECKING:
@@ -275,3 +277,94 @@ class Desk(models.Model):
     def __str__(self) -> str:
         code_part = f" [{self.code}]" if self.code else ""
         return f"{self.name}{code_part} ({self.office})"
+
+
+class DeskBooking(models.Model):
+    class Status(models.TextChoices):
+        ACTIVE = "active", "Active"
+        CANCELLED = "cancelled", "Cancelled"
+
+    organization = models.ForeignKey(
+        "accounts.Organization",
+        on_delete=models.CASCADE,
+        related_name="desk_bookings",
+    )
+    office = models.ForeignKey(
+        "offices.Office",
+        on_delete=models.CASCADE,
+        related_name="desk_bookings",
+    )
+    floor = models.ForeignKey(
+        "offices.Floor",
+        on_delete=models.CASCADE,
+        related_name="desk_bookings",
+    )
+    desk = models.ForeignKey(
+        "offices.Desk",
+        on_delete=models.PROTECT,
+        related_name="bookings",
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="desk_bookings",
+    )
+    booking_date = models.DateField()
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.ACTIVE,
+    )
+    cancelled_at = models.DateTimeField(null=True, blank=True)
+    cancelled_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="cancelled_bookings",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-booking_date", "created_at"]
+        indexes = [
+            models.Index(
+                fields=["organization", "booking_date", "status"],
+                name="db_org_date_status_idx",
+            ),
+            models.Index(
+                fields=["office", "booking_date", "status"],
+                name="db_ofc_date_status_idx",
+            ),
+            models.Index(
+                fields=["floor", "booking_date", "status"],
+                name="db_flr_date_status_idx",
+            ),
+            models.Index(
+                fields=["desk", "booking_date", "status"],
+                name="db_dsk_date_status_idx",
+            ),
+            models.Index(
+                fields=["user", "booking_date", "status"],
+                name="db_usr_date_status_idx",
+            ),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["desk", "booking_date"],
+                condition=Q(status="active"),
+                name="unique_active_booking_per_desk_date",
+            ),
+            models.UniqueConstraint(
+                fields=["organization", "user", "booking_date"],
+                condition=Q(status="active"),
+                name="unique_active_booking_per_user_org_date",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return (
+            f"Booking {self.id}: user {self.user_id}"
+            f" @ desk {self.desk_id} on {self.booking_date}"
+        )

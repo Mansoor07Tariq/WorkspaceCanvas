@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import zoneinfo
+from datetime import timedelta
 
+from django.utils import timezone
 from rest_framework import serializers
 
-from .models import Desk, Floor, FloorLayoutObject, Office
+from .models import Desk, DeskBooking, Floor, FloorLayoutObject, Office
+from .permissions import user_can_manage_offices
 
 _VALID_TIMEZONES: frozenset[str] = frozenset(zoneinfo.available_timezones())
 
@@ -280,3 +283,105 @@ class DeskResponseSerializer(serializers.ModelSerializer):
 
     def get_layout_object_label(self, obj: Desk) -> str:
         return obj.layout_object.label
+
+
+# ─── DeskBooking serializers ──────────────────────────────────────────────────
+
+
+class CreateDeskBookingSerializer(serializers.Serializer):
+    desk = serializers.IntegerField()
+    booking_date = serializers.DateField()
+
+    def validate_booking_date(self, value):
+        today = timezone.now().date()
+        if value < today:
+            raise serializers.ValidationError("Booking date cannot be in the past.")
+        max_date = today + timedelta(days=365)
+        if value > max_date:
+            raise serializers.ValidationError(
+                "Booking date cannot be more than 365 days in the future."
+            )
+        return value
+
+
+class DeskBookingResponseSerializer(serializers.ModelSerializer):
+    desk_name = serializers.CharField(source="desk.name", read_only=True)
+    desk_code = serializers.CharField(source="desk.code", read_only=True)
+    layout_object = serializers.IntegerField(
+        source="desk.layout_object_id", read_only=True
+    )
+    user_name = serializers.SerializerMethodField()
+    is_mine = serializers.SerializerMethodField()
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+
+    class Meta:
+        model = DeskBooking
+        fields = [
+            "id",
+            "organization",
+            "office",
+            "floor",
+            "desk",
+            "desk_name",
+            "desk_code",
+            "layout_object",
+            "user",
+            "user_name",
+            "is_mine",
+            "booking_date",
+            "status",
+            "status_display",
+            "cancelled_at",
+            "cancelled_by",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id",
+            "organization",
+            "office",
+            "floor",
+            "desk",
+            "desk_name",
+            "desk_code",
+            "layout_object",
+            "user",
+            "user_name",
+            "is_mine",
+            "booking_date",
+            "status",
+            "status_display",
+            "cancelled_at",
+            "cancelled_by",
+            "created_at",
+            "updated_at",
+        ]
+
+    def _can_see_identity(self, obj):
+        request = self.context.get("request")
+        membership = self.context.get("membership")
+        if not request:
+            return True
+        if obj.user_id == request.user.id:
+            return True
+        if membership and user_can_manage_offices(membership):
+            return True
+        return False
+
+    def get_user_name(self, obj):
+        if self._can_see_identity(obj):
+            return obj.user.get_full_name() or obj.user.email
+        return "Reserved"
+
+    def get_is_mine(self, obj):
+        request = self.context.get("request")
+        if not request:
+            return False
+        return obj.user_id == request.user.id
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        if not self._can_see_identity(instance):
+            data.pop("user", None)
+            data.pop("cancelled_by", None)
+        return data

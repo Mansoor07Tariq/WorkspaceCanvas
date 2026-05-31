@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Desk, Floor, FloorLayoutObject, Office
+from .models import Desk, DeskBooking, Floor, FloorLayoutObject, Office
 
 
 @admin.register(Office)
@@ -74,3 +74,41 @@ class DeskAdmin(admin.ModelAdmin):
         "created_at",
         "updated_at",
     ]
+
+
+@admin.register(DeskBooking)
+class DeskBookingAdmin(admin.ModelAdmin):
+    list_display = [
+        "id",
+        "user",
+        "desk",
+        "office",
+        "floor",
+        "booking_date",
+        "status",
+        "created_at",
+    ]
+    list_select_related = ["desk", "office", "floor", "user"]
+    list_filter = ["status", "booking_date", "office", "floor"]
+    search_fields = [
+        "user__email",
+        "user__first_name",
+        "user__last_name",
+        "desk__name",
+        "desk__code",
+        "office__name",
+        "floor__name",
+    ]
+    readonly_fields = [
+        "organization",
+        "office",
+        "floor",
+        "desk",
+        "user",
+        "booking_date",
+        "cancelled_at",
+        "cancelled_by",
+        "created_at",
+        "updated_at",
+    ]
+    ordering = ["-created_at"]

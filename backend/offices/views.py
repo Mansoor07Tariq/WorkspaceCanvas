@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import datetime
+
 from django.db import IntegrityError, transaction
+from django.utils import timezone as tz
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
@@ -9,7 +12,14 @@ from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
-from .models import DESK_CAPABLE_TYPES, Desk, Floor, FloorLayoutObject, Office
+from .models import (
+    DESK_CAPABLE_TYPES,
+    Desk,
+    DeskBooking,
+    Floor,
+    FloorLayoutObject,
+    Office,
+)
 from .permissions import (
     get_first_active_membership,
     get_floor_for_office,
@@ -17,10 +27,12 @@ from .permissions import (
     user_can_manage_offices,
 )
 from .serializers import (
+    CreateDeskBookingSerializer,
     CreateDeskSerializer,
     CreateFloorSerializer,
     CreateLayoutObjectSerializer,
     CreateOfficeSerializer,
+    DeskBookingResponseSerializer,
     DeskResponseSerializer,
     FloorResponseSerializer,
     LayoutObjectResponseSerializer,
@@ -587,3 +599,238 @@ class DeskDetailView(APIView):
         desk.is_active = False
         desk.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class _DeskBookingWriteThrottle(ScopedRateThrottle):
+    scope = "desk_booking_write"
+
+
+class DeskBookingListCreateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_throttles(self):
+        if self.request.method == "POST":
+            return [_DeskBookingWriteThrottle()]
+        return []
+
+    def get(self, request: Request, office_id: int, floor_id: int) -> Response:
+        # NOTE: get_first_active_membership resolves the alphabetically-first org.
+        # Users with memberships in multiple orgs may experience unexpected org
+        # resolution. This is a pre-existing limitation. See docs for details.
+        membership = get_first_active_membership(request.user)
+        if membership is None:
+            return Response(
+                {"detail": _NO_MEMBERSHIP}, status=status.HTTP_403_FORBIDDEN
+            )
+        office = get_office_for_membership(membership, office_id)
+        if office is None:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+        floor = get_floor_for_office(office, floor_id)
+        if floor is None:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        date_str = request.query_params.get("date")
+        if not date_str:
+            return Response(
+                {"detail": "date query parameter is required (YYYY-MM-DD)."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            booking_date = datetime.date.fromisoformat(date_str)
+        except ValueError:
+            return Response(
+                {"detail": "Invalid date format. Use YYYY-MM-DD."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        bookings = (
+            DeskBooking.objects.filter(
+                floor=floor,
+                booking_date=booking_date,
+                status=DeskBooking.Status.ACTIVE,
+            )
+            .select_related("desk", "user")
+            .order_by("desk__name")
+        )
+        serializer = DeskBookingResponseSerializer(
+            bookings, many=True, context={"request": request, "membership": membership}
+        )
+        return Response(serializer.data)
+
+    def post(self, request: Request, office_id: int, floor_id: int) -> Response:
+        # NOTE: get_first_active_membership resolves the alphabetically-first org.
+        # Users with memberships in multiple orgs may experience unexpected org
+        # resolution. This is a pre-existing limitation. See docs for details.
+        membership = get_first_active_membership(request.user)
+        if membership is None:
+            return Response(
+                {"detail": _NO_MEMBERSHIP}, status=status.HTTP_403_FORBIDDEN
+            )
+        office = get_office_for_membership(membership, office_id)
+        if office is None:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+        floor = get_floor_for_office(office, floor_id)
+        if floor is None:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = CreateDeskBookingSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        validated = serializer.validated_data
+        desk_id = validated["desk"]
+        booking_date = validated["booking_date"]
+
+        try:
+            desk = Desk.objects.get(
+                id=desk_id,
+                floor=floor,
+                office=office,
+                organization=membership.organization,
+                is_active=True,
+            )
+        except Desk.DoesNotExist:
+            return Response(
+                {"detail": "Desk not found on this floor."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if desk.status != Desk.Status.AVAILABLE:
+            return Response(
+                {"detail": "Desk is not available for booking."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if DeskBooking.objects.filter(
+            desk=desk,
+            booking_date=booking_date,
+            status=DeskBooking.Status.ACTIVE,
+        ).exists():
+            return Response(
+                {"detail": "This desk is already booked for the selected date."},
+                status=status.HTTP_409_CONFLICT,
+            )
+        if DeskBooking.objects.filter(
+            organization=membership.organization,
+            user=request.user,
+            booking_date=booking_date,
+            status=DeskBooking.Status.ACTIVE,
+        ).exists():
+            return Response(
+                {"detail": "You already have an active booking for this date."},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        try:
+            with transaction.atomic():
+                booking = DeskBooking.objects.create(
+                    organization=membership.organization,
+                    office=office,
+                    floor=floor,
+                    desk=desk,
+                    user=request.user,
+                    booking_date=booking_date,
+                    status=DeskBooking.Status.ACTIVE,
+                )
+        except IntegrityError as exc:
+            exc_str = str(exc)
+            if "unique_active_booking_per_desk_date" in exc_str:
+                return Response(
+                    {"detail": "This desk is already booked for the selected date."},
+                    status=status.HTTP_409_CONFLICT,
+                )
+            if "unique_active_booking_per_user_org_date" in exc_str:
+                return Response(
+                    {"detail": "You already have an active booking for this date."},
+                    status=status.HTTP_409_CONFLICT,
+                )
+            raise
+        response_serializer = DeskBookingResponseSerializer(
+            booking, context={"request": request, "membership": membership}
+        )
+        return Response(
+            response_serializer.data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class DeskBookingDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(
+        self, request: Request, office_id: int, floor_id: int, booking_id: int
+    ) -> Response:
+        membership = get_first_active_membership(request.user)
+        if membership is None:
+            return Response(
+                {"detail": _NO_MEMBERSHIP}, status=status.HTTP_403_FORBIDDEN
+            )
+        office = get_office_for_membership(membership, office_id)
+        if office is None:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+        floor = get_floor_for_office(office, floor_id)
+        if floor is None:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            booking = DeskBooking.objects.select_related("desk", "user").get(
+                id=booking_id,
+                floor=floor,
+                status=DeskBooking.Status.ACTIVE,
+            )
+        except DeskBooking.DoesNotExist:
+            return Response(
+                {"detail": "Booking not found."}, status=status.HTTP_404_NOT_FOUND
+            )
+
+        serializer = DeskBookingResponseSerializer(
+            booking, context={"request": request, "membership": membership}
+        )
+        return Response(serializer.data)
+
+
+class DeskBookingCancelView(APIView):
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [_DeskBookingWriteThrottle]
+
+    def post(
+        self, request: Request, office_id: int, floor_id: int, booking_id: int
+    ) -> Response:
+        membership = get_first_active_membership(request.user)
+        if membership is None:
+            return Response(
+                {"detail": _NO_MEMBERSHIP}, status=status.HTTP_403_FORBIDDEN
+            )
+        office = get_office_for_membership(membership, office_id)
+        if office is None:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+        floor = get_floor_for_office(office, floor_id)
+        if floor is None:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            booking = DeskBooking.objects.select_related("desk", "user").get(
+                id=booking_id, floor=floor
+            )
+        except DeskBooking.DoesNotExist:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        is_own = booking.user == request.user
+        can_manage = user_can_manage_offices(membership)
+        if not is_own and not can_manage:
+            return Response(
+                {"detail": "You do not have permission to cancel this booking."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        if booking.status == DeskBooking.Status.CANCELLED:
+            return Response(
+                {"detail": "Booking is already cancelled."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        booking.status = DeskBooking.Status.CANCELLED
+        booking.cancelled_at = tz.now()
+        booking.cancelled_by = request.user
+        booking.save(update_fields=["status", "cancelled_at", "cancelled_by"])
+        serializer = DeskBookingResponseSerializer(
+            booking, context={"request": request, "membership": membership}
+        )
+        return Response(serializer.data)
