@@ -60,6 +60,11 @@ const ComingSoonPage = lazy(() =>
     default: m.ComingSoonPage,
   }))
 );
+const DeskBookingPage = lazy(() =>
+  import("@/app/pages/DeskBookingPage").then((m) => ({
+    default: m.DeskBookingPage,
+  }))
+);
 const NotFoundPage = lazy(() =>
   import("@/app/pages/NotFoundPage").then((m) => ({
     default: m.NotFoundPage,
@@ -148,7 +153,7 @@ export function AppRouter() {
               path={ROUTES.bookings}
               element={
                 <ProtectedRoute>
-                  <ComingSoonPage title={en.app.sidebar.deskBooking} />
+                  <DeskBookingPage />
                 </ProtectedRoute>
               }
             />

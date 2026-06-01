@@ -49,12 +49,12 @@ This project is in active development. The authentication stack, organization se
 - Desk inline edit UI with detail endpoint
 - Desk booking API: create, list, detail, cancel with privacy-aware serialization
 - DB-level partial unique constraints preventing double-booking
+- Desk Booking UI: date picker, office/floor selector, availability list, book and cancel actions
 
 ### Upcoming Work
 
-- Booking UI: calendar date picker, booking creation from canvas or list view
-- My Bookings dashboard
-- Availability colour-coding on the canvas
+- Canvas availability colouring — desk shapes on the floor map reflect booking status
+- My Bookings — user's upcoming and past bookings dashboard
 - Events module
 - Awards and voting module
 - Email and push notifications
