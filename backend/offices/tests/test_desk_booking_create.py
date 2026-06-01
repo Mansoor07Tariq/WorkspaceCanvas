@@ -649,11 +649,15 @@ def test_integrity_error_desk_date_returns_409(
 ):
     """When a concurrent insert triggers the unique_active_booking_per_desk_date
     constraint, the view must catch the IntegrityError and return 409 with a
-    human-readable 'already booked' detail message."""
+    human-readable 'already booked' detail message.
+
+    Booking creation now uses booking.save() inside the service, so the mock
+    targets DeskBooking.save rather than DeskBooking.objects.create.
+    """
     client.force_authenticate(user=member_user)
     url = booking_list_url(active_office.id, active_floor.id)
     with patch(
-        "offices.models.DeskBooking.objects.create",
+        "offices.models.DeskBooking.save",
         side_effect=IntegrityError("unique_active_booking_per_desk_date"),
     ):
         response = client.post(url, valid_payload(active_desk.id), format="json")
@@ -670,11 +674,15 @@ def test_integrity_error_user_org_date_returns_409(
 ):
     """When a concurrent insert triggers the unique_active_booking_per_user_org_date
     constraint, the view must catch the IntegrityError and return 409 with a
-    human-readable 'already have an active booking' detail message."""
+    human-readable 'already have an active booking' detail message.
+
+    Booking creation now uses booking.save() inside the service, so the mock
+    targets DeskBooking.save rather than DeskBooking.objects.create.
+    """
     client.force_authenticate(user=member_user)
     url = booking_list_url(active_office.id, active_floor.id)
     with patch(
-        "offices.models.DeskBooking.objects.create",
+        "offices.models.DeskBooking.save",
         side_effect=IntegrityError("unique_active_booking_per_user_org_date"),
     ):
         response = client.post(url, valid_payload(active_desk.id), format="json")

@@ -40,6 +40,12 @@ from .serializers import (
     UpdateDeskSerializer,
     UpdateLayoutObjectSerializer,
 )
+from .services.booking_service import (
+    BookingDeskNotAvailableError,
+    DuplicateBookingError,
+    cancel_active_bookings_for_desk,
+    create_booking_for_user,
+)
 
 _MAX_SLUG_RETRIES = 5
 _SLUG_ERROR = "Could not generate a unique office slug. Please try a different name."
@@ -614,18 +620,12 @@ class DeskDetailView(APIView):
         desk, err = self._get_desk(membership, office_id, floor_id, desk_id)
         if err is not None:
             return err
-        now = tz.now()
         with transaction.atomic():
-            # Cancel all active bookings for this desk before soft-deleting it.
-            DeskBooking.objects.filter(
-                desk=desk,
-                status=DeskBooking.Status.ACTIVE,
-            ).update(
-                status=DeskBooking.Status.CANCELLED,
-                cancelled_at=now,
-                cancelled_by=request.user,
-                updated_at=now,
-            )
+            # Cancel all active bookings before soft-deleting the desk.
+            # cancelled_by is set to the requesting user for API-driven deactivation.
+            # The post_save signal (TD-011) also runs after desk.save() but finds
+            # no remaining ACTIVE bookings, so it is a safe no-op here.
+            cancel_active_bookings_for_desk(desk, cancelled_by=request.user)
             desk.is_active = False
             desk.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -711,59 +711,36 @@ class DeskBookingListCreateView(APIView):
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         validated = serializer.validated_data
-        desk_id = validated["desk"]
-        booking_date = validated["booking_date"]
 
         try:
-            desk = Desk.objects.get(
-                id=desk_id,
-                floor=floor,
-                office=office,
+            booking = create_booking_for_user(
                 organization=membership.organization,
-                is_active=True,
+                office=office,
+                floor=floor,
+                desk_id=validated["desk"],
+                user=request.user,
+                booking_date=validated["booking_date"],
             )
         except Desk.DoesNotExist:
             return Response(
                 {"detail": "Desk not found on this floor."},
                 status=status.HTTP_404_NOT_FOUND,
             )
-
-        if desk.status != Desk.Status.AVAILABLE:
+        except BookingDeskNotAvailableError:
             return Response(
                 {"detail": "Desk is not available for booking."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        if DeskBooking.objects.filter(
-            desk=desk,
-            booking_date=booking_date,
-            status=DeskBooking.Status.ACTIVE,
-        ).exists():
-            return Response(
-                {"detail": "This desk is already booked for the selected date."},
-                status=status.HTTP_409_CONFLICT,
-            )
-        if DeskBooking.objects.filter(
-            organization=membership.organization,
-            user=request.user,
-            booking_date=booking_date,
-            status=DeskBooking.Status.ACTIVE,
-        ).exists():
+        except DuplicateBookingError as exc:
+            if exc.constraint == "desk_date":
+                return Response(
+                    {"detail": "This desk is already booked for the selected date."},
+                    status=status.HTTP_409_CONFLICT,
+                )
             return Response(
                 {"detail": "You already have an active booking for this date."},
                 status=status.HTTP_409_CONFLICT,
             )
-
-        try:
-            with transaction.atomic():
-                booking = DeskBooking.objects.create(
-                    organization=membership.organization,
-                    office=office,
-                    floor=floor,
-                    desk=desk,
-                    user=request.user,
-                    booking_date=booking_date,
-                    status=DeskBooking.Status.ACTIVE,
-                )
         except IntegrityError as exc:
             exc_str = str(exc)
             if "unique_active_booking_per_desk_date" in exc_str:
@@ -777,6 +754,7 @@ class DeskBookingListCreateView(APIView):
                     status=status.HTTP_409_CONFLICT,
                 )
             raise
+
         response_serializer = DeskBookingResponseSerializer(
             booking, context={"request": request, "membership": membership}
         )
