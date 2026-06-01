@@ -9,7 +9,7 @@ export interface DeskBooking {
   desk_name: string;
   desk_code: string;
   layout_object: number;
-  user: number;
+  user?: number | null;
   user_name: string;
   booking_date: string;
   status: DeskBookingStatus;
@@ -19,6 +19,8 @@ export interface DeskBooking {
   cancelled_at: string | null;
   cancelled_by?: number | null;
   is_mine: boolean;
+  office_name?: string;
+  floor_name?: string;
 }
 
 export interface CreateDeskBookingPayload {
@@ -27,3 +29,11 @@ export interface CreateDeskBookingPayload {
 }
 
 export type CancelDeskBookingResponse = DeskBooking;
+
+export type MyBookingStatusFilter = "active" | "cancelled" | "all";
+
+export interface MyBookingQueryParams {
+  from?: string;
+  to?: string;
+  status?: MyBookingStatusFilter;
+}

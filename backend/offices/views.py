@@ -9,8 +9,10 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
-from rest_framework.throttling import ScopedRateThrottle
+from rest_framework.throttling import SimpleRateThrottle
 from rest_framework.views import APIView
+
+from accounts.models import Membership
 
 from .models import (
     DESK_CAPABLE_TYPES,
@@ -56,23 +58,38 @@ _NO_MEMBERSHIP = "You do not have an active organization membership."
 _NO_MANAGE_OFFICES = "Only organization owners and admins can manage offices."
 
 
-class _PostScopedThrottle(ScopedRateThrottle):
+def _throttle_cache_key(throttle: SimpleRateThrottle, request: Request) -> str:
+    """Shared cache key builder for all fixed-scope throttle classes."""
+    if request.user.is_authenticated:
+        ident = request.user.pk
+    else:
+        ident = throttle.get_ident(request)
+    return throttle.cache_format % {"scope": throttle.scope, "ident": ident}
+
+
+class _PostScopedThrottle(SimpleRateThrottle):
     """Applies the office_create throttle scope only on POST requests."""
 
     scope = "office_create"
 
-    def allow_request(self, request: Request, view: APIView) -> bool:  # type: ignore[override]
+    def get_cache_key(self, request: Request, view) -> str | None:  # type: ignore[override]
+        return _throttle_cache_key(self, request)
+
+    def allow_request(self, request: Request, view) -> bool:  # type: ignore[override]
         if request.method != "POST":
             return True
         return super().allow_request(request, view)
 
 
-class _FloorPostScopedThrottle(ScopedRateThrottle):
+class _FloorPostScopedThrottle(SimpleRateThrottle):
     """Applies the floor_create throttle scope only on POST requests."""
 
     scope = "floor_create"
 
-    def allow_request(self, request: Request, view: APIView) -> bool:  # type: ignore[override]
+    def get_cache_key(self, request: Request, view) -> str | None:  # type: ignore[override]
+        return _throttle_cache_key(self, request)
+
+    def allow_request(self, request: Request, view) -> bool:  # type: ignore[override]
         if request.method != "POST":
             return True
         return super().allow_request(request, view)
@@ -251,12 +268,15 @@ class FloorListCreateView(APIView):
 _WRITE_METHODS = frozenset({"POST", "PATCH", "DELETE"})
 
 
-class _LayoutObjectWriteThrottle(ScopedRateThrottle):
+class _LayoutObjectWriteThrottle(SimpleRateThrottle):
     """Applies the layout_object_write throttle scope on write requests."""
 
     scope = "layout_object_write"
 
-    def allow_request(self, request: Request, view: APIView) -> bool:  # type: ignore[override]
+    def get_cache_key(self, request: Request, view) -> str | None:  # type: ignore[override]
+        return _throttle_cache_key(self, request)
+
+    def allow_request(self, request: Request, view) -> bool:  # type: ignore[override]
         if request.method not in _WRITE_METHODS:
             return True
         return super().allow_request(request, view)
@@ -401,12 +421,15 @@ _DESK_ALREADY_EXISTS = "This layout object already has an active desk resource."
 _DESK_CODE_TAKEN = "A desk with this code already exists in this office."
 
 
-class _DeskWriteThrottle(ScopedRateThrottle):
+class _DeskWriteThrottle(SimpleRateThrottle):
     """Applies the desk_write throttle scope on write requests."""
 
     scope = "desk_write"
 
-    def allow_request(self, request: Request, view: APIView) -> bool:  # type: ignore[override]
+    def get_cache_key(self, request: Request, view) -> str | None:  # type: ignore[override]
+        return _throttle_cache_key(self, request)
+
+    def allow_request(self, request: Request, view) -> bool:  # type: ignore[override]
         if request.method not in _WRITE_METHODS:
             return True
         return super().allow_request(request, view)
@@ -631,12 +654,18 @@ class DeskDetailView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class _DeskBookingWriteThrottle(ScopedRateThrottle):
+class _DeskBookingWriteThrottle(SimpleRateThrottle):
     scope = "desk_booking_write"
 
+    def get_cache_key(self, request: Request, view) -> str | None:  # type: ignore[override]
+        return _throttle_cache_key(self, request)
 
-class _DeskBookingReadThrottle(ScopedRateThrottle):
+
+class _DeskBookingReadThrottle(SimpleRateThrottle):
     scope = "desk_booking_read"
+
+    def get_cache_key(self, request: Request, view) -> str | None:  # type: ignore[override]
+        return _throttle_cache_key(self, request)
 
 
 class DeskBookingListCreateView(APIView):
@@ -849,5 +878,95 @@ class DeskBookingCancelView(APIView):
         )
         serializer = DeskBookingResponseSerializer(
             booking, context={"request": request, "membership": membership}
+        )
+        return Response(serializer.data)
+
+
+class MyBookingsView(APIView):
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [_DeskBookingReadThrottle]
+
+    def get(self, request: Request) -> Response:
+        active_org_ids = Membership.objects.filter(
+            user=request.user, status="active"
+        ).values_list("organization_id", flat=True)
+
+        qs = DeskBooking.objects.filter(
+            user=request.user, organization__in=active_org_ids
+        ).select_related(
+            "desk", "desk__layout_object", "office", "floor", "cancelled_by"
+        )
+
+        status_param = request.query_params.get("status", "active")
+        if status_param == "active":
+            qs = qs.filter(status=DeskBooking.Status.ACTIVE)
+        elif status_param == "cancelled":
+            qs = qs.filter(status=DeskBooking.Status.CANCELLED)
+        # "all" means no status filter
+
+        from_date_str = request.query_params.get("from")
+        to_date_str = request.query_params.get("to")
+        today = tz.now().date()
+
+        if from_date_str:
+            try:
+                from_date = datetime.date.fromisoformat(from_date_str)
+            except ValueError:
+                return Response(
+                    {"detail": "Invalid from date format. Use YYYY-MM-DD."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            qs = qs.filter(booking_date__gte=from_date)
+        elif status_param == "active":
+            # Default: active bookings from today onward
+            qs = qs.filter(booking_date__gte=today)
+
+        if to_date_str:
+            try:
+                to_date = datetime.date.fromisoformat(to_date_str)
+            except ValueError:
+                return Response(
+                    {"detail": "Invalid to date format. Use YYYY-MM-DD."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            qs = qs.filter(booking_date__lte=to_date)
+
+        if status_param == "active":
+            qs = qs.order_by("booking_date")
+        else:
+            qs = qs.order_by("-booking_date")
+
+        serializer = DeskBookingResponseSerializer(
+            qs, many=True, context={"request": request}
+        )
+        return Response(serializer.data)
+
+
+class MyBookingCancelView(APIView):
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [_DeskBookingWriteThrottle]
+
+    def post(self, request: Request, booking_id: int) -> Response:
+        try:
+            booking = DeskBooking.objects.select_related(
+                "desk", "desk__layout_object", "office", "floor", "cancelled_by"
+            ).get(id=booking_id, user=request.user)
+        except DeskBooking.DoesNotExist:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        if booking.status != DeskBooking.Status.ACTIVE:
+            return Response(
+                {"detail": "This booking is already cancelled."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        booking.status = DeskBooking.Status.CANCELLED
+        booking.cancelled_at = tz.now()
+        booking.cancelled_by = request.user
+        booking.save(
+            update_fields=["status", "cancelled_at", "cancelled_by", "updated_at"]
+        )
+        serializer = DeskBookingResponseSerializer(
+            booking, context={"request": request}
         )
         return Response(serializer.data)

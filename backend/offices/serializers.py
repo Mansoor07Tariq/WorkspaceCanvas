@@ -313,6 +313,8 @@ class DeskBookingResponseSerializer(serializers.ModelSerializer):
     user_name = serializers.SerializerMethodField()
     is_mine = serializers.SerializerMethodField()
     status_display = serializers.CharField(source="get_status_display", read_only=True)
+    office_name = serializers.SerializerMethodField()
+    floor_name = serializers.SerializerMethodField()
 
     class Meta:
         model = DeskBooking
@@ -320,7 +322,9 @@ class DeskBookingResponseSerializer(serializers.ModelSerializer):
             "id",
             "organization",
             "office",
+            "office_name",
             "floor",
+            "floor_name",
             "desk",
             "desk_name",
             "desk_code",
@@ -340,7 +344,9 @@ class DeskBookingResponseSerializer(serializers.ModelSerializer):
             "id",
             "organization",
             "office",
+            "office_name",
             "floor",
+            "floor_name",
             "desk",
             "desk_name",
             "desk_code",
@@ -364,6 +370,9 @@ class DeskBookingResponseSerializer(serializers.ModelSerializer):
             # No request context = Django admin shell / admin site —
             # show identity to maintain admin usability.
             return True
+        if obj.user_id is None:
+            # Nothing to hide when user has been deleted.
+            return True
         if obj.user_id == request.user.id:
             return True
         if membership and user_can_manage_offices(membership):
@@ -371,15 +380,25 @@ class DeskBookingResponseSerializer(serializers.ModelSerializer):
         return False
 
     def get_user_name(self, obj):
+        if obj.user is None:
+            return "Former user"
         if self._can_see_identity(obj):
             return obj.user.get_full_name() or obj.user.email
         return "Reserved"
 
     def get_is_mine(self, obj):
+        if obj.user is None:
+            return False
         request = self.context.get("request")
         if not request:
             return False
         return obj.user_id == request.user.id
+
+    def get_office_name(self, obj) -> str:
+        return obj.office.name if obj.office_id else ""
+
+    def get_floor_name(self, obj) -> str:
+        return obj.floor.name if obj.floor_id else ""
 
     def to_representation(self, instance):
         data = super().to_representation(instance)

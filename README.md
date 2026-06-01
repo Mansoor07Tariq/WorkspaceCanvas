@@ -50,11 +50,11 @@ This project is in active development. The authentication stack, organization se
 - Desk booking API: create, list, detail, cancel with privacy-aware serialization
 - DB-level partial unique constraints preventing double-booking
 - Desk Booking UI: date picker, office/floor selector, availability list, book and cancel actions
+- Canvas availability colouring — desk shapes on the floor map reflect booking status
+- My Bookings page — user's upcoming and past bookings at `/app/bookings/my` with cancel action
 
 ### Upcoming Work
 
-- Canvas availability colouring — desk shapes on the floor map reflect booking status
-- My Bookings — user's upcoming and past bookings dashboard
 - Events module
 - Awards and voting module
 - Email and push notifications
@@ -179,6 +179,7 @@ Detailed notes for each feature and setup step are in the `docs/` folder:
 | [042-booking-ui-foundation.md](docs/042-booking-ui-foundation.md) | Booking UI — /app/bookings route, office/floor/date selector, desk list, book/cancel flow |
 | [043-canvas-availability-map-booking.md](docs/043-canvas-availability-map-booking.md) | Canvas availability colours and map-based desk selection — mode="booking", colour-coded shapes, map/list sync |
 | [044-booking-data-integrity-hardening.md](docs/044-booking-data-integrity-hardening.md) | Booking data integrity — DeskBooking.clean(), select_for_update service, Desk deactivation signals |
+| [045-my-bookings-and-request-hygiene.md](docs/045-my-bookings-and-request-hygiene.md) | My Bookings view, request hygiene, TD-009/015/020 |
 | [TECHNICAL_DEBT.md](docs/TECHNICAL_DEBT.md) | Long-lived engineering debt register — open items, severity, recommended fixes |
 
 ## Common Commands

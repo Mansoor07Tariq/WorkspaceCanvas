@@ -3,6 +3,7 @@ import type {
   CancelDeskBookingResponse,
   CreateDeskBookingPayload,
   DeskBooking,
+  MyBookingQueryParams,
 } from "../types/booking.types";
 
 function baseUrl(officeId: number, floorId: number): string {
@@ -47,4 +48,17 @@ export function getDeskBooking(
   bookingId: number
 ): Promise<DeskBooking> {
   return api.get<DeskBooking>(detailUrl(officeId, floorId, bookingId));
+}
+
+export function listMyBookings(params?: MyBookingQueryParams): Promise<DeskBooking[]> {
+  const query = new URLSearchParams();
+  if (params?.from) query.set("from", params.from);
+  if (params?.to) query.set("to", params.to);
+  if (params?.status) query.set("status", params.status);
+  const qs = query.toString();
+  return api.get<DeskBooking[]>(`/api/bookings/my/${qs ? "?" + qs : ""}`);
+}
+
+export function cancelMyBooking(bookingId: number): Promise<DeskBooking> {
+  return api.post<DeskBooking>(`/api/bookings/my/${bookingId}/cancel/`, {});
 }

@@ -9,6 +9,7 @@ export const ROUTES = {
   officeDetail: "/app/offices/:officeId",
   floorLayout: "/app/offices/:officeId/floors/:floorId/layout",
   bookings: "/app/bookings",
+  myBookings: "/app/bookings/my",
   events: "/app/events",
   people: "/app/people",
 } as const;
@@ -19,4 +20,8 @@ export function officeDetailPath(officeId: number): string {
 
 export function floorLayoutPath(officeId: number, floorId: number): string {
   return `/app/offices/${officeId}/floors/${floorId}/layout`;
+}
+
+export function myBookingsPath(): string {
+  return "/app/bookings/my";
 }
