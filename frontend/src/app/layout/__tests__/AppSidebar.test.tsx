@@ -47,10 +47,11 @@ function renderSidebar(user: CurrentUser | null = incompleteUser, initialPath = 
   );
 }
 
+// All product items that appear in the nav
 const PRODUCT_LABELS = [
   en.app.sidebar.offices,
   en.app.sidebar.deskBooking,
-  en.app.sidebar.events,
+  en.app.sidebar.myBookings,
   en.app.sidebar.people,
 ];
 
@@ -106,6 +107,29 @@ describe("AppSidebar — unlocked (profile complete)", () => {
   });
 });
 
+describe("AppSidebar — My Bookings nav item", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("My Bookings item is present in the nav", () => {
+    renderSidebar(completeUser);
+    expect(screen.getByRole("button", { name: en.app.sidebar.myBookings })).toBeInTheDocument();
+  });
+
+  it("My Bookings item is enabled for a profile-complete user", () => {
+    renderSidebar(completeUser);
+    expect(screen.getByRole("button", { name: en.app.sidebar.myBookings })).not.toBeDisabled();
+  });
+});
+
+describe("AppSidebar — Events removed", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("Events item is not shown in the nav", () => {
+    renderSidebar(completeUser);
+    expect(screen.queryByRole("button", { name: en.app.sidebar.events })).not.toBeInTheDocument();
+  });
+});
+
 describe("AppSidebar — active item selection", () => {
   beforeEach(() => vi.clearAllMocks());
 
@@ -119,6 +143,12 @@ describe("AppSidebar — active item selection", () => {
     renderSidebar(completeUser, ROUTES.offices);
     const btn = screen.getByRole("button", { name: en.app.sidebar.dashboard });
     expect(btn).not.toHaveClass("Mui-selected");
+  });
+
+  it("My Bookings button has Mui-selected class when on myBookings route", () => {
+    renderSidebar(completeUser, ROUTES.myBookings);
+    const btn = screen.getByRole("button", { name: en.app.sidebar.myBookings });
+    expect(btn).toHaveClass("Mui-selected");
   });
 });
 

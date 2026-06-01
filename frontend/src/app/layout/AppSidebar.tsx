@@ -12,8 +12,8 @@ import {
 import { alpha } from "@mui/material/styles";
 import {
   AutoAwesomeOutlined,
+  BookmarksOutlined,
   BusinessOutlined,
-  CalendarMonthOutlined,
   GridViewOutlined,
   PeopleOutlined,
   WeekendOutlined,
@@ -40,7 +40,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   { label: en.app.sidebar.offices, Icon: BusinessOutlined, path: ROUTES.offices },
   { label: en.app.sidebar.deskBooking, Icon: WeekendOutlined, path: ROUTES.bookings },
-  { label: en.app.sidebar.events, Icon: CalendarMonthOutlined, path: ROUTES.events },
+  { label: en.app.sidebar.myBookings, Icon: BookmarksOutlined, path: ROUTES.myBookings },
   { label: en.app.sidebar.people, Icon: PeopleOutlined, path: ROUTES.people },
 ];
 

@@ -1,13 +1,18 @@
 import { useState } from "react";
 import { Box } from "@mui/material";
 import { useAuth } from "@/features/auth/context/AuthContext";
-import { hasActiveMembership } from "@/features/organizations/utils/membershipUtils";
+import {
+  hasActiveMembership,
+  canManageOfficeSetup,
+  getFirstActiveMembership,
+} from "@/features/organizations/utils/membershipUtils";
 import { OrganizationSetupFlow } from "@/features/organizations/components/OrganizationSetupFlow";
 import { LoadingState } from "@/components/feedback/LoadingState";
 import { OfficesEmptyState } from "@/features/offices/components/OfficesEmptyState";
 import { OfficeCreationFlow } from "@/features/offices/components/OfficeCreationFlow";
 import { OfficesList } from "@/features/offices/components/OfficesList";
 import { useOffices } from "@/features/offices/hooks/useOffices";
+
 type PageMode = "list" | "create";
 
 export function AppOfficesPage() {
@@ -16,6 +21,9 @@ export function AppOfficesPage() {
   const [mode, setMode] = useState<PageMode>("list");
 
   const hasOrg = orgJustCreated || hasActiveMembership(user);
+  const membership = getFirstActiveMembership(user);
+  const canManage = canManageOfficeSetup(membership?.role);
+
   const { offices, loading, refresh } = useOffices();
 
   if (!hasOrg) {
@@ -28,7 +36,7 @@ export function AppOfficesPage() {
     );
   }
 
-  if (mode === "create") {
+  if (canManage && mode === "create") {
     return (
       <OfficeCreationFlow
         onCreated={() => {
@@ -50,8 +58,10 @@ export function AppOfficesPage() {
   }
 
   if (offices.length === 0) {
-    return <OfficesEmptyState onAddOffice={() => setMode("create")} />;
+    return <OfficesEmptyState canManage={canManage} onAddOffice={() => setMode("create")} />;
   }
 
-  return <OfficesList offices={offices} onAddOffice={() => setMode("create")} />;
+  return (
+    <OfficesList offices={offices} canManage={canManage} onAddOffice={() => setMode("create")} />
+  );
 }

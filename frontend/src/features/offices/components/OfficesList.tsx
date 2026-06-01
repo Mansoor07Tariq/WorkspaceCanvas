@@ -8,19 +8,27 @@ const c = en.app.offices;
 
 interface Props {
   offices: Office[];
+  canManage?: boolean;
   onAddOffice: () => void;
 }
 
-export function OfficesList({ offices, onAddOffice }: Props) {
+export function OfficesList({ offices, canManage = true, onAddOffice }: Props) {
   return (
     <Box sx={{ p: { xs: 2, sm: 3 } }}>
       <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center", mb: 3 }}>
         <Typography variant="h6" sx={{ fontWeight: 700 }}>
           {c.listTitle}
         </Typography>
-        <Button variant="contained" startIcon={<AddOutlined />} onClick={onAddOffice} size="small">
-          {c.addOffice}
-        </Button>
+        {canManage && (
+          <Button
+            variant="contained"
+            startIcon={<AddOutlined />}
+            onClick={onAddOffice}
+            size="small"
+          >
+            {c.addOffice}
+          </Button>
+        )}
       </Stack>
       <Grid container spacing={2}>
         {offices.map((office) => (

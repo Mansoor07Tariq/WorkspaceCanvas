@@ -19,7 +19,6 @@ export {
 export { useLayoutObjects } from "./hooks/useLayoutObjects";
 export { useLayoutObjectForm } from "./hooks/useLayoutObjectForm";
 
-export { LayoutObjectEmptyState } from "./components/LayoutObjectEmptyState";
 export { LayoutObjectLibrary } from "./components/LayoutObjectLibrary";
 export { LayoutObjectLibraryCategory } from "./components/LayoutObjectLibraryCategory";
 export { LayoutObjectCreateForm } from "./components/LayoutObjectCreateForm";

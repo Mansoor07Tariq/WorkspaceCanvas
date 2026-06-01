@@ -1,6 +1,14 @@
 import { describe, it, expect } from "vitest";
-import { canManageWorkspaceContent, hasActiveMembership } from "../utils/membershipUtils";
-import type { CurrentUser } from "@/features/auth/types/auth.types";
+import {
+  canManageWorkspaceContent,
+  hasActiveMembership,
+  canManageOfficeSetup,
+  canManageFloorLayout,
+  canInviteMembers,
+  canBookDesk,
+  isActiveMembership,
+} from "../utils/membershipUtils";
+import type { CurrentUser, MembershipInline } from "@/features/auth/types/auth.types";
 
 function makeUser(overrides: Partial<CurrentUser> = {}): CurrentUser {
   return {
@@ -20,6 +28,20 @@ function makeUser(overrides: Partial<CurrentUser> = {}): CurrentUser {
     preferred_auth_provider: "email",
     mfa_enabled: false,
     memberships: [],
+    ...overrides,
+  };
+}
+
+function makeMembership(overrides: Partial<MembershipInline> = {}): MembershipInline {
+  return {
+    id: 1,
+    organization_id: 1,
+    organization_name: "Acme",
+    organization_slug: "acme",
+    organization_status: "active",
+    role: "owner",
+    status: "active",
+    has_active_access: true,
     ...overrides,
   };
 }
@@ -61,36 +83,14 @@ describe("hasActiveMembership", () => {
 
   it("returns false when all memberships have has_active_access=false", () => {
     const user = makeUser({
-      memberships: [
-        {
-          id: 1,
-          organization_id: 1,
-          organization_name: "Acme",
-          organization_slug: "acme",
-          organization_status: "active",
-          role: "owner",
-          status: "active",
-          has_active_access: false,
-        },
-      ],
+      memberships: [makeMembership({ has_active_access: false })],
     });
     expect(hasActiveMembership(user)).toBe(false);
   });
 
   it("returns true when at least one membership has has_active_access=true", () => {
     const user = makeUser({
-      memberships: [
-        {
-          id: 1,
-          organization_id: 1,
-          organization_name: "Acme",
-          organization_slug: "acme",
-          organization_status: "active",
-          role: "owner",
-          status: "active",
-          has_active_access: true,
-        },
-      ],
+      memberships: [makeMembership({ has_active_access: true })],
     });
     expect(hasActiveMembership(user)).toBe(true);
   });
@@ -98,28 +98,67 @@ describe("hasActiveMembership", () => {
   it("returns true when mixed memberships and one is active", () => {
     const user = makeUser({
       memberships: [
-        {
-          id: 1,
-          organization_id: 1,
-          organization_name: "Org1",
-          organization_slug: "org1",
-          organization_status: "inactive",
-          role: "member",
-          status: "inactive",
-          has_active_access: false,
-        },
-        {
-          id: 2,
-          organization_id: 2,
-          organization_name: "Org2",
-          organization_slug: "org2",
-          organization_status: "active",
-          role: "owner",
-          status: "active",
-          has_active_access: true,
-        },
+        makeMembership({ id: 1, organization_id: 1, has_active_access: false }),
+        makeMembership({ id: 2, organization_id: 2, has_active_access: true }),
       ],
     });
     expect(hasActiveMembership(user)).toBe(true);
+  });
+});
+
+describe("canManageOfficeSetup", () => {
+  it("returns true for owner", () => expect(canManageOfficeSetup("owner")).toBe(true));
+  it("returns true for admin", () => expect(canManageOfficeSetup("admin")).toBe(true));
+  it("returns false for member", () => expect(canManageOfficeSetup("member")).toBe(false));
+  it("returns false for undefined", () => expect(canManageOfficeSetup(undefined)).toBe(false));
+});
+
+describe("canManageFloorLayout", () => {
+  it("returns true for owner", () => expect(canManageFloorLayout("owner")).toBe(true));
+  it("returns true for admin", () => expect(canManageFloorLayout("admin")).toBe(true));
+  it("returns false for member", () => expect(canManageFloorLayout("member")).toBe(false));
+  it("returns false for undefined", () => expect(canManageFloorLayout(undefined)).toBe(false));
+});
+
+describe("canInviteMembers", () => {
+  it("returns true for owner", () => expect(canInviteMembers("owner")).toBe(true));
+  it("returns true for admin", () => expect(canInviteMembers("admin")).toBe(true));
+  it("returns false for member", () => expect(canInviteMembers("member")).toBe(false));
+  it("returns false for undefined", () => expect(canInviteMembers(undefined)).toBe(false));
+});
+
+describe("canBookDesk", () => {
+  it("returns true when membership has_active_access is true", () => {
+    expect(canBookDesk(makeMembership({ has_active_access: true }))).toBe(true);
+  });
+
+  it("returns false when membership has_active_access is false", () => {
+    expect(canBookDesk(makeMembership({ has_active_access: false }))).toBe(false);
+  });
+
+  it("returns false for null membership", () => {
+    expect(canBookDesk(null)).toBe(false);
+  });
+
+  it("returns false for undefined membership", () => {
+    expect(canBookDesk(undefined)).toBe(false);
+  });
+});
+
+describe("isActiveMembership", () => {
+  it("returns true when membership has_active_access is true", () => {
+    expect(isActiveMembership(makeMembership({ has_active_access: true }))).toBe(true);
+  });
+
+  it("returns false when membership has_active_access is false", () => {
+    expect(isActiveMembership(makeMembership({ has_active_access: false }))).toBe(false);
+  });
+
+  it("returns false for null", () => {
+    expect(isActiveMembership(null)).toBe(false);
+  });
+
+  it("returns false for undefined", () => {
+    expect(isActiveMembership(undefined)).toBe(false);
   });
 });

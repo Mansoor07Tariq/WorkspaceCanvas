@@ -391,19 +391,21 @@ export function FloorLayoutPage() {
           {/* Left: library + create form (owners/admins only) */}
           <Grid size={{ xs: 12, md: 3 }}>
             <Stack spacing={2}>
-              <LayoutObjectLibrary
-                selectedType={fields.object_type}
-                onSelect={(type: LayoutObjectType) => setField("object_type", type)}
-              />
               {canManageLayout && (
-                <LayoutObjectCreateForm
-                  fields={fields}
-                  fieldErrors={fieldErrors}
-                  submissionLoading={submission.loading}
-                  submissionError={submission.generalError}
-                  onFieldChange={setField}
-                  onSubmit={handleCreate}
-                />
+                <>
+                  <LayoutObjectLibrary
+                    selectedType={fields.object_type}
+                    onSelect={(type: LayoutObjectType) => setField("object_type", type)}
+                  />
+                  <LayoutObjectCreateForm
+                    fields={fields}
+                    fieldErrors={fieldErrors}
+                    submissionLoading={submission.loading}
+                    submissionError={submission.generalError}
+                    onFieldChange={setField}
+                    onSubmit={handleCreate}
+                  />
+                </>
               )}
             </Stack>
           </Grid>
