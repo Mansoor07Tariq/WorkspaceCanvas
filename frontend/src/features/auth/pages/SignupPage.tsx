@@ -1,4 +1,4 @@
-import { Link as RouterLink } from "react-router-dom";
+import { Link as RouterLink, useLocation } from "react-router-dom";
 import { Box, Typography } from "@mui/material";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import { en } from "@/i18n/en";
@@ -26,6 +26,8 @@ import {
 export function SignupPage() {
   const { fields, setField, fieldErrors, submission, handleSubmit } = useSignupForm();
   const social = useSocialLogin();
+  const location = useLocation();
+  const returnTo = (location.state as { returnTo?: unknown } | null)?.returnTo;
 
   const isLoading = submission.loading || social.loadingProvider !== undefined;
 
@@ -52,7 +54,11 @@ export function SignupPage() {
               component="span"
               sx={{ color: "primary.main", fontWeight: 600, fontSize: "0.875rem" }}
             >
-              <RouterLink to={ROUTES.login} style={{ color: "inherit", textDecoration: "none" }}>
+              <RouterLink
+                to={ROUTES.login}
+                state={returnTo ? { returnTo } : undefined}
+                style={{ color: "inherit", textDecoration: "none" }}
+              >
                 {en.auth.signup.backToSignIn}
               </RouterLink>
             </Typography>

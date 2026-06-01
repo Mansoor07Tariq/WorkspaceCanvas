@@ -35,9 +35,14 @@ vi.mock("../social/socialConfig", () => ({
 
 const mockSignup = vi.mocked(signup);
 
-function renderSignupPage() {
+import { ROUTES } from "@/routes/paths";
+
+function renderSignupPage(locationState?: Record<string, unknown>) {
+  const initialEntries = locationState
+    ? [{ pathname: ROUTES.signup, state: locationState }]
+    : undefined;
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={initialEntries}>
       <SignupPage />
     </MemoryRouter>
   );
@@ -119,6 +124,24 @@ describe("SignupPage", () => {
     await user.type(screen.getByLabelText(en.auth.fields.confirmPassword), "Strongpass1!");
     await user.click(screen.getByRole("button", { name: /create account/i }));
     expect(await screen.findByText("A user with this email already exists.")).toBeInTheDocument();
+  });
+
+  it("renders normally when location state has returnTo", () => {
+    renderSignupPage({ returnTo: "/invite/abc-123" });
+    expect(screen.getByRole("button", { name: /create account/i })).toBeInTheDocument();
+  });
+
+  it("shows back-to-sign-in link in success screen when returnTo present", async () => {
+    mockSignup.mockResolvedValueOnce({ detail: "ok" });
+    const user = userEvent.setup();
+    renderSignupPage({ returnTo: "/invite/abc-123" });
+    await user.type(screen.getByLabelText(en.auth.fields.email), "jane@example.com");
+    await user.type(screen.getByLabelText(en.auth.fields.password), "Strongpass1!");
+    await user.type(screen.getByLabelText(en.auth.fields.confirmPassword), "Strongpass1!");
+    await user.click(screen.getByRole("button", { name: /create account/i }));
+    await waitFor(() => {
+      expect(screen.getByText(en.auth.signup.backToSignIn)).toBeInTheDocument();
+    });
   });
 
   it("disables the submit button while loading", async () => {

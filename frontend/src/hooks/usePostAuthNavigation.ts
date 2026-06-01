@@ -1,7 +1,8 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { tokenStorage } from "@/lib/tokenStorage";
 import { getCurrentUser } from "@/features/auth/api/authApi";
 import { useAuth } from "@/features/auth/context/AuthContext";
+import { getSafeReturnTo } from "@/features/auth/utils/authUtils";
 import { ROUTES } from "@/routes/paths";
 import { getApiErrorMessage } from "@/lib/api/getApiErrorMessage";
 
@@ -11,6 +12,7 @@ interface NavigateOptions {
 
 export function usePostAuthNavigation() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { setAuthenticatedUser } = useAuth();
 
   async function navigateAfterAuth(
@@ -21,8 +23,10 @@ export function usePostAuthNavigation() {
     try {
       const user = await getCurrentUser();
       setAuthenticatedUser(user);
-      if (options) navigate(ROUTES.app, options);
-      else navigate(ROUTES.app);
+      const state = location.state as { returnTo?: unknown } | null;
+      const dest = getSafeReturnTo(state?.returnTo) ?? ROUTES.app;
+      if (options) navigate(dest, options);
+      else navigate(dest);
       return undefined;
     } catch (err: unknown) {
       tokenStorage.clearTokens();

@@ -214,18 +214,33 @@ describe("getSetupChecklist", () => {
     expect(result.find((i) => i.id === "desks")?.completed).toBe(true);
   });
 
-  it("invite item is always deferred", () => {
+  it("invite item is not completed when memberCount is 1 (only self)", () => {
     const result = getSetupChecklist({
       user: mockUser,
       hasOrg: true,
       offices: [],
       floors: [],
       desks: [],
+      memberCount: 1,
     });
-    expect(result.find((i) => i.id === "invite")?.deferred).toBe(true);
+    const item = result.find((i) => i.id === "invite");
+    expect(item?.completed).toBe(false);
+    expect(item?.deferred).toBeUndefined();
   });
 
-  it("invite item is never completed", () => {
+  it("invite item is completed when memberCount > 1", () => {
+    const result = getSetupChecklist({
+      user: mockUser,
+      hasOrg: true,
+      offices: [],
+      floors: [],
+      desks: [],
+      memberCount: 2,
+    });
+    expect(result.find((i) => i.id === "invite")?.completed).toBe(true);
+  });
+
+  it("invite item is not completed when memberCount is undefined", () => {
     const result = getSetupChecklist({
       user: mockUser,
       hasOrg: true,
@@ -234,6 +249,17 @@ describe("getSetupChecklist", () => {
       desks: [],
     });
     expect(result.find((i) => i.id === "invite")?.completed).toBe(false);
+  });
+
+  it("invite item links to people page", () => {
+    const result = getSetupChecklist({
+      user: mockUser,
+      hasOrg: true,
+      offices: [],
+      floors: [],
+      desks: [],
+    });
+    expect(result.find((i) => i.id === "invite")?.to).toBe("/app/people");
   });
 
   it("handles null user safely", () => {
@@ -327,29 +353,29 @@ describe("getSetupProgress", () => {
     expect(getSetupProgress(checklist)).toBe(0);
   });
 
-  it("returns 100 when all non-deferred items are complete", () => {
+  it("returns 100 when all items are complete", () => {
     const checklist = getSetupChecklist({
       user: mockUser,
       hasOrg: true,
       offices: [mockOffice],
       floors: [mockFloor],
       desks: [mockDesk],
+      memberCount: 2,
     });
     expect(getSetupProgress(checklist)).toBe(100);
   });
 
-  it("excludes deferred items from progress calculation", () => {
+  it("returns 83 when invite item is the only incomplete item", () => {
     const checklist = getSetupChecklist({
       user: mockUser,
       hasOrg: true,
-      offices: [],
-      floors: [],
-      desks: [],
+      offices: [mockOffice],
+      floors: [mockFloor],
+      desks: [mockDesk],
+      memberCount: 1,
     });
-    const nonDeferred = checklist.filter((i) => !i.deferred);
-    const completed = nonDeferred.filter((i) => i.completed).length;
-    const expected = Math.round((completed / nonDeferred.length) * 100);
-    expect(getSetupProgress(checklist)).toBe(expected);
+    // 5 of 6 complete
+    expect(getSetupProgress(checklist)).toBe(83);
   });
 
   it("returns 0 for empty checklist", () => {

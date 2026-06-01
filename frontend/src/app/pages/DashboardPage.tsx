@@ -15,6 +15,7 @@ import {
   getSetupProgress,
 } from "@/features/dashboard/utils/dashboardState";
 import { useDashboardData } from "@/features/dashboard/hooks/useDashboardData";
+import { useTeamMembers } from "@/features/teams/hooks/useTeamMembers";
 import { DashboardHero } from "@/features/dashboard/components/DashboardHero";
 import { TodayBookingCard } from "@/features/dashboard/components/TodayBookingCard";
 import { UpcomingBookingCard } from "@/features/dashboard/components/UpcomingBookingCard";
@@ -72,6 +73,9 @@ function DashboardContent({ user }: DashboardContentProps) {
     firstFloor,
   } = useDashboardData();
 
+  const orgId = membership?.organization_id ?? null;
+  const { members } = useTeamMembers(isOwnerOrAdmin ? orgId : null);
+
   if (!hasOrg) {
     return (
       <Container maxWidth="sm" sx={{ py: { xs: 4, sm: 8 } }}>
@@ -96,7 +100,14 @@ function DashboardContent({ user }: DashboardContentProps) {
     );
   }
 
-  const checklist = getSetupChecklist({ user, hasOrg, offices, floors, desks });
+  const checklist = getSetupChecklist({
+    user,
+    hasOrg,
+    offices,
+    floors,
+    desks,
+    memberCount: members.length,
+  });
   const setupProgress = getSetupProgress(checklist);
   const todayBooking = getTodayBooking(bookings, today);
   const nextBooking = getNextBooking(bookings, today);

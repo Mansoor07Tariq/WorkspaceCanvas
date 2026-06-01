@@ -78,9 +78,12 @@ const mockUser: CurrentUser = {
   memberships: [],
 };
 
-function renderLoginPage() {
+function renderLoginPage(locationState?: Record<string, unknown>) {
+  const initialEntries = locationState
+    ? [{ pathname: ROUTES.login, state: locationState }]
+    : undefined;
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={initialEntries}>
       <LoginPage />
     </MemoryRouter>
   );
@@ -222,6 +225,42 @@ describe("LoginPage", () => {
     await user.click(screen.getByRole("button", { name: /sign in/i }));
     await waitFor(() => {
       expect(mockSetAccessToken).not.toHaveBeenCalled();
+    });
+  });
+
+  it("navigates to returnTo path after successful login when safe returnTo present", async () => {
+    mockLogin.mockResolvedValueOnce({ access: "tok-a" });
+    const user = userEvent.setup();
+    renderLoginPage({ returnTo: "/invite/abc-123" });
+    await user.type(screen.getByLabelText(en.auth.fields.email), "user@example.com");
+    await user.type(screen.getByLabelText(en.auth.fields.password), "password123");
+    await user.click(screen.getByRole("button", { name: /sign in/i }));
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith("/invite/abc-123");
+    });
+  });
+
+  it("navigates to /app after successful login when returnTo is unsafe external URL", async () => {
+    mockLogin.mockResolvedValueOnce({ access: "tok-a" });
+    const user = userEvent.setup();
+    renderLoginPage({ returnTo: "https://evil.com/steal" });
+    await user.type(screen.getByLabelText(en.auth.fields.email), "user@example.com");
+    await user.type(screen.getByLabelText(en.auth.fields.password), "password123");
+    await user.click(screen.getByRole("button", { name: /sign in/i }));
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith(ROUTES.app);
+    });
+  });
+
+  it("navigates to /app after successful login when returnTo is protocol-relative URL", async () => {
+    mockLogin.mockResolvedValueOnce({ access: "tok-a" });
+    const user = userEvent.setup();
+    renderLoginPage({ returnTo: "//evil.com" });
+    await user.type(screen.getByLabelText(en.auth.fields.email), "user@example.com");
+    await user.type(screen.getByLabelText(en.auth.fields.password), "password123");
+    await user.click(screen.getByRole("button", { name: /sign in/i }));
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith(ROUTES.app);
     });
   });
 

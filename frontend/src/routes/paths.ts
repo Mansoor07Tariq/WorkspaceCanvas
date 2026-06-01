@@ -12,6 +12,7 @@ export const ROUTES = {
   myBookings: "/app/bookings/my",
   events: "/app/events",
   people: "/app/people",
+  inviteAccept: "/invite/:token",
 } as const;
 
 export function officeDetailPath(officeId: number): string {
@@ -24,4 +25,8 @@ export function floorLayoutPath(officeId: number, floorId: number): string {
 
 export function myBookingsPath(): string {
   return "/app/bookings/my";
+}
+
+export function inviteAcceptPath(token: string): string {
+  return `/invite/${token}`;
 }
