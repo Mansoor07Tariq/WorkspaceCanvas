@@ -23,6 +23,8 @@ import {
   createDeskBooking,
   cancelDeskBooking,
   getDeskBooking,
+  listMyBookings,
+  cancelMyBooking,
 } from "../api/bookingApi";
 
 const mockApi = api as {
@@ -121,5 +123,52 @@ describe("bookingApi", () => {
     const error = new Error("not found");
     mockApi.get.mockRejectedValue(error);
     await expect(getDeskBooking(1, 3, 42)).rejects.toThrow("not found");
+  });
+
+  // ─── listMyBookings ─────────────────────────────────────────────────────────
+
+  it("listMyBookings calls GET /api/bookings/my/ with no params", () => {
+    mockApi.get.mockResolvedValue([]);
+    listMyBookings();
+    const calledUrl: string = mockApi.get.mock.calls[0][0];
+    expect(calledUrl).toBe("/api/bookings/my/");
+  });
+
+  it("listMyBookings appends status param to the URL", () => {
+    mockApi.get.mockResolvedValue([]);
+    listMyBookings({ status: "cancelled" });
+    const calledUrl: string = mockApi.get.mock.calls[0][0];
+    expect(calledUrl).toContain("status=cancelled");
+  });
+
+  it("listMyBookings appends from and to params to the URL", () => {
+    mockApi.get.mockResolvedValue([]);
+    listMyBookings({ from: "2026-06-01", to: "2026-06-30" });
+    const calledUrl: string = mockApi.get.mock.calls[0][0];
+    expect(calledUrl).toContain("from=2026-06-01");
+    expect(calledUrl).toContain("to=2026-06-30");
+  });
+
+  it("listMyBookings does not append a query string when params are all undefined", () => {
+    mockApi.get.mockResolvedValue([]);
+    listMyBookings({});
+    const calledUrl: string = mockApi.get.mock.calls[0][0];
+    expect(calledUrl).toBe("/api/bookings/my/");
+  });
+
+  // ─── cancelMyBooking ────────────────────────────────────────────────────────
+
+  it("cancelMyBooking calls POST to /api/bookings/my/{id}/cancel/", () => {
+    mockApi.post.mockResolvedValue({});
+    cancelMyBooking(99);
+    const calledUrl: string = mockApi.post.mock.calls[0][0];
+    expect(calledUrl).toBe("/api/bookings/my/99/cancel/");
+  });
+
+  it("cancelMyBooking sends an empty object as the request body", () => {
+    mockApi.post.mockResolvedValue({});
+    cancelMyBooking(99);
+    const sentPayload = mockApi.post.mock.calls[0][1];
+    expect(sentPayload).toEqual({});
   });
 });

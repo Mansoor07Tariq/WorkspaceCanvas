@@ -65,6 +65,11 @@ const DeskBookingPage = lazy(() =>
     default: m.DeskBookingPage,
   }))
 );
+const MyBookingsPage = lazy(() =>
+  import("@/app/pages/MyBookingsPage").then((m) => ({
+    default: m.MyBookingsPage,
+  }))
+);
 const NotFoundPage = lazy(() =>
   import("@/app/pages/NotFoundPage").then((m) => ({
     default: m.NotFoundPage,
@@ -154,6 +159,14 @@ export function AppRouter() {
               element={
                 <ProtectedRoute>
                   <DeskBookingPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path={ROUTES.myBookings}
+              element={
+                <ProtectedRoute>
+                  <MyBookingsPage />
                 </ProtectedRoute>
               }
             />

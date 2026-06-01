@@ -40,19 +40,20 @@ export function useDeskBookings(officeId: number, floorId: number, date: string)
       dispatch({ type: "fetch_success", payload: [] });
       return;
     }
-    let cancelled = false;
+    const controller = new AbortController();
     dispatch({ type: "fetch_start" });
 
     listFloorBookings(officeId, floorId, date)
       .then((data) => {
-        if (!cancelled) dispatch({ type: "fetch_success", payload: data });
+        if (!controller.signal.aborted) dispatch({ type: "fetch_success", payload: data });
       })
       .catch((err) => {
-        if (!cancelled) dispatch({ type: "fetch_error", payload: getApiErrorMessage(err) });
+        if (!controller.signal.aborted)
+          dispatch({ type: "fetch_error", payload: getApiErrorMessage(err) });
       });
 
     return () => {
-      cancelled = true;
+      controller.abort();
     };
   }, [officeId, floorId, date, tick]);
 
