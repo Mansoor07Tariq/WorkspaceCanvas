@@ -197,6 +197,7 @@ Detailed notes for each feature and setup step are in the `docs/` folder:
 | [048-mvp-setup-polish-first-run.md](docs/048-mvp-setup-polish-first-run.md) | MVP setup polish — first-run guidance, member workspace state, booking empty states, canvas member guidance, route consistency |
 | [049-role-based-ux-permission-polish.md](docs/049-role-based-ux-permission-polish.md) | Role-based UX and permission polish — centralized frontend permission helpers, member-only UI guards, My Bookings nav, dead code cleanup |
 | [050-demo-data-and-mvp-qa-checklist.md](docs/050-demo-data-and-mvp-qa-checklist.md) | Demo data seed command, demo credentials, end-to-end demo walkthrough, manual MVP QA checklist |
+| [051-final-mvp-polish-responsive-pass.md](docs/051-final-mvp-polish-responsive-pass.md) | Final MVP polish — AppLayout layout route, Events route removed, PeoplePage h1 consistency, MyBookingsPage i18n |
 | [TECHNICAL_DEBT.md](docs/TECHNICAL_DEBT.md) | Long-lived engineering debt register — open items, severity, recommended fixes |
 
 ## Demo Data (Seed Command)

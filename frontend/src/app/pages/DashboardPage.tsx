@@ -1,7 +1,5 @@
-import { useNavigate } from "react-router-dom";
 import { Alert, Box, Button, Container, Grid, Typography } from "@mui/material";
 import { Link } from "react-router-dom";
-import { AppShell } from "@/app/layout/AppShell";
 import { useAuth } from "@/features/auth/context/AuthContext";
 import { ProfileOnboardingCarousel } from "@/features/profile";
 import {
@@ -29,22 +27,11 @@ import { ROUTES } from "@/routes/paths";
 import { en } from "@/i18n/en";
 
 export function DashboardPage() {
-  const { user, logoutUser } = useAuth();
-  const navigate = useNavigate();
-
-  async function handleLogout() {
-    await logoutUser();
-    navigate(ROUTES.login);
-  }
-
-  return (
-    <AppShell onLogout={() => void handleLogout()}>
-      {user && !user.is_profile_completed ? (
-        <ProfileOnboardingCarousel />
-      ) : (
-        <DashboardContent user={user} />
-      )}
-    </AppShell>
+  const { user } = useAuth();
+  return user && !user.is_profile_completed ? (
+    <ProfileOnboardingCarousel />
+  ) : (
+    <DashboardContent user={user} />
   );
 }
 

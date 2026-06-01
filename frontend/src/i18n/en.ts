@@ -601,6 +601,12 @@ export const en = {
         "Your admin is still configuring the workspace. You'll be able to book desks once bookable desks are available.",
     },
   },
+  myBookings: {
+    pageTitle: "My Bookings",
+    bookDeskAction: "Book a desk",
+    emptyTitle: "No upcoming bookings",
+    emptyDesc: "You don't have any active desk bookings.",
+  },
   bookings: {
     pageTitle: "Desk Booking",
     selectPrompt: "Select an office and floor to view desk availability.",

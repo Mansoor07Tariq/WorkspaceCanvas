@@ -1,5 +1,4 @@
 import { render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import { DashboardPage } from "../pages/DashboardPage";
@@ -171,33 +170,9 @@ function renderPage(overrides: Partial<AuthContextValue> = {}) {
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
-describe("DashboardPage — app shell", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    setupDefaultHooks();
-  });
-
-  it("renders the WorkspaceCanvas brand in the header", () => {
-    renderPage({ user: adminUser });
-    expect(screen.getByText(en.app.shell.brand)).toBeInTheDocument();
-  });
-
-  it("renders the logout button", () => {
-    renderPage({ user: adminUser });
-    expect(screen.getByRole("button", { name: en.app.shell.logout })).toBeInTheDocument();
-  });
-
-  it("calls logoutUser and navigates to login on logout click", async () => {
-    const user = userEvent.setup();
-    mockLogoutUser.mockResolvedValueOnce(undefined);
-    renderPage({ user: adminUser });
-    await user.click(screen.getByRole("button", { name: en.app.shell.logout }));
-    await waitFor(() => {
-      expect(mockLogoutUser).toHaveBeenCalledTimes(1);
-      expect(mockNavigate).toHaveBeenCalledWith(ROUTES.login);
-    });
-  });
-});
+// AppShell (brand, logout button, logout behaviour) is now rendered by the AppLayout
+// layout route in AppRouter — not by DashboardPage directly. Those concerns are
+// tested at the AppShell / router level.
 
 describe("DashboardPage — profile onboarding", () => {
   beforeEach(() => {
@@ -639,11 +614,6 @@ describe("DashboardPage — accessibility", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     setupDefaultHooks();
-  });
-
-  it("AppShell provides a single main landmark", () => {
-    renderPage({ user: adminUser });
-    expect(screen.getAllByRole("main")).toHaveLength(1);
   });
 
   it("has an h1 for admin user", () => {

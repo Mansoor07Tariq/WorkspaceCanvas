@@ -1,10 +1,11 @@
 import { lazy, Suspense } from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Navigate, Outlet, Route, Routes, useNavigate } from "react-router-dom";
 import { ProtectedRoute } from "@/routes/ProtectedRoute";
 import { GuestOnlyRoute } from "@/app/router/GuestOnlyRoute";
 import { PageLoading } from "@/components/feedback/PageLoading";
 import { ErrorBoundary } from "@/components/feedback/ErrorBoundary";
-import { en } from "@/i18n/en";
+import { AppShell } from "@/app/layout/AppShell";
+import { useAuth } from "@/features/auth/context/AuthContext";
 import { ROUTES } from "@/routes/paths";
 
 // Auth pages — lazy-loaded so none of their imports reach the initial bundle.
@@ -55,11 +56,6 @@ const FloorLayoutPage = lazy(() =>
     default: m.FloorLayoutPage,
   }))
 );
-const ComingSoonPage = lazy(() =>
-  import("@/app/pages/ComingSoonPage").then((m) => ({
-    default: m.ComingSoonPage,
-  }))
-);
 const DeskBookingPage = lazy(() =>
   import("@/app/pages/DeskBookingPage").then((m) => ({
     default: m.DeskBookingPage,
@@ -86,12 +82,34 @@ const AcceptInvitationPage = lazy(() =>
   }))
 );
 
+/**
+ * Shared layout for all authenticated app pages.
+ * Renders AppShell (topbar + sidebar) around the matched child route via <Outlet>.
+ * Logout is handled here so individual pages don't need it.
+ */
+function AppLayout() {
+  const { logoutUser } = useAuth();
+  const navigate = useNavigate();
+
+  async function handleLogout() {
+    await logoutUser();
+    navigate(ROUTES.login);
+  }
+
+  return (
+    <AppShell onLogout={() => void handleLogout()}>
+      <Outlet />
+    </AppShell>
+  );
+}
+
 export function AppRouter() {
   return (
     <BrowserRouter>
       <ErrorBoundary>
         <Suspense fallback={<PageLoading />}>
           <Routes>
+            {/* ── Guest-only auth pages ────────────────────────────────── */}
             <Route
               path={ROUTES.login}
               element={
@@ -124,78 +142,26 @@ export function AppRouter() {
                 </GuestOnlyRoute>
               }
             />
+
+            {/* ── Protected app pages — all share AppShell via AppLayout ─ */}
             <Route
-              path={ROUTES.mfaSetup}
               element={
                 <ProtectedRoute>
-                  <MfaSetupPage />
+                  <AppLayout />
                 </ProtectedRoute>
               }
-            />
-            <Route
-              path={ROUTES.app}
-              element={
-                <ProtectedRoute>
-                  <DashboardPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path={ROUTES.offices}
-              element={
-                <ProtectedRoute>
-                  <AppOfficesPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path={ROUTES.officeDetail}
-              element={
-                <ProtectedRoute>
-                  <OfficeDetailPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path={ROUTES.floorLayout}
-              element={
-                <ProtectedRoute>
-                  <FloorLayoutPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path={ROUTES.bookings}
-              element={
-                <ProtectedRoute>
-                  <DeskBookingPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path={ROUTES.myBookings}
-              element={
-                <ProtectedRoute>
-                  <MyBookingsPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path={ROUTES.events}
-              element={
-                <ProtectedRoute>
-                  <ComingSoonPage title={en.app.sidebar.events} />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path={ROUTES.people}
-              element={
-                <ProtectedRoute>
-                  <PeoplePage />
-                </ProtectedRoute>
-              }
-            />
+            >
+              <Route path={ROUTES.app} element={<DashboardPage />} />
+              <Route path={ROUTES.mfaSetup} element={<MfaSetupPage />} />
+              <Route path={ROUTES.offices} element={<AppOfficesPage />} />
+              <Route path={ROUTES.officeDetail} element={<OfficeDetailPage />} />
+              <Route path={ROUTES.floorLayout} element={<FloorLayoutPage />} />
+              <Route path={ROUTES.bookings} element={<DeskBookingPage />} />
+              <Route path={ROUTES.myBookings} element={<MyBookingsPage />} />
+              <Route path={ROUTES.people} element={<PeoplePage />} />
+            </Route>
+
+            {/* ── Public routes ────────────────────────────────────────── */}
             <Route path={ROUTES.inviteAccept} element={<AcceptInvitationPage />} />
             <Route path="/" element={<Navigate to={ROUTES.login} replace />} />
             <Route path="*" element={<NotFoundPage />} />

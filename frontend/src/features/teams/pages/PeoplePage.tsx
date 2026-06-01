@@ -1,6 +1,5 @@
 import { Card, CardContent, Container, Typography } from "@mui/material";
 import { WorkspacesOutlined } from "@mui/icons-material";
-import { AppShell } from "@/app/layout/AppShell";
 import { useAuth } from "@/features/auth/context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import {
@@ -15,21 +14,13 @@ import { PendingInvitationsList } from "../components/PendingInvitationsList";
 import type { CreateInvitationPayload } from "../types/teams.types";
 import { ROUTES } from "@/routes/paths";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { en } from "@/i18n/en";
+
+const c = en.app.people;
 
 export function PeoplePage() {
-  const { user, logoutUser } = useAuth();
-  const navigate = useNavigate();
-
-  async function handleLogout() {
-    await logoutUser();
-    navigate(ROUTES.login);
-  }
-
-  return (
-    <AppShell onLogout={() => void handleLogout()}>
-      <PeopleContent user={user} />
-    </AppShell>
-  );
+  const { user } = useAuth();
+  return <PeopleContent user={user} />;
 }
 
 interface PeopleContentProps {
@@ -62,9 +53,9 @@ function PeopleContent({ user }: PeopleContentProps) {
       <Container maxWidth="sm" sx={{ py: { xs: 4, sm: 8 } }}>
         <EmptyState
           icon={<WorkspacesOutlined color="primary" />}
-          title="No workspace yet"
-          description="You are not part of any organization. Create or join one to manage your team."
-          actionLabel="Go to Dashboard"
+          title={c.noOrg}
+          description={c.noOrgDesc}
+          actionLabel={en.app.dashboard.createOrgAction}
           onAction={() => navigate(ROUTES.app)}
         />
       </Container>
@@ -73,8 +64,8 @@ function PeopleContent({ user }: PeopleContentProps) {
 
   return (
     <Container maxWidth="md" sx={{ py: { xs: 2, sm: 4 } }}>
-      <Typography component="h1" variant="h5" sx={{ fontWeight: 700, mb: 3 }}>
-        People
+      <Typography component="h1" variant="h4" sx={{ fontWeight: 700, mb: 3 }}>
+        {c.pageTitle}
       </Typography>
 
       {isManager && (
@@ -89,7 +80,7 @@ function PeopleContent({ user }: PeopleContentProps) {
         <Card variant="outlined" sx={{ mb: 3 }}>
           <CardContent>
             <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>
-              Pending invitations
+              {c.pendingTitle}
             </Typography>
             <PendingInvitationsList
               invitations={invitations}
@@ -103,7 +94,7 @@ function PeopleContent({ user }: PeopleContentProps) {
       <Card variant="outlined">
         <CardContent>
           <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 2 }}>
-            Team members
+            {c.membersTitle}
           </Typography>
           <MembersList members={members} loading={membersLoading} error={membersError} />
         </CardContent>
