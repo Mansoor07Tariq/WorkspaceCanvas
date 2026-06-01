@@ -10,6 +10,7 @@ import {
 } from "@/features/organizations/utils/membershipUtils";
 import {
   getSetupChecklist,
+  getWorkspaceSetupState,
   getTodayBooking,
   getNextBooking,
   getSetupProgress,
@@ -22,6 +23,7 @@ import { UpcomingBookingCard } from "@/features/dashboard/components/UpcomingBoo
 import { AdminSetupChecklist } from "@/features/dashboard/components/AdminSetupChecklist";
 import { WorkspaceHealthCards } from "@/features/dashboard/components/WorkspaceHealthCards";
 import { DashboardQuickActions } from "@/features/dashboard/components/DashboardQuickActions";
+import { MemberWorkspaceStatus } from "@/features/dashboard/components/MemberWorkspaceStatus";
 import type { CurrentUser } from "@/features/auth/types/auth.types";
 import { ROUTES } from "@/routes/paths";
 import { en } from "@/i18n/en";
@@ -100,6 +102,9 @@ function DashboardContent({ user }: DashboardContentProps) {
     );
   }
 
+  const setupState = getWorkspaceSetupState({ hasOrg, offices, floors, desks });
+  const isWorkspaceReady = setupState === "ready";
+
   const checklist = getSetupChecklist({
     user,
     hasOrg,
@@ -122,7 +127,10 @@ function DashboardContent({ user }: DashboardContentProps) {
           hasOrg={hasOrg}
           orgName={membership?.organization_name ?? null}
           setupProgress={setupProgress}
+          isWorkspaceReady={isWorkspaceReady}
         />
+
+        {!isOwnerOrAdmin && !isWorkspaceReady && <MemberWorkspaceStatus />}
 
         {floorsError && (
           <Alert severity="warning" role="alert" sx={{ mb: 2 }}>

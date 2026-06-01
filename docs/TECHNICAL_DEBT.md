@@ -94,6 +94,7 @@ This document is a long-lived register of known engineering debt, product risk, 
 | — | `test_owner_can_cancel_any_booking` and `test_admin_can_cancel_any_booking` in `test_desk_booking_cancel.py` did not assert `cancelled_by` on the model after the cancel call | PR 041 (final cleanup) | Both tests now call `refresh_from_db()` and assert `status == CANCELLED`, `cancelled_at is not None`, and `cancelled_by == owner_user` / `cancelled_by == admin_user` |
 | TD-009 | DeskBooking.user on_delete=CASCADE destroys booking history | PR 045 | Changed to SET_NULL null=True blank=True; migration generated; serializer handles null user ("Former user"); booking history preserved on user deletion |
 | TD-036 | "Invite team" checklist item always incomplete and marked "Coming soon" | PR 047 | People page implemented; invite checklist item links to `/app/people`; marked complete when memberCount > 1; deferred flag removed |
+| TD-041 | `AppPlaceholderPage` was orphaned — not routed anywhere but still had a 25-test file | PR 048 | Page and test file deleted; `DashboardPage` is the only `/app` route; no tests lost (behavior covered by `DashboardPage.test.tsx`) |
 | TD-015 | Booking throttle behaviour not tested | PR 045 | Added test_desk_booking_throttle.py with 5 tests covering desk_booking_read and desk_booking_write scopes; override_settings used to set 1/min and 2/min limits; my-bookings endpoints also covered |
 | TD-020 | No request deduplication in booking hooks | PR 045 | Added AbortController to useDeskBookings and useMyBookings; stale responses dropped via signal.aborted check; unmount cleanup via controller.abort() |
 | TD-003 | No DB/model-level guard preventing bookings against inactive or non-available desks | PR 044 | Added `DeskBooking.clean()` validating `desk.is_active` and `desk.status == AVAILABLE`; `create_booking_for_user` service calls `booking.clean()` before save; 13 new model/service tests |
@@ -129,4 +130,4 @@ Use this before every PR merge:
 
 ---
 
-*Last updated: 2026-06-01 — PR 047 member invitations and team access; TD-036 resolved; TD-038/039/040 added*
+*Last updated: 2026-06-01 — PR 048 MVP setup polish; AppPlaceholderPage removed; getWorkspaceSetupState added; member workspace-not-ready state, booking page role-aware empty states, floor canvas member guidance, admin Invite People quick action, smarter desks checklist routing all implemented*

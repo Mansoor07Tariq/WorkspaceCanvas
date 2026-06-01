@@ -3,7 +3,7 @@ import type { Desk } from "@/features/desks/types/desk.types";
 import type { Floor } from "@/features/floors/types/floor.types";
 import type { Office } from "@/features/offices/types/office.types";
 import type { CurrentUser } from "@/features/auth/types/auth.types";
-import { ROUTES, officeDetailPath } from "@/routes/paths";
+import { ROUTES, officeDetailPath, floorLayoutPath } from "@/routes/paths";
 
 export type ChecklistItemId = "profile" | "org" | "office" | "floor" | "desks" | "invite";
 
@@ -12,6 +12,32 @@ export interface SetupChecklistItem {
   completed: boolean;
   to?: string;
   deferred?: boolean;
+}
+
+/**
+ * Coarse workspace readiness state, used by member dashboard and booking page
+ * to decide what to show when prerequisites are missing.
+ */
+export type WorkspaceSetupState = "noOrg" | "noOffice" | "noFloor" | "noBookableDesks" | "ready";
+
+interface GetWorkspaceSetupStateInput {
+  hasOrg: boolean;
+  offices: Office[];
+  floors: Floor[];
+  desks: Desk[];
+}
+
+export function getWorkspaceSetupState({
+  hasOrg,
+  offices,
+  floors,
+  desks,
+}: GetWorkspaceSetupStateInput): WorkspaceSetupState {
+  if (!hasOrg) return "noOrg";
+  if (offices.length === 0) return "noOffice";
+  if (floors.length === 0) return "noFloor";
+  if (desks.length === 0) return "noBookableDesks";
+  return "ready";
 }
 
 interface GetChecklistInput {
@@ -57,7 +83,13 @@ export function getSetupChecklist({
     {
       id: "desks",
       completed: desks.length > 0,
-      to: firstOfficeId != null ? officeDetailPath(firstOfficeId) : undefined,
+      // Go directly to floor layout if a floor exists; otherwise land on office detail
+      to:
+        firstOfficeId != null
+          ? floors[0]?.id != null
+            ? floorLayoutPath(firstOfficeId, floors[0].id)
+            : officeDetailPath(firstOfficeId)
+          : undefined,
     },
     {
       id: "invite",

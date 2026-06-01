@@ -524,6 +524,117 @@ describe("DashboardPage — admin checklist items", () => {
   });
 });
 
+describe("DashboardPage — admin invite people action", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setupDefaultHooks();
+  });
+
+  it("shows invite people quick action for admin", () => {
+    renderPage({ user: adminUser });
+    expect(
+      screen.getByRole("link", { name: en.app.dashboard.actionInvitePeople })
+    ).toBeInTheDocument();
+  });
+
+  it("invite people link points to people page", () => {
+    renderPage({ user: adminUser });
+    expect(screen.getByRole("link", { name: en.app.dashboard.actionInvitePeople })).toHaveAttribute(
+      "href",
+      ROUTES.people
+    );
+  });
+
+  it("does not show invite people action for member", () => {
+    renderPage({ user: memberUser });
+    expect(
+      screen.queryByRole("link", { name: en.app.dashboard.actionInvitePeople })
+    ).not.toBeInTheDocument();
+  });
+});
+
+describe("DashboardPage — member workspace not ready", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("shows workspace-being-set-up status when member has org but no desks", async () => {
+    mockUseOffices.mockReturnValue({ offices: [], loading: false, error: null, refresh: vi.fn() });
+    mockUseMyBookings.mockReturnValue({
+      bookings: [],
+      loading: false,
+      error: undefined,
+      cancelSuccess: undefined,
+      cancelError: undefined,
+      refresh: vi.fn(),
+      cancelBooking: vi.fn(),
+    });
+    mockListFloors.mockResolvedValue([]);
+    mockListDesks.mockResolvedValue([]);
+    mockUseTeamMembers.mockReturnValue({
+      members: [],
+      loading: false,
+      error: null,
+      refresh: vi.fn(),
+    });
+
+    renderPage({ user: memberUser });
+    await waitFor(() => {
+      expect(screen.getByText(en.app.dashboard.memberSetupTitle)).toBeInTheDocument();
+    });
+  });
+
+  it("does not show workspace-being-set-up status for admin when no desks", async () => {
+    mockUseOffices.mockReturnValue({ offices: [], loading: false, error: null, refresh: vi.fn() });
+    mockUseMyBookings.mockReturnValue({
+      bookings: [],
+      loading: false,
+      error: undefined,
+      cancelSuccess: undefined,
+      cancelError: undefined,
+      refresh: vi.fn(),
+      cancelBooking: vi.fn(),
+    });
+    mockListFloors.mockResolvedValue([]);
+    mockListDesks.mockResolvedValue([]);
+    mockUseTeamMembers.mockReturnValue({
+      members: [],
+      loading: false,
+      error: null,
+      refresh: vi.fn(),
+    });
+
+    renderPage({ user: adminUser });
+    await waitFor(() => {
+      expect(screen.queryByText(en.app.dashboard.memberSetupTitle)).not.toBeInTheDocument();
+    });
+  });
+
+  it("hero subtitle changes to setup message for member when workspace not ready", async () => {
+    mockUseOffices.mockReturnValue({ offices: [], loading: false, error: null, refresh: vi.fn() });
+    mockUseMyBookings.mockReturnValue({
+      bookings: [],
+      loading: false,
+      error: undefined,
+      cancelSuccess: undefined,
+      cancelError: undefined,
+      refresh: vi.fn(),
+      cancelBooking: vi.fn(),
+    });
+    mockListFloors.mockResolvedValue([]);
+    mockListDesks.mockResolvedValue([]);
+    mockUseTeamMembers.mockReturnValue({
+      members: [],
+      loading: false,
+      error: null,
+      refresh: vi.fn(),
+    });
+
+    renderPage({ user: memberUser });
+    await waitFor(() => {
+      expect(screen.getByText(en.app.dashboard.heroMemberSetup)).toBeInTheDocument();
+    });
+  });
+});
+
 describe("DashboardPage — accessibility", () => {
   beforeEach(() => {
     vi.clearAllMocks();

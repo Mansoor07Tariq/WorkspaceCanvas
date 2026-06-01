@@ -222,10 +222,10 @@ export function FloorMapCanvas({
           }}
         >
           <Typography variant="body1" color="text.secondary" sx={{ fontWeight: 600 }}>
-            {c.canvasEmptyTitle}
+            {canManageLayout ? c.canvasEmptyTitle : c.emptyStateMemberTitle}
           </Typography>
           <Typography variant="body2" color="text.disabled">
-            {c.canvasEmptySubtitle}
+            {canManageLayout ? c.canvasEmptySubtitle : c.emptyStateMemberSubtitle}
           </Typography>
         </Box>
       )}
