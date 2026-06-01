@@ -94,6 +94,7 @@ This document is a long-lived register of known engineering debt, product risk, 
 | — | Multi-booking deactivation via `DeskDetailView.delete` was only tested for a single booking; edge case of multiple bookings on different dates was unverified | PR 041 (final cleanup) | Added `test_deactivating_desk_cancels_multiple_bookings` to `test_desk_deactivation_cancels_bookings.py`; creates 3 bookings on 3 different dates, deactivates the desk, asserts all 3 are cancelled with `cancelled_at` set and `cancelled_by == owner_user` |
 | — | `test_owner_can_cancel_any_booking` and `test_admin_can_cancel_any_booking` in `test_desk_booking_cancel.py` did not assert `cancelled_by` on the model after the cancel call | PR 041 (final cleanup) | Both tests now call `refresh_from_db()` and assert `status == CANCELLED`, `cancelled_at is not None`, and `cancelled_by == owner_user` / `cancelled_by == admin_user` |
 | TD-041b | `LayoutObjectEmptyState` was exported from the `layoutObjects` barrel (`index.ts`) but had no import or call-site anywhere in the app | PR 049 | Component file and barrel export removed; no functionality lost |
+| TD-043 | No demo data or seed command; manual QA required hand-crafting test fixtures each time | PR 050 | `seed_demo_workspace` management command added; idempotent, one-command setup for full demo workspace with admin/member users, org, office, floor, 13 layout objects, 5 desks, 3 bookings, and pending invitation |
 | TD-009 | DeskBooking.user on_delete=CASCADE destroys booking history | PR 045 | Changed to SET_NULL null=True blank=True; migration generated; serializer handles null user ("Former user"); booking history preserved on user deletion |
 | TD-036 | "Invite team" checklist item always incomplete and marked "Coming soon" | PR 047 | People page implemented; invite checklist item links to `/app/people`; marked complete when memberCount > 1; deferred flag removed |
 | TD-041 | `AppPlaceholderPage` was orphaned — not routed anywhere but still had a 25-test file | PR 048 | Page and test file deleted; `DashboardPage` is the only `/app` route; no tests lost (behavior covered by `DashboardPage.test.tsx`) |
@@ -132,4 +133,4 @@ Use this before every PR merge:
 
 ---
 
-*Last updated: 2026-06-01 — PR 048 MVP setup polish; AppPlaceholderPage removed; getWorkspaceSetupState added; member workspace-not-ready state, booking page role-aware empty states, floor canvas member guidance, admin Invite People quick action, smarter desks checklist routing all implemented*
+*Last updated: 2026-06-01 — PR 050 demo data seed command; TD-043 resolved (seed_demo_workspace management command, idempotent demo workspace setup, MVP QA checklist doc)*
