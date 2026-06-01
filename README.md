@@ -52,6 +52,18 @@ This project is in active development. The authentication stack, organization se
 - Desk Booking UI: date picker, office/floor selector, availability list, book and cancel actions
 - Canvas availability colouring — desk shapes on the floor map reflect booking status
 - My Bookings page — user's upcoming and past bookings at `/app/bookings/my` with cancel action
+- Role-aware dashboard: admin setup checklist, member booking cards, workspace health overview
+
+**Team invitations**
+
+- Invitation model with UUID token, expiry, status, invited_by, accepted_by
+- Owner/admin can invite members by email with role selection (Member / Admin)
+- Pending invitations list with copyable invite link (link-based MVP; no SMTP required)
+- Cancel pending invitation
+- `AcceptInvitationPage` at `/invite/<token>` — shows org/role, prompts login for unauthenticated users
+- Email-match verification on accept; expired/cancelled invitations rejected
+- Membership created/reactivated on accept; invited user lands on member dashboard
+- People page (`/app/people`) replacing the previous ComingSoonPage
 
 ### Upcoming Work
 
@@ -180,6 +192,8 @@ Detailed notes for each feature and setup step are in the `docs/` folder:
 | [043-canvas-availability-map-booking.md](docs/043-canvas-availability-map-booking.md) | Canvas availability colours and map-based desk selection — mode="booking", colour-coded shapes, map/list sync |
 | [044-booking-data-integrity-hardening.md](docs/044-booking-data-integrity-hardening.md) | Booking data integrity — DeskBooking.clean(), select_for_update service, Desk deactivation signals |
 | [045-my-bookings-and-request-hygiene.md](docs/045-my-bookings-and-request-hygiene.md) | My Bookings view, request hygiene, TD-009/015/020 |
+| [046-mvp-dashboard-role-paths.md](docs/046-mvp-dashboard-role-paths.md) | MVP dashboard — role-aware views, admin setup checklist, member booking cards, workspace health |
+| [047-member-invitations-team-access.md](docs/047-member-invitations-team-access.md) | Member invitations — invite flow, People page, AcceptInvitationPage, dashboard checklist integration |
 | [TECHNICAL_DEBT.md](docs/TECHNICAL_DEBT.md) | Long-lived engineering debt register — open items, severity, recommended fixes |
 
 ## Common Commands

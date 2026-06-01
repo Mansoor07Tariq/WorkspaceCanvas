@@ -20,6 +20,7 @@ interface GetChecklistInput {
   offices: Office[];
   floors: Floor[];
   desks: Desk[];
+  memberCount?: number;
 }
 
 export function getSetupChecklist({
@@ -28,8 +29,11 @@ export function getSetupChecklist({
   offices,
   floors,
   desks,
+  memberCount,
 }: GetChecklistInput): SetupChecklistItem[] {
   const firstOfficeId = offices[0]?.id;
+  // invite is complete when there is at least one other active member (count > 1)
+  const hasInvitedMember = memberCount != null ? memberCount > 1 : false;
 
   return [
     {
@@ -57,8 +61,8 @@ export function getSetupChecklist({
     },
     {
       id: "invite",
-      completed: false,
-      deferred: true,
+      completed: hasInvitedMember,
+      to: ROUTES.people,
     },
   ];
 }

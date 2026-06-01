@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { isMfaRequiredResponse, isLoginSuccessResponse } from "../utils/authUtils";
+import { isMfaRequiredResponse, isLoginSuccessResponse, getSafeReturnTo } from "../utils/authUtils";
 import type { LoginResponse } from "../types/auth.types";
 
 const successResponse: LoginResponse = {
@@ -29,5 +29,38 @@ describe("isLoginSuccessResponse", () => {
 
   it("returns false for an MFA required response", () => {
     expect(isLoginSuccessResponse(mfaResponse)).toBe(false);
+  });
+});
+
+describe("getSafeReturnTo", () => {
+  it("returns an internal path as-is", () => {
+    expect(getSafeReturnTo("/invite/abc-123")).toBe("/invite/abc-123");
+  });
+
+  it("returns an internal app path", () => {
+    expect(getSafeReturnTo("/app")).toBe("/app");
+  });
+
+  it("returns null for an absolute http URL", () => {
+    expect(getSafeReturnTo("https://evil.com/steal")).toBeNull();
+  });
+
+  it("returns null for a protocol-relative URL", () => {
+    expect(getSafeReturnTo("//evil.com/steal")).toBeNull();
+  });
+
+  it("returns null for a non-string value", () => {
+    expect(getSafeReturnTo(42)).toBeNull();
+    expect(getSafeReturnTo(null)).toBeNull();
+    expect(getSafeReturnTo(undefined)).toBeNull();
+    expect(getSafeReturnTo({})).toBeNull();
+  });
+
+  it("returns null for an empty string", () => {
+    expect(getSafeReturnTo("")).toBeNull();
+  });
+
+  it("returns null for a relative path without leading slash", () => {
+    expect(getSafeReturnTo("invite/abc")).toBeNull();
   });
 });

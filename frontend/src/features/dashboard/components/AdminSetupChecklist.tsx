@@ -44,6 +44,7 @@ const CHECKLIST_LABELS: Record<
   invite: {
     label: en.app.dashboard.checklistItemInviteLabel,
     description: en.app.dashboard.checklistItemInviteDesc,
+    actionLabel: en.app.dashboard.checklistItemInviteAction,
   },
 };
 

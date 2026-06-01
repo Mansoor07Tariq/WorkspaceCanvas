@@ -75,6 +75,16 @@ const NotFoundPage = lazy(() =>
     default: m.NotFoundPage,
   }))
 );
+const PeoplePage = lazy(() =>
+  import("@/features/teams/pages/PeoplePage").then((m) => ({
+    default: m.PeoplePage,
+  }))
+);
+const AcceptInvitationPage = lazy(() =>
+  import("@/features/invitations/pages/AcceptInvitationPage").then((m) => ({
+    default: m.AcceptInvitationPage,
+  }))
+);
 
 export function AppRouter() {
   return (
@@ -182,10 +192,11 @@ export function AppRouter() {
               path={ROUTES.people}
               element={
                 <ProtectedRoute>
-                  <ComingSoonPage title={en.app.sidebar.people} />
+                  <PeoplePage />
                 </ProtectedRoute>
               }
             />
+            <Route path={ROUTES.inviteAccept} element={<AcceptInvitationPage />} />
             <Route path="/" element={<Navigate to={ROUTES.login} replace />} />
             <Route path="*" element={<NotFoundPage />} />
           </Routes>

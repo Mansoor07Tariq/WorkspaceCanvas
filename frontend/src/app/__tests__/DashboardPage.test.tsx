@@ -46,17 +46,23 @@ vi.mock("@/features/profile/api/profileApi", () => ({
   removeAvatar: vi.fn(),
 }));
 
+vi.mock("@/features/teams/hooks/useTeamMembers", () => ({
+  useTeamMembers: vi.fn(),
+}));
+
 // ─── Lazy import mocked hooks after vi.mock ───────────────────────────────────
 
 import { useOffices } from "@/features/offices/hooks/useOffices";
 import { useMyBookings } from "@/features/bookings/hooks/useMyBookings";
 import { listFloors } from "@/features/floors/api/floorApi";
 import { listDesks } from "@/features/desks/api/deskApi";
+import { useTeamMembers } from "@/features/teams/hooks/useTeamMembers";
 
 const mockUseOffices = vi.mocked(useOffices);
 const mockUseMyBookings = vi.mocked(useMyBookings);
 const mockListFloors = vi.mocked(listFloors);
 const mockListDesks = vi.mocked(listDesks);
+const mockUseTeamMembers = vi.mocked(useTeamMembers);
 
 // ─── Shared fixtures ──────────────────────────────────────────────────────────
 
@@ -146,6 +152,12 @@ function setupDefaultHooks() {
   });
   mockListFloors.mockResolvedValue([]);
   mockListDesks.mockResolvedValue([]);
+  mockUseTeamMembers.mockReturnValue({
+    members: [],
+    loading: false,
+    error: null,
+    refresh: vi.fn(),
+  });
 }
 
 function renderPage(overrides: Partial<AuthContextValue> = {}) {
