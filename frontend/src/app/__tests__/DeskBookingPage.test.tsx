@@ -31,58 +31,67 @@ vi.mock("@/features/bookings/hooks/useDeskBookings", () => ({
   useDeskBookings: () => ({ bookings: [], loading: false, error: undefined, refresh: vi.fn() }),
 }));
 
+// Mock BookingFloorMap to avoid pulling in Konva and lazy-loading in unit tests.
+// Interaction and availability prop tests are covered in BookingFloorMap.test.tsx.
+vi.mock("@/features/bookings/components/BookingFloorMap", () => ({
+  BookingFloorMap: ({ selectedDeskId }: { selectedDeskId: number | null }) => (
+    <div data-testid="mock-booking-floor-map" data-selected-desk={selectedDeskId ?? "none"} />
+  ),
+}));
+
+function renderPage() {
+  return render(
+    <MemoryRouter>
+      <DeskBookingPage />
+    </MemoryRouter>
+  );
+}
+
 describe("DeskBookingPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   it("renders the Desk Booking heading", () => {
-    render(
-      <MemoryRouter>
-        <DeskBookingPage />
-      </MemoryRouter>
-    );
+    renderPage();
     expect(screen.getByRole("heading", { name: "Desk Booking" })).toBeInTheDocument();
   });
 
   it("renders office and floor selects", () => {
-    render(
-      <MemoryRouter>
-        <DeskBookingPage />
-      </MemoryRouter>
-    );
+    renderPage();
     expect(screen.getByTestId("office-select")).toBeInTheDocument();
     expect(screen.getByTestId("floor-select")).toBeInTheDocument();
   });
 
   it("renders the booking date input", () => {
-    render(
-      <MemoryRouter>
-        <DeskBookingPage />
-      </MemoryRouter>
-    );
+    renderPage();
     expect(screen.getByLabelText("Booking Date")).toBeInTheDocument();
   });
 
   it("shows prompt to select office and floor when none selected", () => {
-    render(
-      <MemoryRouter>
-        <DeskBookingPage />
-      </MemoryRouter>
-    );
+    renderPage();
     expect(
       screen.getByText("Select an office and floor to view desk availability.")
     ).toBeInTheDocument();
   });
 
   it("page heading is an h1 element with text 'Desk Booking'", () => {
-    render(
-      <MemoryRouter>
-        <DeskBookingPage />
-      </MemoryRouter>
-    );
+    renderPage();
     const heading = screen.getByRole("heading", { name: "Desk Booking", level: 1 });
     expect(heading).toBeInTheDocument();
     expect(heading.tagName).toBe("H1");
+  });
+
+  it("floor map is not rendered before a floor is selected", () => {
+    renderPage();
+    expect(screen.queryByTestId("mock-booking-floor-map")).not.toBeInTheDocument();
+    expect(screen.queryByText("Floor map")).not.toBeInTheDocument();
+  });
+
+  it("does not expose any other user's name in the initial render", () => {
+    const { container } = renderPage();
+    // Privacy guard: no user identity data should appear at page level
+    expect(container.textContent).not.toContain("Jane Smith");
+    expect(container.textContent).not.toContain("user_name");
   });
 });

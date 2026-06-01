@@ -309,4 +309,108 @@ describe("FloorMapCanvas", () => {
     });
     expect(onKeyDown).toHaveBeenCalled();
   });
+
+  // ─── Booking mode tests ───────────────────────────────────────────────────
+
+  it("booking mode sets aria-label to 'Floor booking map'", () => {
+    render(
+      <FloorMapCanvas
+        objects={[]}
+        selectedObjectId={null}
+        onSelectObject={vi.fn()}
+        mode="booking"
+      />
+    );
+    expect(screen.getByRole("region", { name: /floor booking map/i })).toBeInTheDocument();
+  });
+
+  it("editor mode keeps aria-label as 'Floor map canvas'", () => {
+    render(
+      <FloorMapCanvas objects={[]} selectedObjectId={null} onSelectObject={vi.fn()} mode="editor" />
+    );
+    expect(screen.getByRole("region", { name: /floor map canvas/i })).toBeInTheDocument();
+  });
+
+  it("booking mode does not propagate onKeyDown to the canvas wrapper", () => {
+    const onKeyDown = vi.fn();
+    render(
+      <FloorMapCanvas
+        objects={[]}
+        selectedObjectId={null}
+        onSelectObject={vi.fn()}
+        mode="booking"
+        onKeyDown={onKeyDown}
+      />
+    );
+    fireEvent.keyDown(screen.getByRole("region", { name: /floor booking map/i }), {
+      key: "ArrowRight",
+    });
+    expect(onKeyDown).not.toHaveBeenCalled();
+  });
+
+  it("booking mode renders non-draggable nodes even when canManageLayout is true", () => {
+    render(
+      <FloorMapCanvas
+        objects={[makeObj()]}
+        selectedObjectId={null}
+        onSelectObject={vi.fn()}
+        canManageLayout={true}
+        mode="booking"
+      />
+    );
+    expect(screen.getByTestId("canvas-object-group")).toBeInTheDocument();
+    expect(screen.queryByTestId("canvas-object-group-draggable")).not.toBeInTheDocument();
+  });
+
+  it("booking mode: clicking a desk object with an availability status calls onAvailabilityObjectSelect", () => {
+    const onAvailabilityObjectSelect = vi.fn();
+    const availabilityMap = new Map([[1, "available" as const]]);
+    render(
+      <FloorMapCanvas
+        objects={[makeObj({ id: 1 })]}
+        selectedObjectId={null}
+        onSelectObject={vi.fn()}
+        mode="booking"
+        availabilityByLayoutObjectId={availabilityMap}
+        onAvailabilityObjectSelect={onAvailabilityObjectSelect}
+      />
+    );
+    fireEvent.click(screen.getByTestId("canvas-object-group"));
+    expect(onAvailabilityObjectSelect).toHaveBeenCalledWith(1);
+  });
+
+  it("booking mode: clicking an object without availability status does not call onAvailabilityObjectSelect", () => {
+    const onAvailabilityObjectSelect = vi.fn();
+    // Empty availability map — object 1 has no entry
+    const availabilityMap = new Map<number, "available">([]);
+    render(
+      <FloorMapCanvas
+        objects={[makeObj({ id: 1 })]}
+        selectedObjectId={null}
+        onSelectObject={vi.fn()}
+        mode="booking"
+        availabilityByLayoutObjectId={availabilityMap}
+        onAvailabilityObjectSelect={onAvailabilityObjectSelect}
+      />
+    );
+    fireEvent.click(screen.getByTestId("canvas-object-group"));
+    expect(onAvailabilityObjectSelect).not.toHaveBeenCalled();
+  });
+
+  it("editor mode: drag still works with canManageLayout=true (regression)", () => {
+    const onObjectDragEnd = vi.fn();
+    render(
+      <FloorMapCanvas
+        objects={[makeObj({ id: 5, x: "100.00", y: "150.00", width: "80.00", height: "50.00" })]}
+        selectedObjectId={null}
+        onSelectObject={vi.fn()}
+        canManageLayout={true}
+        onObjectDragEnd={onObjectDragEnd}
+        mode="editor"
+      />
+    );
+    expect(screen.getByTestId("canvas-object-group-draggable")).toBeInTheDocument();
+    fireEvent.mouseUp(screen.getByTestId("canvas-object-group-draggable"));
+    expect(onObjectDragEnd).toHaveBeenCalledWith(5, 100, 150);
+  });
 });

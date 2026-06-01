@@ -117,3 +117,42 @@ export function countAvailability(items: DeskAvailabilityItem[]): AvailabilityCo
 export function canBookDesk(item: DeskAvailabilityItem, hasMyBooking: boolean): boolean {
   return item.status === "available" && !hasMyBooking;
 }
+
+/**
+ * Builds a map from layoutObject.id → DeskAvailabilityStatus for canvas rendering.
+ * Only items that have a linked layoutObject are included.
+ * No booking identity is included — status only.
+ */
+export function buildAvailabilityByLayoutObjectId(
+  items: DeskAvailabilityItem[]
+): Map<number, DeskAvailabilityStatus> {
+  const map = new Map<number, DeskAvailabilityStatus>();
+  for (const item of items) {
+    if (item.layoutObject !== null) {
+      map.set(item.layoutObject.id, item.status);
+    }
+  }
+  return map;
+}
+
+/**
+ * Given an availability-by-layout-object-id map and a selected desk's availability item,
+ * returns the layout object id of the selected desk, or null.
+ */
+export function getSelectedLayoutObjectId(
+  selectedItem: DeskAvailabilityItem | null
+): number | null {
+  return selectedItem?.layoutObject?.id ?? null;
+}
+
+/**
+ * Given an availability map and a layout object id clicked on the canvas,
+ * finds the desk id for that layout object.
+ */
+export function findDeskIdByLayoutObjectId(
+  items: DeskAvailabilityItem[],
+  layoutObjectId: number
+): number | null {
+  const item = items.find((i) => i.layoutObject?.id === layoutObjectId);
+  return item?.desk.id ?? null;
+}
