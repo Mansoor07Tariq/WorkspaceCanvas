@@ -68,5 +68,6 @@ jobs:
       - run: ruff check .
       - run: ruff format --check .
       - run: python manage.py migrate
+      - run: python manage.py makemigrations --check --dry-run
       - run: python manage.py check
       - run: pytest

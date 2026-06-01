@@ -188,6 +188,9 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ],
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+    ],
     "DEFAULT_THROTTLE_CLASSES": [
         "rest_framework.throttling.ScopedRateThrottle",
     ],
@@ -206,6 +209,7 @@ REST_FRAMEWORK = {
         ),
         "desk_write": os.environ.get("THROTTLE_DESK_WRITE", "120/hour"),
         "desk_booking_write": os.environ.get("THROTTLE_DESK_BOOKING_WRITE", "60/hour"),
+        "desk_booking_read": os.environ.get("THROTTLE_DESK_BOOKING_READ", "120/hour"),
     },
 }
 
@@ -273,13 +277,26 @@ RESEND_VERIFICATION_COOLDOWN_SECONDS = int(
 
 
 # Auth refresh cookie (httpOnly, sent automatically by the browser)
-# Must match SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"] in seconds.
+# AUTH_COOKIE_MAX_AGE is derived from SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"] so
+# the two values cannot drift independently.
 
 AUTH_COOKIE_NAME = "wsc_rt"
 AUTH_COOKIE_SECURE = not DEBUG  # True in production (HTTPS only)
-AUTH_COOKIE_SAMESITE: str = "Lax"
+AUTH_COOKIE_SAMESITE: str = os.environ.get("AUTH_COOKIE_SAMESITE", "Lax")
 AUTH_COOKIE_PATH = "/api/auth/"
-AUTH_COOKIE_MAX_AGE = 7 * 24 * 60 * 60  # 7 days
+AUTH_COOKIE_MAX_AGE = int(SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"].total_seconds())
+
+
+# Production guard: reject an insecure default POSTGRES_PASSWORD when not in debug mode.
+
+_POSTGRES_PASSWORD_DEFAULT = "workspacecanvas"
+_postgres_password = os.environ.get("POSTGRES_PASSWORD", _POSTGRES_PASSWORD_DEFAULT)
+if not DEBUG and _postgres_password == _POSTGRES_PASSWORD_DEFAULT:
+    raise ImproperlyConfigured(
+        "POSTGRES_PASSWORD must be set to a non-default value in production "
+        "(DEBUG=False). Set the POSTGRES_PASSWORD environment variable."
+    )
+DATABASES["default"]["PASSWORD"] = _postgres_password
 
 
 # drf-spectacular

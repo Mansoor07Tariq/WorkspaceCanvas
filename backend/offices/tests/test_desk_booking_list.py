@@ -2,6 +2,7 @@ import datetime
 
 import pytest
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 from rest_framework.test import APIClient
 
 from accounts.models import MemberRole, Membership, Organization
@@ -453,3 +454,75 @@ def test_member_sees_anonymized_user_for_others(
     assert booking_data["user_name"] == "Reserved"
     assert "email" not in booking_data
     assert booking_data["is_mine"] is False
+
+
+def test_member_cannot_see_cancelled_by_for_others(
+    db,
+    client,
+    member_user,
+    owner_user,
+    active_org,
+    active_office,
+    active_floor,
+    desk_resource,
+):
+    """A regular member must not see cancelled_by for another user's booking."""
+
+    today = datetime.date.today()
+    booking = DeskBooking.objects.create(
+        organization=active_org,
+        office=active_office,
+        floor=active_floor,
+        desk=desk_resource,
+        user=owner_user,
+        booking_date=today,
+        status=DeskBooking.Status.ACTIVE,
+    )
+    # Set cancelled_by without flipping status so the booking still appears in the list.
+    DeskBooking.objects.filter(pk=booking.pk).update(
+        cancelled_by=owner_user,
+        cancelled_at=timezone.now(),
+    )
+
+    client.force_authenticate(user=member_user)
+    url = booking_list_url(active_office.id, active_floor.id, today.isoformat())
+    response = client.get(url)
+    assert response.status_code == 200
+    matching = [b for b in response.data if b["id"] == booking.id]
+    assert len(matching) == 1
+    booking_data = matching[0]
+    cancelled_by_val = booking_data.get("cancelled_by")
+    assert "cancelled_by" not in booking_data or cancelled_by_val is None
+
+
+def test_admin_sees_full_identity_for_others(
+    db,
+    client,
+    admin_user,
+    member_user,
+    active_org,
+    active_office,
+    active_floor,
+    desk_resource,
+):
+    """Admin viewing another user's booking sees real user_name, not 'Reserved'."""
+    today = datetime.date.today()
+    booking = DeskBooking.objects.create(
+        organization=active_org,
+        office=active_office,
+        floor=active_floor,
+        desk=desk_resource,
+        user=member_user,
+        booking_date=today,
+        status=DeskBooking.Status.ACTIVE,
+    )
+    client.force_authenticate(user=admin_user)
+    url = booking_list_url(active_office.id, active_floor.id, today.isoformat())
+    response = client.get(url)
+    assert response.status_code == 200
+    matching = [b for b in response.data if b["id"] == booking.id]
+    assert len(matching) == 1
+    booking_data = matching[0]
+    # Admin must see real identity, not the anonymized placeholder
+    assert booking_data["user_name"] != "Reserved"
+    assert booking_data.get("user") == member_user.id

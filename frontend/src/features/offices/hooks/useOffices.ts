@@ -1,4 +1,4 @@
-import { useEffect, useReducer } from "react";
+import { useEffect, useReducer, useState } from "react";
 import { listOffices } from "../api/officeApi";
 import type { Office } from "../types/office.types";
 
@@ -35,7 +35,7 @@ interface UseOfficesResult {
 
 export function useOffices(): UseOfficesResult {
   const [state, dispatch] = useReducer(reducer, initial);
-  const [tick, setTick] = useReducer((n: number) => n + 1, 0);
+  const [tick, setTick] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -57,5 +57,5 @@ export function useOffices(): UseOfficesResult {
     };
   }, [tick]);
 
-  return { ...state, refresh: () => setTick() };
+  return { ...state, refresh: () => setTick((n) => n + 1) };
 }

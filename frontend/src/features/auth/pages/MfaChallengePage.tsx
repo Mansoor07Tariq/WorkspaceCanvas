@@ -1,10 +1,11 @@
-import { Link as RouterLink, useLocation } from "react-router-dom";
+import { Link as RouterLink, useLocation, Navigate } from "react-router-dom";
 import { Box, Button, Typography } from "@mui/material";
 import { en } from "@/i18n/en";
 import { FormTextField } from "@/components/ui/FormTextField";
 import { LoadingButton } from "@/components/ui/LoadingButton";
 import { ErrorAlert } from "@/components/feedback/ErrorAlert";
 import { ROUTES } from "@/routes/paths";
+import { useAuth } from "../context/AuthContext";
 import { AuthPageShell } from "../components/AuthPageShell";
 import { useMfaChallengeForm } from "../hooks/useMfaChallengeForm";
 import { authFormSx, mfaToggleSx } from "../styles/auth.styles";
@@ -19,13 +20,19 @@ const backToLoginFooter = (
 );
 
 export function MfaChallengePage() {
+  const { status } = useAuth();
   const location = useLocation();
   const state = location.state as MfaChallengeNavigationState | null;
   const challengeId = state?.challengeId;
   const email = state?.email;
 
+  // useMfaChallengeForm must be called unconditionally before any early returns
   const { mode, toggleMode, fields, setField, fieldErrors, submission, handleSubmit } =
     useMfaChallengeForm(challengeId ?? "");
+
+  if (status === "authenticated") {
+    return <Navigate to={ROUTES.app} replace />;
+  }
 
   if (!challengeId) {
     return (

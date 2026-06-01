@@ -10,6 +10,10 @@ import { ApiError } from "@/lib/api/apiError";
 import { en } from "@/i18n/en";
 import { ROUTES } from "@/routes/paths";
 
+vi.mock("../context/AuthContext", () => ({
+  useAuth: () => ({ status: "unauthenticated" }),
+}));
+
 vi.mock("../api/authApi", () => ({
   verifyEmail: vi.fn(),
   resendVerification: vi.fn(),

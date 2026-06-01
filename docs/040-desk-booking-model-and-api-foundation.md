@@ -35,7 +35,7 @@ for this release. Time-range and half-day support are explicitly deferred.
 | `organization` | ForeignKey → Organization | on_delete=CASCADE |
 | `office` | ForeignKey → Office | on_delete=CASCADE |
 | `floor` | ForeignKey → Floor | on_delete=CASCADE |
-| `desk` | ForeignKey → Desk | on_delete=CASCADE |
+| `desk` | ForeignKey → Desk | on_delete=PROTECT |
 | `user` | ForeignKey → User | on_delete=CASCADE; the person who booked |
 | `booking_date` | DateField | Calendar date of the booking (no time component) |
 | `status` | CharField(20) | Choices: `active`, `cancelled`; default `active` |
@@ -53,7 +53,7 @@ for this release. Time-range and half-day support are explicitly deferred.
 
 ### Meta
 
-- **ordering**: `["-booking_date", "-created_at"]`
+- **ordering**: `["-booking_date", "created_at"]`
 - **indexes** (5 composite):
   1. `(organization, booking_date, status)`
   2. `(office, booking_date, status)`
@@ -71,7 +71,7 @@ for this release. Time-range and half-day support are explicitly deferred.
 | organization | CASCADE |
 | office | CASCADE |
 | floor | CASCADE |
-| desk | CASCADE |
+| desk | PROTECT |
 | user | CASCADE |
 | cancelled_by | SET_NULL |
 

@@ -6,40 +6,59 @@ The long-term goal is to provide companies with a clean internal tool where admi
 
 ## Current Status
 
-This project is in early development.
+This project is in active development. The authentication stack, organization setup, office/floor management, canvas builder, desk management, and desk booking API are all complete.
 
-Currently completed:
+### Completed
 
 **Infrastructure and architecture**
 
-- React + TypeScript frontend (Vite, MUI 9, Tailwind, React Router)
-- Django backend with PostgreSQL, Docker, CI/CD (lint, format, test, build)
+- React + TypeScript frontend (Vite, MUI 9, Tailwind, React Router, Konva)
+- Django backend with PostgreSQL, Docker, CI/CD (lint, format, migration check, test, build)
 - `accounts` app: Organization, Membership, Invitation models
+- `users` app: Custom User model, approval flow
+- `offices` app: Office, Floor, LayoutObject, Desk, DeskBooking models
 
 **Full authentication stack (backend + frontend)**
 
 - Custom User model with email verification, MFA, and social auth fields
 - Email/password signup with email verification flow
-- JWT login, refresh (token rotation + blacklist), logout, current user endpoint
+- JWT login with HttpOnly cookie token storage, refresh (token rotation + blacklist), logout, current user endpoint
 - Google and Microsoft OAuth 2.0 social login with full OIDC/JWKS verification
 - TOTP MFA: setup, confirm, disable, recovery codes, re-auth for sensitive operations
 - MFA login enforcement: challenge-based gate on email and social login flows
-- Frontend auth UI: Signup, Login, Email Verification, MFA Challenge pages
+- Frontend auth UI: Signup, Login, Email Verification, MFA Challenge, MFA Setup pages
 - Google and Microsoft social login buttons with popup flows
 - AuthProvider, useAuth, ProtectedRoute, session-expiry handling
 - Silent token refresh on 401 with global session expiry propagation
-- Authenticated app shell placeholder at `/app`
 - Rate limiting on all public auth endpoints (DRF ScopedRateThrottle)
-- 263 frontend tests, ~188 backend tests (require PostgreSQL)
 
-Upcoming work:
+**Profile and organization setup**
 
-- Profile Completion (user profile fields, avatar, timezone)
-- Organization Setup (create org, invite members)
-- Office map editor (2.5D canvas)
-- Desk booking flow
+- Profile completion flow: avatar upload, timezone, display name
+- Organization creation from profile onboarding
+- Office creation and management
+- Floor creation and management per office
+
+**Office canvas and desk management**
+
+- 2D floor map canvas builder (Konva / React Konva)
+- Layout objects: drag, move, resize, rotate with persistence
+- Canvas boundary clamping, grid snapping, keyboard UX (arrow keys, delete, escape)
+- Bundle splitting and route lazy-loading
+- Desk resource model: code, name, status (available / unavailable / maintenance), active flag
+- Desk inline edit UI with detail endpoint
+- Desk booking API: create, list, detail, cancel with privacy-aware serialization
+- DB-level partial unique constraints preventing double-booking
+
+### Upcoming Work
+
+- Booking UI: calendar date picker, booking creation from canvas or list view
+- My Bookings dashboard
+- Availability colour-coding on the canvas
 - Events module
 - Awards and voting module
+- Email and push notifications
+- Admin booking management UI
 
 ## Tech Stack
 
@@ -51,14 +70,7 @@ Upcoming work:
 - Tailwind CSS
 - Material UI (MUI 9)
 - React Router
-
-Planned frontend additions:
-
-- TanStack Query
-- Zustand
-- React Hook Form
-- Zod
-- Konva / React Konva for the office map builder
+- Konva / React Konva (office map canvas)
 
 ### Backend
 
@@ -67,21 +79,18 @@ Planned frontend additions:
 - Django REST Framework
 - PostgreSQL
 - psycopg (v3)
-
-Planned backend additions:
-
-- Django REST Framework APIs
-- JWT authentication
-- Celery + Redis for background jobs
-- Microsoft Graph API integration for Outlook email and calendar features
+- SimpleJWT (HttpOnly cookie token rotation)
+- Celery + Redis (planned — for background jobs and notifications)
 
 ## Project Structure
 
 ```txt
 WorkspaceCanvas/
   backend/
-    accounts/
-    config/
+    accounts/          # Organization, Membership, Invitation models
+    users/             # Custom User model, approval flow
+    offices/           # Office, Floor, LayoutObject, Desk, DeskBooking models and API
+    config/            # Django settings, URL conf, WSGI/ASGI
     entrypoint.sh
     Dockerfile
     docker-compose.yml
@@ -92,17 +101,29 @@ WorkspaceCanvas/
   docs/
     001-project-setup.md
     002-postgres-config.md
-    003-accounts-foundation.md
-    004-docker-dev-setup.md
+    ... (041 docs total; see Documentation table below)
+    TECHNICAL_DEBT.md
 
   frontend/
     public/
     src/
+      features/
+        auth/          # Login, signup, MFA, social login
+        profile/       # Profile completion, avatar
+        organizations/ # Org setup
+        offices/       # Office management
+        floors/        # Floor management
+        layout/        # Canvas builder
+        desks/         # Desk management and inline edit
+        bookings/      # Booking API layer and hook
+      components/      # Shared UI components
+      lib/             # API client, auth utils
     Dockerfile
     docker-compose.yml
     package.json
     vite.config.ts
 
+  Makefile
   README.md
   .gitignore
 ```
@@ -139,6 +160,23 @@ Detailed notes for each feature and setup step are in the `docs/` folder:
 | [024-auth-state-protected-routes.md](docs/024-auth-state-protected-routes.md) | Auth State and Protected Routes — AuthProvider, useAuth, ProtectedRoute, /app protection, logout support |
 | [025-auth-hardening-cleanup.md](docs/025-auth-hardening-cleanup.md) | Auth Hardening and Cleanup — allauth removal, SECRET_KEY enforcement, CORS env var, rate limiting, MFA secret removal |
 | [026-auth-security-cleanup.md](docs/026-auth-security-cleanup.md) | Auth Security Cleanup and QR Code — django-ipware IP extraction, django-csp, QR code for MFA setup, MfaSetupPage, theme-driven link colours |
+| [027-profile-completion-dashboard-flow.md](docs/027-profile-completion-dashboard-flow.md) | Profile completion flow — display name, timezone, avatar upload, onboarding redirect |
+| [028-premium-profile-onboarding-carousel-avatar.md](docs/028-premium-profile-onboarding-carousel-avatar.md) | Premium onboarding carousel, avatar upload with crop, profile completion polish |
+| [029-httponly-cookie-auth.md](docs/029-httponly-cookie-auth.md) | HttpOnly cookie token storage — migrate from localStorage to secure HttpOnly cookies |
+| [029-organization-setup-from-offices.md](docs/029-organization-setup-from-offices.md) | Organization setup from offices — create org, invite members, office-first org flow |
+| [030-create-first-office.md](docs/030-create-first-office.md) | Create first office — office creation form, validation, API integration |
+| [031-floor-creation-foundation.md](docs/031-floor-creation-foundation.md) | Floor creation foundation — floor model, API, creation UI per office |
+| [032-floor-layout-object-model-and-object-library.md](docs/032-floor-layout-object-model-and-object-library.md) | Floor layout object model and object library — LayoutObject model, object palette, API |
+| [033-basic-floor-map-builder-shell.md](docs/033-basic-floor-map-builder-shell.md) | Basic floor map builder shell — Konva canvas, stage setup, object rendering |
+| [034-drag-move-persistence-for-layout-objects.md](docs/034-drag-move-persistence-for-layout-objects.md) | Drag and move persistence — PATCH endpoint, optimistic updates, rollback on failure |
+| [035-resize-rotate-and-canvas-quality-improvements.md](docs/035-resize-rotate-and-canvas-quality-improvements.md) | Resize, rotate, and canvas quality — transformer handles, rotation, stale state fixes |
+| [036-bundle-splitting-and-route-lazy-loading.md](docs/036-bundle-splitting-and-route-lazy-loading.md) | Bundle splitting and route lazy-loading — vendor chunks, code splitting, Vite config |
+| [037-canvas-boundary-grid-snapping-keyboard-ux.md](docs/037-canvas-boundary-grid-snapping-keyboard-ux.md) | Canvas boundary clamping, grid snapping, keyboard UX — arrow keys, delete, escape |
+| [038-desk-resource-model-foundation.md](docs/038-desk-resource-model-foundation.md) | Desk resource model — Desk model, status choices, is_active flag, CRUD API |
+| [039-desk-inline-edit-ui-and-detail-endpoint.md](docs/039-desk-inline-edit-ui-and-detail-endpoint.md) | Desk inline edit UI and detail endpoint — edit panel, GET detail, stale form fixes |
+| [040-desk-booking-model-and-api-foundation.md](docs/040-desk-booking-model-and-api-foundation.md) | Desk booking model and API — DeskBooking model, list/create/detail/cancel endpoints, privacy-aware serialization |
+| [041-codebase-hardening-and-tech-debt-cleanup.md](docs/041-codebase-hardening-and-tech-debt-cleanup.md) | CI/DevEx updates, security guardrails, booking hardening, frontend cleanup, README and docs refresh |
+| [TECHNICAL_DEBT.md](docs/TECHNICAL_DEBT.md) | Long-lived engineering debt register — open items, severity, recommended fixes |
 
 ## Common Commands
 
@@ -160,7 +198,7 @@ make frontend-docker-up     # start frontend in background
 make frontend-docker-serve  # start frontend with logs in terminal
 make frontend-docker-down   # stop frontend Docker services
 
-make ci                     # run all lint, format, test, and build checks locally
+make ci                     # run all lint, format, migration check, test, and build checks locally
 ```
 
 ## Local Development
@@ -176,11 +214,11 @@ make ci                     # run all lint, format, test, and build checks local
 **Backend + PostgreSQL:**
 
 ```bash
-# From WorkspaceCanvas/
-cp backend/.env.example backend/.env
-chmod +x backend/entrypoint.sh
+# From WorkspaceCanvas/backend/
+cp .env.example .env
+chmod +x entrypoint.sh
 
-docker compose up --build
+cd backend && docker compose up --build
 ```
 
 On first run the backend will:
@@ -192,7 +230,7 @@ On first run the backend will:
 **Frontend:**
 
 ```bash
-# From frontend/
+# From WorkspaceCanvas/frontend/
 docker compose up --build
 ```
 
@@ -266,7 +304,7 @@ npm run dev
 ### Stopping Docker Services
 
 ```bash
-# Backend + DB
+# Backend + DB (from backend/)
 docker compose down
 
 # Frontend (from frontend/)
@@ -276,5 +314,6 @@ docker compose down
 To also remove the PostgreSQL volume (wipes all data):
 
 ```bash
+# From backend/
 docker compose down -v
 ```

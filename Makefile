@@ -11,7 +11,7 @@ PRE_COMMIT := $(VENV)/bin/python -m pre_commit
         backend-docker-build backend-docker-up backend-docker-serve backend-docker-down backend-docker-logs \
         frontend-docker-build frontend-docker-up frontend-docker-serve frontend-docker-down frontend-docker-logs \
         migrate makemigrations superuser \
-        backend-check backend-lint backend-format backend-format-check backend-test \
+        migration-check backend-check backend-lint backend-format backend-format-check backend-test \
         frontend-lint frontend-format frontend-format-check frontend-test frontend-build \
         lint format format-check test ci \
         precommit-install precommit-run
@@ -46,6 +46,7 @@ help:
 	@echo "    make superuser              Create a Django superuser"
 	@echo ""
 	@echo "  Backend quality"
+	@echo "    make migration-check        Check for missing migrations (--check --dry-run)"
 	@echo "    make backend-check          Run Django system check"
 	@echo "    make backend-lint           Ruff lint"
 	@echo "    make backend-format         Ruff auto-format"
@@ -124,6 +125,9 @@ superuser:
 
 # ─── Backend quality ────────────────────────────────────────────────────────────
 
+migration-check:
+	cd backend && $(CURDIR)/$(PYTHON) manage.py makemigrations --check --dry-run
+
 backend-check:
 	cd backend && $(CURDIR)/$(PYTHON) manage.py check
 
@@ -168,7 +172,7 @@ test: backend-test frontend-test
 
 # ─── CI ─────────────────────────────────────────────────────────────────────────
 
-ci: backend-lint backend-format-check backend-check backend-test \
+ci: backend-lint backend-format-check migration-check backend-check backend-test \
     frontend-lint frontend-format-check frontend-test frontend-build
 
 # ─── Pre-commit ─────────────────────────────────────────────────────────────────

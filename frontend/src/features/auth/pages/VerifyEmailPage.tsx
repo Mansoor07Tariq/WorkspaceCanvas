@@ -1,4 +1,4 @@
-import { Link as RouterLink, useSearchParams } from "react-router-dom";
+import { Link as RouterLink, useSearchParams, Navigate } from "react-router-dom";
 import { Box, Button, Typography } from "@mui/material";
 import { en } from "@/i18n/en";
 import { FormTextField } from "@/components/ui/FormTextField";
@@ -7,17 +7,23 @@ import { ErrorAlert } from "@/components/feedback/ErrorAlert";
 import { LoadingState } from "@/components/feedback/LoadingState";
 import { SuccessAlert } from "@/components/feedback/SuccessAlert";
 import { ROUTES } from "@/routes/paths";
+import { useAuth } from "../context/AuthContext";
 import { AuthPageShell } from "../components/AuthPageShell";
 import { useVerifyEmail } from "../hooks/useVerifyEmail";
 import { useResendVerificationForm } from "../hooks/useResendVerificationForm";
 import { authFormSx, verifyEmailCenterSx, verifyEmailResendSectionSx } from "../styles/auth.styles";
 
 export function VerifyEmailPage() {
+  const { status: authStatus } = useAuth();
   const [searchParams] = useSearchParams();
   const token = searchParams.get("token");
 
   const { status, errorMessage } = useVerifyEmail(token);
   const resend = useResendVerificationForm();
+
+  if (authStatus === "authenticated") {
+    return <Navigate to={ROUTES.app} replace />;
+  }
 
   if (status === "verifying") {
     return (

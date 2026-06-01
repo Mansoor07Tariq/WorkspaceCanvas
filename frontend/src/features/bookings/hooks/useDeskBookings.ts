@@ -36,7 +36,10 @@ export function useDeskBookings(officeId: number, floorId: number, date: string)
   }
 
   useEffect(() => {
-    if (!officeId || !floorId || !date) return;
+    if (!officeId || !floorId || !date) {
+      dispatch({ type: "fetch_success", payload: [] });
+      return;
+    }
     let cancelled = false;
     dispatch({ type: "fetch_start" });
 

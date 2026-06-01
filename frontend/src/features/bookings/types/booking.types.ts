@@ -17,6 +17,8 @@ export interface DeskBooking {
   created_at: string;
   updated_at: string;
   cancelled_at: string | null;
+  cancelled_by?: number | null;
+  is_mine: boolean;
 }
 
 export interface CreateDeskBookingPayload {
