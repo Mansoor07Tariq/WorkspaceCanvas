@@ -176,6 +176,9 @@ Detailed notes for each feature and setup step are in the `docs/` folder:
 | [039-desk-inline-edit-ui-and-detail-endpoint.md](docs/039-desk-inline-edit-ui-and-detail-endpoint.md) | Desk inline edit UI and detail endpoint — edit panel, GET detail, stale form fixes |
 | [040-desk-booking-model-and-api-foundation.md](docs/040-desk-booking-model-and-api-foundation.md) | Desk booking model and API — DeskBooking model, list/create/detail/cancel endpoints, privacy-aware serialization |
 | [041-codebase-hardening-and-tech-debt-cleanup.md](docs/041-codebase-hardening-and-tech-debt-cleanup.md) | CI/DevEx updates, security guardrails, booking hardening, frontend cleanup, README and docs refresh |
+| [042-booking-ui-foundation.md](docs/042-booking-ui-foundation.md) | Booking UI — /app/bookings route, office/floor/date selector, desk list, book/cancel flow |
+| [043-canvas-availability-map-booking.md](docs/043-canvas-availability-map-booking.md) | Canvas availability colours and map-based desk selection — mode="booking", colour-coded shapes, map/list sync |
+| [044-booking-data-integrity-hardening.md](docs/044-booking-data-integrity-hardening.md) | Booking data integrity — DeskBooking.clean(), select_for_update service, Desk deactivation signals |
 | [TECHNICAL_DEBT.md](docs/TECHNICAL_DEBT.md) | Long-lived engineering debt register — open items, severity, recommended fixes |
 
 ## Common Commands

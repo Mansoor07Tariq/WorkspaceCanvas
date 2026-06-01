@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q
 from django.utils.text import slugify
@@ -380,3 +381,29 @@ class DeskBooking(models.Model):
             f"Booking {self.id}: user {self.user_id}"
             f" @ desk {self.desk_id} on {self.booking_date}"
         )
+
+    def clean(self) -> None:
+        # TD-003: guard against inactive / non-available desks.
+        # TD-005: enforce FK consistency (org/office/floor must match desk).
+        # Fires via model/service layer, not only the serializer.
+        if not self.desk_id:
+            return
+
+        desk = self.desk  # uses cached instance when set via DeskBooking(desk=desk_obj)
+
+        if not desk.is_active:
+            raise ValidationError("Cannot book an inactive desk.")
+
+        if desk.status != Desk.Status.AVAILABLE:
+            raise ValidationError(
+                f"Cannot book a desk with status '{desk.get_status_display()}'."
+            )
+
+        if self.organization_id and desk.organization_id != self.organization_id:
+            raise ValidationError(
+                "Booking organization does not match the desk's organization."
+            )
+        if self.office_id and desk.office_id != self.office_id:
+            raise ValidationError("Booking office does not match the desk's office.")
+        if self.floor_id and desk.floor_id != self.floor_id:
+            raise ValidationError("Booking floor does not match the desk's floor.")
