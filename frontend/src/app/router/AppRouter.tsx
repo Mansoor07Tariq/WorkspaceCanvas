@@ -35,9 +35,9 @@ const MfaSetupPage = lazy(() =>
 );
 
 // App pages — lazy-loaded so MUI-heavy pages are not in the initial bundle.
-const AppPlaceholderPage = lazy(() =>
-  import("@/app/pages/AppPlaceholderPage").then((m) => ({
-    default: m.AppPlaceholderPage,
+const DashboardPage = lazy(() =>
+  import("@/app/pages/DashboardPage").then((m) => ({
+    default: m.DashboardPage,
   }))
 );
 const AppOfficesPage = lazy(() =>
@@ -126,7 +126,7 @@ export function AppRouter() {
               path={ROUTES.app}
               element={
                 <ProtectedRoute>
-                  <AppPlaceholderPage />
+                  <DashboardPage />
                 </ProtectedRoute>
               }
             />

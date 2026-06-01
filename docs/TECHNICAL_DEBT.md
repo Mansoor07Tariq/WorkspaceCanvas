@@ -47,6 +47,9 @@ This document is a long-lived register of known engineering debt, product risk, 
 | TD-032 | Nit | Testing | Frontend / Canvas | No unit test verifying that `LayoutObjectCanvasNode` passes the correct `fill`/`stroke` from `getAvailabilityCanvasStyle` to Konva shape props; Konva mock does not expose rendered prop values | Style regressions in the node would not be caught at the unit level; caught only if the canvas helper tests change | Extract the style computation into a small testable selector or add Konva snapshot tests when Konva testing utilities mature | PR 044 | open |
 | TD-033 | Minor | Testing | Frontend / Bookings | `DeskBookingPage.test.tsx` has no integration test exercising the floor-selection path to verify the map section renders | A regression that breaks `BookingFloorMap` mounting after floor selection would not be caught here; covered only indirectly by `BookingFloorMap.test.tsx` with a mocked canvas | Add a test with userEvent floor-selection interaction, or set up a Playwright/Cypress e2e test for the booking flow | PR 044 | open |
 | TD-034 | Nit | UX | Frontend / Bookings | `AvailabilityMapLegend` is positioned below the canvas wrapper; on viewports narrow enough to trigger horizontal canvas scroll, the legend stays in place but the desk objects scroll away, which may look disconnected | Minor visual disconnect on narrow screens; functional fallback (list) is unaffected | Consider sticky positioning for the legend or moving it to a fixed position outside the scroll container | PR 044 | open |
+| TD-035 | Minor | Frontend | Dashboard | `useDashboardData` fetches floors/desks for the **first** office/floor only; workspace health cards and setup checklist reflect first-office data, not org-wide totals | Multi-office admins see partial data in health cards; checklist "floor created" / "desks added" may show incomplete even if another office has floors/desks | Add a backend aggregate endpoint (`/api/offices/summary/`) or fetch totals per office in parallel | PR 046 | open |
+| TD-036 | Minor | Frontend | Dashboard | "Invite team" checklist item is always incomplete and marked "Coming soon"; the People / invitation flow is not implemented | Admin setup feels 83% complete even with a fully set-up office | Implement invitation flow in a future PR; connect `invite` checklist item to a real membership-invite endpoint | PR 046 | open |
+| TD-037 | Nit | Frontend | Dashboard | No multi-org support in the dashboard; `getFirstActiveMembership` always picks the first active membership | If a user belongs to multiple orgs, the dashboard always shows the first one with no switcher | Add an org switcher or per-org navigation when multi-org is a priority | PR 046 | open |
 
 ---
 
@@ -123,4 +126,4 @@ Use this before every PR merge:
 
 ---
 
-*Last updated: 2026-06-01 — PR 045 My Bookings view and request hygiene; TD-009/015/020 resolved*
+*Last updated: 2026-06-01 — PR 046 MVP dashboard and role-based product paths; TD-035/036/037 added*
