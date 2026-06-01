@@ -6,7 +6,7 @@ from rest_framework.exceptions import NotFound, PermissionDenied, ValidationErro
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
-from rest_framework.throttling import ScopedRateThrottle
+from rest_framework.throttling import ScopedRateThrottle, SimpleRateThrottle
 from rest_framework.views import APIView
 
 from .models import Invitation, MemberRole, Membership, Organization
@@ -18,6 +18,46 @@ from .serializers import (
     MembershipSerializer,
     OrganizationResponseSerializer,
 )
+
+
+def _invite_throttle_cache_key(throttle: SimpleRateThrottle, request: Request) -> str:
+    """Cache key builder for invitation throttles.
+
+    Authenticated callers are keyed by user pk; anonymous callers (the public
+    invitation-detail lookup) fall back to the request IP via get_ident.
+    """
+    if request.user.is_authenticated:
+        ident = request.user.pk
+    else:
+        ident = throttle.get_ident(request)
+    return throttle.cache_format % {"scope": throttle.scope, "ident": ident}
+
+
+class _InviteWriteThrottle(SimpleRateThrottle):
+    """Applies the invite_write scope only on POST (create/cancel/accept)."""
+
+    scope = "invite_write"
+
+    def get_cache_key(self, request: Request, view) -> str | None:  # type: ignore[override]
+        return _invite_throttle_cache_key(self, request)
+
+    def allow_request(self, request: Request, view) -> bool:  # type: ignore[override]
+        if request.method != "POST":
+            return True
+        return super().allow_request(request, view)
+
+
+class _InvitePublicReadThrottle(SimpleRateThrottle):
+    """Throttles the public (unauthenticated) invitation-detail lookup by IP.
+
+    Tokens are UUIDv4 and unguessable, but this caps token-scanning attempts
+    against the AllowAny detail endpoint.
+    """
+
+    scope = "invite_read"
+
+    def get_cache_key(self, request: Request, view) -> str | None:  # type: ignore[override]
+        return _invite_throttle_cache_key(self, request)
 
 
 def _get_active_org_or_404(organization_id: int) -> Organization:
@@ -110,6 +150,7 @@ class MemberListView(APIView):
 
 class InvitationListCreateView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [_InviteWriteThrottle]
 
     @extend_schema(
         responses={200: InvitationSerializer(many=True)},
@@ -151,6 +192,7 @@ class InvitationListCreateView(APIView):
 
 class InvitationCancelView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [_InviteWriteThrottle]
 
     @extend_schema(
         responses={200: InvitationSerializer},
@@ -174,6 +216,7 @@ class InvitationCancelView(APIView):
 
 class InvitationDetailView(APIView):
     permission_classes = [AllowAny]
+    throttle_classes = [_InvitePublicReadThrottle]
 
     @extend_schema(
         responses={200: InvitationPublicSerializer},
@@ -192,6 +235,7 @@ class InvitationDetailView(APIView):
 
 class InvitationAcceptView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [_InviteWriteThrottle]
 
     @extend_schema(
         responses={200: MembershipSerializer},
