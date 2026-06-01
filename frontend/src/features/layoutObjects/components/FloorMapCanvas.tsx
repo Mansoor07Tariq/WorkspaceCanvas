@@ -11,6 +11,7 @@ import {
 } from "../utils/coordinateHelpers";
 import { LayoutObjectCanvasNode } from "./LayoutObjectCanvasNode";
 import type { LayoutObject } from "../types/layoutObject.types";
+import type { DeskAvailabilityStatus } from "@/features/bookings/utils/bookingAvailability";
 
 export { CANVAS_WIDTH, CANVAS_HEIGHT };
 
@@ -40,6 +41,16 @@ interface Props {
   gridSize?: number;
   /** IDs of layout objects that have an active linked Desk resource. */
   bookableObjectIds?: ReadonlySet<number>;
+
+  // ── Booking mode ─────────────────────────────────────────────────────────
+  /** When "booking", editing is disabled and availability overlays are shown. */
+  mode?: "editor" | "booking";
+  /** Map from layoutObject.id → DeskAvailabilityStatus for canvas colouring. */
+  availabilityByLayoutObjectId?: ReadonlyMap<number, DeskAvailabilityStatus>;
+  /** The layout object id of the currently selected desk in booking mode. */
+  selectedAvailabilityLayoutObjectId?: number | null;
+  /** Called when the user clicks a desk object in booking mode. */
+  onAvailabilityObjectSelect?: (layoutObjectId: number) => void;
 }
 
 export function FloorMapCanvas({
@@ -54,18 +65,24 @@ export function FloorMapCanvas({
   showGrid = true,
   gridSize = DEFAULT_GRID_SIZE,
   bookableObjectIds,
+  mode = "editor",
+  availabilityByLayoutObjectId,
+  selectedAvailabilityLayoutObjectId,
+  onAvailabilityObjectSelect,
 }: Props) {
+  const isBookingMode = mode === "booking";
   const transformerRef = useRef<Konva.Transformer>(null);
   const nodeRefs = useRef<Map<number, Konva.Group>>(new Map());
 
-  // Attach/detach Transformer whenever selection or edit capability changes
+  // Attach/detach Transformer whenever selection or edit capability changes.
+  // Booking mode never attaches the transformer (it is not rendered at all).
   useEffect(() => {
     const tr = transformerRef.current;
     if (!tr) return;
     const node = selectedObjectId !== null ? nodeRefs.current.get(selectedObjectId) : null;
-    tr.nodes(node && canManageLayout ? [node] : []);
+    tr.nodes(node && canManageLayout && !isBookingMode ? [node] : []);
     tr.getLayer()?.batchDraw();
-  }, [selectedObjectId, canManageLayout]);
+  }, [selectedObjectId, canManageLayout, isBookingMode]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function handleStageClick(e: any) {
@@ -106,9 +123,9 @@ export function FloorMapCanvas({
   return (
     <Box
       role="region"
-      aria-label={c.canvasAriaLabel}
+      aria-label={isBookingMode ? "Floor booking map" : c.canvasAriaLabel}
       tabIndex={0}
-      onKeyDown={onKeyDown}
+      onKeyDown={isBookingMode ? undefined : onKeyDown}
       sx={{
         position: "relative",
         border: "1px solid",
@@ -147,25 +164,36 @@ export function FloorMapCanvas({
           />
         </Layer>
         <Layer>
-          {objects.map((obj) => (
-            <LayoutObjectCanvasNode
-              key={obj.id}
-              ref={(node) => {
-                if (node) nodeRefs.current.set(obj.id, node);
-                else nodeRefs.current.delete(obj.id);
-              }}
-              obj={obj}
-              isSelected={obj.id === selectedObjectId}
-              onSelect={() => onSelectObject(obj.id)}
-              draggable={canManageLayout}
-              onDragEnd={onObjectDragEnd}
-              onTransformEnd={onObjectTransformEnd}
-              isSaving={savingObjectIds?.has(obj.id)}
-              hasDesk={bookableObjectIds?.has(obj.id)}
-            />
-          ))}
-          {/* Transformer visible only for owners/admins */}
-          {canManageLayout && (
+          {objects.map((obj) => {
+            const availabilityStatus = availabilityByLayoutObjectId?.get(obj.id);
+            const isAvailabilitySelected = selectedAvailabilityLayoutObjectId === obj.id;
+            return (
+              <LayoutObjectCanvasNode
+                key={obj.id}
+                ref={(node) => {
+                  if (node) nodeRefs.current.set(obj.id, node);
+                  else nodeRefs.current.delete(obj.id);
+                }}
+                obj={obj}
+                isSelected={!isBookingMode && obj.id === selectedObjectId}
+                onSelect={() => onSelectObject(obj.id)}
+                draggable={canManageLayout && !isBookingMode}
+                onDragEnd={isBookingMode ? undefined : onObjectDragEnd}
+                onTransformEnd={isBookingMode ? undefined : onObjectTransformEnd}
+                isSaving={savingObjectIds?.has(obj.id)}
+                hasDesk={bookableObjectIds?.has(obj.id)}
+                availabilityStatus={availabilityStatus}
+                isAvailabilitySelected={isAvailabilitySelected}
+                onAvailabilitySelect={
+                  isBookingMode && availabilityStatus !== undefined && onAvailabilityObjectSelect
+                    ? () => onAvailabilityObjectSelect(obj.id)
+                    : undefined
+                }
+              />
+            );
+          })}
+          {/* Transformer visible only for owners/admins in editor mode */}
+          {canManageLayout && !isBookingMode && (
             <Transformer
               ref={transformerRef}
               rotateEnabled={true}

@@ -24,6 +24,7 @@ import { BookingDateSelector } from "@/features/bookings/components/BookingDateS
 import { BookingSummaryCards } from "@/features/bookings/components/BookingSummaryCards";
 import { DeskAvailabilityList } from "@/features/bookings/components/DeskAvailabilityList";
 import { SelectedDeskBookingPanel } from "@/features/bookings/components/SelectedDeskBookingPanel";
+import { BookingFloorMap } from "@/features/bookings/components/BookingFloorMap";
 import { ApiError } from "@/lib/api/apiClient";
 
 function getTodayLocalDate(): string {
@@ -278,6 +279,20 @@ export function DeskBookingPage() {
                 unavailableCount={counts.unavailable}
                 myBooking={counts.myBooking}
               />
+
+              {layoutObjects.length > 0 && (
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
+                    Floor map
+                  </Typography>
+                  <BookingFloorMap
+                    items={items}
+                    layoutObjects={layoutObjects}
+                    selectedDeskId={selectedDeskId}
+                    onDeskSelect={handleSelectDesk}
+                  />
+                </Box>
+              )}
 
               <Grid container spacing={3}>
                 <Grid size={{ xs: 12, md: 8 }}>

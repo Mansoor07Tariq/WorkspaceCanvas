@@ -4,6 +4,9 @@ import {
   getMyBookingForDate,
   countAvailability,
   canBookDesk,
+  buildAvailabilityByLayoutObjectId,
+  findDeskIdByLayoutObjectId,
+  getSelectedLayoutObjectId,
 } from "./bookingAvailability";
 import type { Desk } from "@/features/desks/types/desk.types";
 import type { LayoutObject } from "@/features/layoutObjects/types/layoutObject.types";
@@ -232,5 +235,100 @@ describe("privacy — reserved booking sanitization", () => {
     expect(items[0].status).toBe("bookedByMe");
     expect(items[0].booking).not.toBeNull();
     expect(items[0].booking?.id).toBe(77);
+  });
+});
+
+describe("buildAvailabilityByLayoutObjectId", () => {
+  it("builds a map from layoutObjectId to status", () => {
+    const desk1 = makeDesk({ id: 1, layout_object: 10 });
+    const desk2 = makeDesk({ id: 2, layout_object: 20 });
+    const lo1 = makeLayoutObject({ id: 10 });
+    const lo2 = makeLayoutObject({ id: 20 });
+    const booking2 = makeBooking({ desk: 2, is_mine: false });
+    const items = buildDeskAvailability({
+      desks: [desk1, desk2],
+      bookings: [booking2],
+      layoutObjects: [lo1, lo2],
+    });
+    const map = buildAvailabilityByLayoutObjectId(items);
+    expect(map.get(10)).toBe("available");
+    expect(map.get(20)).toBe("reserved");
+  });
+
+  it("excludes items without a linked layoutObject", () => {
+    const desk = makeDesk({ layout_object: 999 });
+    const items = buildDeskAvailability({ desks: [desk], bookings: [], layoutObjects: [] });
+    const map = buildAvailabilityByLayoutObjectId(items);
+    expect(map.size).toBe(0);
+  });
+
+  it("does not include booking identity in the map values (status only)", () => {
+    const desk = makeDesk({ layout_object: 10 });
+    const lo = makeLayoutObject({ id: 10 });
+    const booking = makeBooking({ user: 42, user_name: "Jane Smith", is_mine: false });
+    const items = buildDeskAvailability({
+      desks: [desk],
+      bookings: [booking],
+      layoutObjects: [lo],
+    });
+    const map = buildAvailabilityByLayoutObjectId(items);
+    expect(map.get(10)).toBe("reserved");
+    expect(JSON.stringify([...map.entries()])).not.toContain("Jane Smith");
+  });
+
+  it("maps bookedByMe status correctly", () => {
+    const desk = makeDesk({ layout_object: 10 });
+    const lo = makeLayoutObject({ id: 10 });
+    const booking = makeBooking({ is_mine: true });
+    const items = buildDeskAvailability({
+      desks: [desk],
+      bookings: [booking],
+      layoutObjects: [lo],
+    });
+    const map = buildAvailabilityByLayoutObjectId(items);
+    expect(map.get(10)).toBe("bookedByMe");
+  });
+
+  it("maps unavailable status correctly", () => {
+    const desk = makeDesk({ layout_object: 10, is_active: false });
+    const lo = makeLayoutObject({ id: 10 });
+    const items = buildDeskAvailability({ desks: [desk], bookings: [], layoutObjects: [lo] });
+    const map = buildAvailabilityByLayoutObjectId(items);
+    expect(map.get(10)).toBe("unavailable");
+  });
+});
+
+describe("findDeskIdByLayoutObjectId", () => {
+  it("returns the desk id for a matching layout object id", () => {
+    const desk = makeDesk({ id: 5, layout_object: 10 });
+    const lo = makeLayoutObject({ id: 10 });
+    const items = buildDeskAvailability({ desks: [desk], bookings: [], layoutObjects: [lo] });
+    expect(findDeskIdByLayoutObjectId(items, 10)).toBe(5);
+  });
+
+  it("returns null when no item has the given layout object id", () => {
+    const desk = makeDesk({ id: 5, layout_object: 10 });
+    const lo = makeLayoutObject({ id: 10 });
+    const items = buildDeskAvailability({ desks: [desk], bookings: [], layoutObjects: [lo] });
+    expect(findDeskIdByLayoutObjectId(items, 999)).toBeNull();
+  });
+});
+
+describe("getSelectedLayoutObjectId", () => {
+  it("returns the layout object id when selectedItem has a layoutObject", () => {
+    const desk = makeDesk({ layout_object: 10 });
+    const lo = makeLayoutObject({ id: 10 });
+    const items = buildDeskAvailability({ desks: [desk], bookings: [], layoutObjects: [lo] });
+    expect(getSelectedLayoutObjectId(items[0])).toBe(10);
+  });
+
+  it("returns null when selectedItem is null", () => {
+    expect(getSelectedLayoutObjectId(null)).toBeNull();
+  });
+
+  it("returns null when selectedItem has no layoutObject", () => {
+    const desk = makeDesk({ layout_object: 999 });
+    const items = buildDeskAvailability({ desks: [desk], bookings: [], layoutObjects: [] });
+    expect(getSelectedLayoutObjectId(items[0])).toBeNull();
   });
 });

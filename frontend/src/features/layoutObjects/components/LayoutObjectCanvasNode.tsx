@@ -8,6 +8,8 @@ import {
 } from "../utils/layoutObjectRenderConfig";
 import { calculateTransformResult, getTopLeftFromCenterPosition } from "../utils/coordinateHelpers";
 import type { LayoutObject } from "../types/layoutObject.types";
+import type { DeskAvailabilityStatus } from "@/features/bookings/utils/bookingAvailability";
+import { getAvailabilityCanvasStyle } from "@/features/bookings/utils/bookingCanvasUtils";
 
 interface Props {
   obj: LayoutObject;
@@ -26,6 +28,12 @@ interface Props {
   isSaving?: boolean;
   /** True when an active Desk resource is linked to this layout object. */
   hasDesk?: boolean;
+  /** Set in booking mode to apply availability colour overlay. */
+  availabilityStatus?: DeskAvailabilityStatus;
+  /** True when this object is the selected desk in booking mode. */
+  isAvailabilitySelected?: boolean;
+  /** Called when the user clicks this object in booking mode. */
+  onAvailabilitySelect?: () => void;
 }
 
 const LABEL_FONT_SIZE = 11;
@@ -46,6 +54,9 @@ export const LayoutObjectCanvasNode = forwardRef<Konva.Group, Props>(
       onTransformEnd,
       isSaving = false,
       hasDesk = false,
+      availabilityStatus,
+      isAvailabilitySelected = false,
+      onAvailabilitySelect,
     },
     ref
   ) {
@@ -58,15 +69,27 @@ export const LayoutObjectCanvasNode = forwardRef<Konva.Group, Props>(
     const config = getLayoutObjectRenderConfig(obj.object_type);
     const displayLabel = obj.label || config.shortCode;
 
-    const stroke = isSelected ? SELECTED_STROKE : config.stroke;
-    const strokeWidth = isSelected ? SELECTED_STROKE_WIDTH : config.strokeWidth;
+    // In booking mode, apply availability colour overlay when status is provided.
+    // In editor mode (no availabilityStatus), fall back to normal config styles.
+    const availStyle =
+      availabilityStatus !== undefined
+        ? getAvailabilityCanvasStyle(availabilityStatus, isAvailabilitySelected)
+        : null;
+
+    const stroke = availStyle ? availStyle.stroke : isSelected ? SELECTED_STROKE : config.stroke;
+    const strokeWidth = availStyle
+      ? availStyle.strokeWidth
+      : isSelected
+        ? SELECTED_STROKE_WIDTH
+        : config.strokeWidth;
+    const baseOpacity = availStyle ? availStyle.opacity : config.opacity;
 
     const shapeProps = {
-      fill: config.fill,
+      fill: availStyle ? availStyle.fill : config.fill,
       stroke,
       strokeWidth,
       // Keep a minimum opacity so room overlays don't vanish during save
-      opacity: isSaving ? Math.max(config.opacity * 0.65, 0.35) : config.opacity,
+      opacity: isSaving ? Math.max(baseOpacity * 0.65, 0.35) : baseOpacity,
       dash: config.dashPattern.length > 0 ? config.dashPattern : undefined,
     };
 
@@ -131,6 +154,9 @@ export const LayoutObjectCanvasNode = forwardRef<Konva.Group, Props>(
       if (stage) stage.container().style.cursor = "default";
     }, []);
 
+    // In booking mode, onAvailabilitySelect replaces onSelect as the click handler.
+    const handleClick = onAvailabilitySelect ?? onSelect;
+
     return (
       <Group
         ref={ref}
@@ -138,10 +164,10 @@ export const LayoutObjectCanvasNode = forwardRef<Konva.Group, Props>(
         y={cy}
         rotation={rotation}
         draggable={draggable}
-        onClick={onSelect}
-        onTap={onSelect}
-        onDragStart={onSelect}
-        onDragEnd={handleDragEnd}
+        onClick={handleClick}
+        onTap={handleClick}
+        onDragStart={draggable ? onSelect : undefined}
+        onDragEnd={draggable ? handleDragEnd : undefined}
         onTransformEnd={handleTransformEnd}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
