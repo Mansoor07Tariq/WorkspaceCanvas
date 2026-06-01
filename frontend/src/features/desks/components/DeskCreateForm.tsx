@@ -13,6 +13,8 @@ import {
   Typography,
 } from "@mui/material";
 import { en } from "@/i18n/en";
+import { ApiError } from "@/lib/api/apiClient";
+import { getApiErrorMessage } from "@/lib/api/getApiErrorMessage";
 import { createDesk } from "../api/deskApi";
 import type { DeskAmenities, DeskStatus } from "../types/desk.types";
 import { AMENITY_OPTIONS, STATUS_OPTIONS } from "../utils/deskFormConstants";
@@ -61,8 +63,14 @@ export function DeskCreateForm({
         notes: notes.trim(),
       });
       onCreated();
-    } catch {
-      setError(c.createError);
+    } catch (err: unknown) {
+      if (err instanceof ApiError && err.status === 403) {
+        setError(c.createErrorPermission);
+      } else if (err instanceof ApiError && err.status === 400) {
+        setError(getApiErrorMessage(err) || c.createErrorValidation);
+      } else {
+        setError(c.createError);
+      }
     } finally {
       setLoading(false);
     }

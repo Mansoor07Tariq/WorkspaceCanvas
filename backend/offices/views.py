@@ -487,17 +487,26 @@ class DeskListCreateView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        desk = Desk.objects.create(
-            organization=membership.organization,
-            office=office,
-            floor=floor,
-            layout_object=layout_object,
-            name=data["name"],
-            code=code,
-            status=data.get("status", Desk.Status.AVAILABLE),
-            amenities=data.get("amenities", {}),
-            notes=data.get("notes", ""),
-        )
+        try:
+            desk = Desk.objects.create(
+                organization=membership.organization,
+                office=office,
+                floor=floor,
+                layout_object=layout_object,
+                name=data["name"],
+                code=code,
+                status=data.get("status", Desk.Status.AVAILABLE),
+                amenities=data.get("amenities", {}),
+                notes=data.get("notes", ""),
+            )
+        except IntegrityError as exc:
+            exc_str = str(exc)
+            if "unique_active_desk_code_per_office" in exc_str:
+                return Response(
+                    {"code": [_DESK_CODE_TAKEN]},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            raise
         return Response(
             DeskResponseSerializer(desk).data,
             status=status.HTTP_201_CREATED,
@@ -578,7 +587,16 @@ class DeskDetailView(APIView):
 
         for field, value in data.items():
             setattr(desk, field, value)
-        desk.save()
+        try:
+            desk.save()
+        except IntegrityError as exc:
+            exc_str = str(exc)
+            if "unique_active_desk_code_per_office" in exc_str:
+                return Response(
+                    {"code": [_DESK_CODE_TAKEN]},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            raise
         return Response(DeskResponseSerializer(desk).data)
 
     def delete(
@@ -596,13 +614,29 @@ class DeskDetailView(APIView):
         desk, err = self._get_desk(membership, office_id, floor_id, desk_id)
         if err is not None:
             return err
-        desk.is_active = False
-        desk.save()
+        now = tz.now()
+        with transaction.atomic():
+            # Cancel all active bookings for this desk before soft-deleting it.
+            DeskBooking.objects.filter(
+                desk=desk,
+                status=DeskBooking.Status.ACTIVE,
+            ).update(
+                status=DeskBooking.Status.CANCELLED,
+                cancelled_at=now,
+                cancelled_by=request.user,
+                updated_at=now,
+            )
+            desk.is_active = False
+            desk.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class _DeskBookingWriteThrottle(ScopedRateThrottle):
     scope = "desk_booking_write"
+
+
+class _DeskBookingReadThrottle(ScopedRateThrottle):
+    scope = "desk_booking_read"
 
 
 class DeskBookingListCreateView(APIView):
@@ -611,7 +645,7 @@ class DeskBookingListCreateView(APIView):
     def get_throttles(self):
         if self.request.method == "POST":
             return [_DeskBookingWriteThrottle()]
-        return []
+        return [_DeskBookingReadThrottle()]
 
     def get(self, request: Request, office_id: int, floor_id: int) -> Response:
         # NOTE: get_first_active_membership resolves the alphabetically-first org.
@@ -649,7 +683,7 @@ class DeskBookingListCreateView(APIView):
                 booking_date=booking_date,
                 status=DeskBooking.Status.ACTIVE,
             )
-            .select_related("desk", "user")
+            .select_related("desk", "user", "cancelled_by")
             .order_by("desk__name")
         )
         serializer = DeskBookingResponseSerializer(
@@ -754,6 +788,7 @@ class DeskBookingListCreateView(APIView):
 
 class DeskBookingDetailView(APIView):
     permission_classes = [IsAuthenticated]
+    throttle_classes = [_DeskBookingReadThrottle]
 
     def get(
         self, request: Request, office_id: int, floor_id: int, booking_id: int
@@ -771,7 +806,9 @@ class DeskBookingDetailView(APIView):
             return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
 
         try:
-            booking = DeskBooking.objects.select_related("desk", "user").get(
+            booking = DeskBooking.objects.select_related(
+                "desk", "user", "cancelled_by"
+            ).get(
                 id=booking_id,
                 floor=floor,
                 status=DeskBooking.Status.ACTIVE,
@@ -807,9 +844,9 @@ class DeskBookingCancelView(APIView):
             return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
 
         try:
-            booking = DeskBooking.objects.select_related("desk", "user").get(
-                id=booking_id, floor=floor
-            )
+            booking = DeskBooking.objects.select_related(
+                "desk", "user", "cancelled_by"
+            ).get(id=booking_id, floor=floor)
         except DeskBooking.DoesNotExist:
             return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
 
@@ -829,7 +866,9 @@ class DeskBookingCancelView(APIView):
         booking.status = DeskBooking.Status.CANCELLED
         booking.cancelled_at = tz.now()
         booking.cancelled_by = request.user
-        booking.save(update_fields=["status", "cancelled_at", "cancelled_by"])
+        booking.save(
+            update_fields=["status", "cancelled_at", "cancelled_by", "updated_at"]
+        )
         serializer = DeskBookingResponseSerializer(
             booking, context={"request": request, "membership": membership}
         )

@@ -361,6 +361,8 @@ class DeskBookingResponseSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         membership = self.context.get("membership")
         if not request:
+            # No request context = Django admin shell / admin site —
+            # show identity to maintain admin usability.
             return True
         if obj.user_id == request.user.id:
             return True

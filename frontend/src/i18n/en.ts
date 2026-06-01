@@ -495,6 +495,8 @@ export const en = {
       // Feedback
       bookableBadge: "Bookable",
       createError: "Could not create desk. Please try again.",
+      createErrorPermission: "You do not have permission to create a desk here.",
+      createErrorValidation: "Please check your input and try again.",
       deactivateError: "Could not remove desk. Please try again.",
     },
     pages: {

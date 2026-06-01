@@ -59,4 +59,41 @@ describe("formatBookingDate", () => {
     const result = formatBookingDate("2026-06-01");
     expect(typeof result).toBe("string");
   });
+
+  it('contains the year "2026" in the formatted output for "2026-06-01"', () => {
+    const result = formatBookingDate("2026-06-01");
+    expect(result).toContain("2026");
+  });
+});
+
+describe("isPastBookingDate — boundary cases", () => {
+  it("returns false for today's date (today is not in the past)", () => {
+    expect(isPastBookingDate(todayLocalDate())).toBe(false);
+  });
+
+  it("returns false for a future date", () => {
+    expect(isPastBookingDate("2090-01-01")).toBe(false);
+  });
+
+  it("returns true for a past date", () => {
+    expect(isPastBookingDate("1990-01-01")).toBe(true);
+  });
+});
+
+describe("isValidBookingDate — additional coverage", () => {
+  it("returns true for today's date", () => {
+    expect(isValidBookingDate(todayLocalDate())).toBe(true);
+  });
+
+  it("returns true for a far-future date", () => {
+    expect(isValidBookingDate("2090-12-31")).toBe(true);
+  });
+
+  it('returns false for an invalid day "2026-01-32"', () => {
+    expect(isValidBookingDate("2026-01-32")).toBe(false);
+  });
+
+  it('returns false for a date missing leading zeros "2026-1-1"', () => {
+    expect(isValidBookingDate("2026-1-1")).toBe(false);
+  });
 });

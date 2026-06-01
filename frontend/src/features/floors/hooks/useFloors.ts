@@ -1,4 +1,5 @@
-import { useEffect, useReducer } from "react";
+import { useEffect, useReducer, useState } from "react";
+import { getApiErrorMessage } from "@/lib/api/getApiErrorMessage";
 import { listFloors } from "../api/floorApi";
 import type { Floor } from "../types/floor.types";
 
@@ -11,7 +12,7 @@ interface State {
 type Action =
   | { type: "fetch_start" }
   | { type: "fetch_success"; floors: Floor[] }
-  | { type: "fetch_error" };
+  | { type: "fetch_error"; payload: string };
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
@@ -20,7 +21,7 @@ function reducer(state: State, action: Action): State {
     case "fetch_success":
       return { floors: action.floors, loading: false, error: null };
     case "fetch_error":
-      return { ...state, loading: false, error: "Failed to load floors." };
+      return { ...state, loading: false, error: action.payload };
   }
 }
 
@@ -35,7 +36,7 @@ interface UseFloorsResult {
 
 export function useFloors(officeId: number): UseFloorsResult {
   const [state, dispatch] = useReducer(reducer, initial);
-  const [tick, setTick] = useReducer((n: number) => n + 1, 0);
+  const [tick, setTick] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -45,8 +46,8 @@ export function useFloors(officeId: number): UseFloorsResult {
       try {
         const data = await listFloors(officeId);
         if (!cancelled) dispatch({ type: "fetch_success", floors: data });
-      } catch {
-        if (!cancelled) dispatch({ type: "fetch_error" });
+      } catch (err: unknown) {
+        if (!cancelled) dispatch({ type: "fetch_error", payload: getApiErrorMessage(err) });
       }
     }
 
@@ -57,5 +58,5 @@ export function useFloors(officeId: number): UseFloorsResult {
     };
   }, [officeId, tick]);
 
-  return { ...state, refresh: () => setTick() };
+  return { ...state, refresh: () => setTick((n) => n + 1) };
 }

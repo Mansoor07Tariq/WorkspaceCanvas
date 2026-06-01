@@ -43,6 +43,8 @@ class Office(models.Model):
 
     @classmethod
     def generate_slug(cls, name: str, organization: Organization) -> str:
+        """Returns a candidate slug. Uniqueness is not guaranteed; callers must handle
+        IntegrityError or retry on collision."""
         base = slugify(name) or "office"
         slug = base
         suffix = 1
@@ -83,6 +85,8 @@ class Floor(models.Model):
 
     @classmethod
     def generate_slug(cls, name: str, office: Office) -> str:
+        """Returns a candidate slug. Uniqueness is not guaranteed; callers must handle
+        IntegrityError or retry on collision."""
         base = slugify(name) or "floor"
         slug = base
         suffix = 1
@@ -237,6 +241,8 @@ class Desk(models.Model):
     )
     name = models.CharField(max_length=120)
     code = models.CharField(max_length=50, blank=True)
+    # is_active: False means the desk is decommissioned and hidden from booking;
+    # status controls availability for active desks only.
     status = models.CharField(
         max_length=20,
         choices=Status.choices,
@@ -271,6 +277,12 @@ class Desk(models.Model):
                 fields=["layout_object"],
                 condition=models.Q(is_active=True),
                 name="unique_active_desk_per_layout_object",
+            ),
+            # At most one active desk with a given code per office
+            models.UniqueConstraint(
+                fields=["office", "code"],
+                condition=models.Q(is_active=True) & ~models.Q(code=""),
+                name="unique_active_desk_code_per_office",
             ),
         ]
 

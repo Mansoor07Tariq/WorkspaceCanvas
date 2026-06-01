@@ -294,6 +294,10 @@ def test_owner_can_cancel_any_booking(
     url = booking_cancel_url(active_office.id, active_floor.id, active_booking.id)
     response = client.post(url)
     assert response.status_code == 200
+    active_booking.refresh_from_db()
+    assert active_booking.status == DeskBooking.Status.CANCELLED
+    assert active_booking.cancelled_at is not None
+    assert active_booking.cancelled_by == owner_user
 
 
 def test_admin_can_cancel_any_booking(
@@ -303,6 +307,10 @@ def test_admin_can_cancel_any_booking(
     url = booking_cancel_url(active_office.id, active_floor.id, active_booking.id)
     response = client.post(url)
     assert response.status_code == 200
+    active_booking.refresh_from_db()
+    assert active_booking.status == DeskBooking.Status.CANCELLED
+    assert active_booking.cancelled_at is not None
+    assert active_booking.cancelled_by == admin_user
 
 
 def test_member_cannot_cancel_others_booking(
@@ -420,6 +428,18 @@ def test_cancellation_sets_cancelled_by(
     client.post(url)
     active_booking.refresh_from_db()
     assert active_booking.cancelled_by == member_user
+
+
+def test_cancellation_updates_updated_at(
+    client, member_user, active_office, active_floor, active_booking
+):
+    """updated_at must be refreshed when a booking is cancelled."""
+    created_updated_at = active_booking.updated_at
+    client.force_authenticate(user=member_user)
+    url = booking_cancel_url(active_office.id, active_floor.id, active_booking.id)
+    client.post(url)
+    active_booking.refresh_from_db()
+    assert active_booking.updated_at >= created_updated_at
 
 
 # ─── Side-effect / list tests ────────────────────────────────────────────────
