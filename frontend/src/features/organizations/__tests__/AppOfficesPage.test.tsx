@@ -18,9 +18,15 @@ vi.mock("@/features/organizations/components/OrganizationSetupFlow", () => ({
 }));
 
 vi.mock("@/features/offices/components/OfficesEmptyState", () => ({
-  OfficesEmptyState: ({ onAddOffice }: { onAddOffice: () => void }) => (
-    <div data-testid="offices-empty-state">
-      <button onClick={onAddOffice}>Add office</button>
+  OfficesEmptyState: ({
+    canManage,
+    onAddOffice,
+  }: {
+    canManage?: boolean;
+    onAddOffice: () => void;
+  }) => (
+    <div data-testid="offices-empty-state" data-can-manage={canManage ? "true" : "false"}>
+      {canManage && <button onClick={onAddOffice}>Add office</button>}
     </div>
   ),
 }));
@@ -34,7 +40,11 @@ vi.mock("@/features/offices/components/OfficeCreationFlow", () => ({
 }));
 
 vi.mock("@/features/offices/components/OfficesList", () => ({
-  OfficesList: () => <div data-testid="offices-list">List</div>,
+  OfficesList: ({ canManage }: { canManage?: boolean }) => (
+    <div data-testid="offices-list" data-can-manage={canManage ? "true" : "false"}>
+      List
+    </div>
+  ),
 }));
 
 vi.mock("@/features/offices/hooks/useOffices", () => ({
@@ -58,7 +68,7 @@ function makeAuthValue(user: CurrentUser | null): AuthContextValue {
   };
 }
 
-function makeUser(hasActive: boolean): CurrentUser {
+function makeUser(role: "owner" | "admin" | "member" | null): CurrentUser {
   return {
     id: 1,
     username: "user@example.com",
@@ -75,74 +85,50 @@ function makeUser(hasActive: boolean): CurrentUser {
     email_verified: true,
     preferred_auth_provider: "email",
     mfa_enabled: false,
-    memberships: hasActive
-      ? [
-          {
-            id: 1,
-            organization_id: 1,
-            organization_name: "Acme",
-            organization_slug: "acme",
-            organization_status: "active",
-            role: "owner",
-            status: "active",
-            has_active_access: true,
-          },
-        ]
-      : [],
+    memberships:
+      role !== null
+        ? [
+            {
+              id: 1,
+              organization_id: 1,
+              organization_name: "Acme",
+              organization_slug: "acme",
+              organization_status: "active",
+              role,
+              status: "active",
+              has_active_access: true,
+            },
+          ]
+        : [],
   };
 }
 
-describe("AppOfficesPage", () => {
+const officeFixture = {
+  id: 1,
+  name: "Dublin",
+  slug: "dublin",
+  address_line_1: "",
+  address_line_2: "",
+  city: "",
+  county_or_state: "",
+  country: "",
+  timezone: "",
+  is_active: true,
+  created_at: "",
+  updated_at: "",
+};
+
+describe("AppOfficesPage — no org", () => {
   beforeEach(() => {
     capturedOnCreated = null;
     vi.clearAllMocks();
-    mockUseOffices.mockReturnValue({
-      offices: [],
-      loading: false,
-      error: null,
-      refresh: vi.fn(),
-    });
+    mockUseOffices.mockReturnValue({ offices: [], loading: false, error: null, refresh: vi.fn() });
   });
 
   it("shows setup flow when user has no active membership", () => {
-    mockUseAuth.mockReturnValue(makeAuthValue(makeUser(false)));
+    mockUseAuth.mockReturnValue(makeAuthValue(makeUser(null)));
     render(<AppOfficesPage />);
     expect(screen.getByTestId("org-setup-flow")).toBeInTheDocument();
-    expect(screen.queryByTestId("offices-empty-state")).not.toBeInTheDocument();
-  });
-
-  it("shows empty state when user has active membership and no offices", () => {
-    mockUseAuth.mockReturnValue(makeAuthValue(makeUser(true)));
-    render(<AppOfficesPage />);
-    expect(screen.getByTestId("offices-empty-state")).toBeInTheDocument();
-    expect(screen.queryByTestId("org-setup-flow")).not.toBeInTheDocument();
-  });
-
-  it("shows offices list when offices exist", () => {
-    mockUseAuth.mockReturnValue(makeAuthValue(makeUser(true)));
-    mockUseOffices.mockReturnValue({
-      offices: [
-        {
-          id: 1,
-          name: "Dublin",
-          slug: "dublin",
-          address_line_1: "",
-          address_line_2: "",
-          city: "",
-          county_or_state: "",
-          country: "",
-          timezone: "",
-          is_active: true,
-          created_at: "",
-          updated_at: "",
-        },
-      ],
-      loading: false,
-      error: null,
-      refresh: vi.fn(),
-    });
-    render(<AppOfficesPage />);
-    expect(screen.getByTestId("offices-list")).toBeInTheDocument();
     expect(screen.queryByTestId("offices-empty-state")).not.toBeInTheDocument();
   });
 
@@ -153,7 +139,7 @@ describe("AppOfficesPage", () => {
   });
 
   it("shows empty state immediately after onCreated fires (orgJustCreated guard)", () => {
-    mockUseAuth.mockReturnValue(makeAuthValue(makeUser(false)));
+    mockUseAuth.mockReturnValue(makeAuthValue(makeUser(null)));
     render(<AppOfficesPage />);
     expect(screen.getByTestId("org-setup-flow")).toBeInTheDocument();
     act(() => {
@@ -162,11 +148,101 @@ describe("AppOfficesPage", () => {
     expect(screen.getByTestId("offices-empty-state")).toBeInTheDocument();
     expect(screen.queryByTestId("org-setup-flow")).not.toBeInTheDocument();
   });
+});
 
-  it("shows creation flow when add office is clicked", () => {
-    mockUseAuth.mockReturnValue(makeAuthValue(makeUser(true)));
+describe("AppOfficesPage — admin role", () => {
+  beforeEach(() => {
+    capturedOnCreated = null;
+    vi.clearAllMocks();
+    mockUseOffices.mockReturnValue({ offices: [], loading: false, error: null, refresh: vi.fn() });
+  });
+
+  it("shows empty state with canManage=true when admin has no offices", () => {
+    mockUseAuth.mockReturnValue(makeAuthValue(makeUser("admin")));
+    render(<AppOfficesPage />);
+    const state = screen.getByTestId("offices-empty-state");
+    expect(state).toBeInTheDocument();
+    expect(state).toHaveAttribute("data-can-manage", "true");
+  });
+
+  it("shows Add Office button for admin when no offices", () => {
+    mockUseAuth.mockReturnValue(makeAuthValue(makeUser("admin")));
+    render(<AppOfficesPage />);
+    expect(screen.getByRole("button", { name: /add office/i })).toBeInTheDocument();
+  });
+
+  it("shows offices list with canManage=true for admin when offices exist", () => {
+    mockUseAuth.mockReturnValue(makeAuthValue(makeUser("admin")));
+    mockUseOffices.mockReturnValue({
+      offices: [officeFixture],
+      loading: false,
+      error: null,
+      refresh: vi.fn(),
+    });
+    render(<AppOfficesPage />);
+    const list = screen.getByTestId("offices-list");
+    expect(list).toBeInTheDocument();
+    expect(list).toHaveAttribute("data-can-manage", "true");
+  });
+
+  it("shows creation flow when admin clicks Add office", () => {
+    mockUseAuth.mockReturnValue(makeAuthValue(makeUser("admin")));
     render(<AppOfficesPage />);
     fireEvent.click(screen.getByRole("button", { name: /add office/i }));
     expect(screen.getByTestId("office-creation-flow")).toBeInTheDocument();
+  });
+});
+
+describe("AppOfficesPage — owner role", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockUseOffices.mockReturnValue({ offices: [], loading: false, error: null, refresh: vi.fn() });
+  });
+
+  it("shows empty state with canManage=true for owner", () => {
+    mockUseAuth.mockReturnValue(makeAuthValue(makeUser("owner")));
+    render(<AppOfficesPage />);
+    expect(screen.getByTestId("offices-empty-state")).toHaveAttribute("data-can-manage", "true");
+  });
+});
+
+describe("AppOfficesPage — member role", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockUseOffices.mockReturnValue({ offices: [], loading: false, error: null, refresh: vi.fn() });
+  });
+
+  it("shows empty state with canManage=false for member when no offices", () => {
+    mockUseAuth.mockReturnValue(makeAuthValue(makeUser("member")));
+    render(<AppOfficesPage />);
+    const state = screen.getByTestId("offices-empty-state");
+    expect(state).toBeInTheDocument();
+    expect(state).toHaveAttribute("data-can-manage", "false");
+  });
+
+  it("does not show Add Office button for member when no offices", () => {
+    mockUseAuth.mockReturnValue(makeAuthValue(makeUser("member")));
+    render(<AppOfficesPage />);
+    expect(screen.queryByRole("button", { name: /add office/i })).not.toBeInTheDocument();
+  });
+
+  it("shows offices list with canManage=false for member when offices exist", () => {
+    mockUseAuth.mockReturnValue(makeAuthValue(makeUser("member")));
+    mockUseOffices.mockReturnValue({
+      offices: [officeFixture],
+      loading: false,
+      error: null,
+      refresh: vi.fn(),
+    });
+    render(<AppOfficesPage />);
+    const list = screen.getByTestId("offices-list");
+    expect(list).toHaveAttribute("data-can-manage", "false");
+  });
+
+  it("does not show creation flow for member", () => {
+    mockUseAuth.mockReturnValue(makeAuthValue(makeUser("member")));
+    render(<AppOfficesPage />);
+    // No add button visible, no creation flow
+    expect(screen.queryByTestId("office-creation-flow")).not.toBeInTheDocument();
   });
 });

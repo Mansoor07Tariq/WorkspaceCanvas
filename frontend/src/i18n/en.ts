@@ -133,6 +133,7 @@ export const en = {
       dashboard: "Dashboard",
       offices: "Offices",
       deskBooking: "Desk Booking",
+      myBookings: "My Bookings",
       events: "Events",
       people: "People",
       almostThereTitle: "Almost there",
@@ -309,11 +310,14 @@ export const en = {
       // List
       listTitle: "Offices",
 
-      // Empty state
+      // Empty state (admin)
       emptyStateTitle: "No offices yet",
       emptyStateSubtitle:
         "Your organization has been set up. Add your first office to get started.",
       emptyStateAction: "Add your first office",
+      // Empty state (member — read-only)
+      emptyStateMemberTitle: "No offices available",
+      emptyStateMemberSubtitle: "Your admin hasn't added any offices yet. Check back later.",
 
       // Office card / list
       addOffice: "Add office",
@@ -353,10 +357,14 @@ export const en = {
       listTitle: "Floors",
       addFloor: "Add floor",
 
-      // Empty state
+      // Empty state (admin)
       emptyStateTitle: "No floors yet",
       emptyStateSubtitle: "Create your first floor before building a map or adding desks.",
       emptyStateAction: "Create first floor",
+      // Empty state (member — read-only)
+      emptyStateMemberTitle: "No floors available",
+      emptyStateMemberSubtitle:
+        "Your admin hasn't added any floors to this office yet. Check back later.",
 
       // Floor card
       level: "Level",

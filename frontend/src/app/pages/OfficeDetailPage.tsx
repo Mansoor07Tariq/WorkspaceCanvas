@@ -6,6 +6,11 @@ import { LoadingState } from "@/components/feedback/LoadingState";
 import { ErrorAlert } from "@/components/feedback/ErrorAlert";
 import { en } from "@/i18n/en";
 import { ROUTES } from "@/routes/paths";
+import { useAuth } from "@/features/auth/context/AuthContext";
+import {
+  canManageOfficeSetup,
+  getFirstActiveMembership,
+} from "@/features/organizations/utils/membershipUtils";
 import { useFloors } from "@/features/floors/hooks/useFloors";
 import { FloorsEmptyState } from "@/features/floors/components/FloorsEmptyState";
 import { FloorCreationFlow } from "@/features/floors/components/FloorCreationFlow";
@@ -20,6 +25,10 @@ export function OfficeDetailPage() {
   const navigate = useNavigate();
   const [mode, setMode] = useState<PageMode>("list");
 
+  const { user } = useAuth();
+  const membership = getFirstActiveMembership(user);
+  const canManage = canManageOfficeSetup(membership?.role);
+
   const officeId = parseInt(officeIdParam ?? "", 10);
   const { floors, loading, error, refresh } = useFloors(isNaN(officeId) ? 0 : officeId);
 
@@ -27,7 +36,7 @@ export function OfficeDetailPage() {
     return <Navigate to={ROUTES.offices} replace />;
   }
 
-  if (mode === "create") {
+  if (canManage && mode === "create") {
     return (
       <FloorCreationFlow
         officeId={officeId}
@@ -83,9 +92,14 @@ export function OfficeDetailPage() {
           <LoadingState />
         </Box>
       ) : floors.length === 0 ? (
-        <FloorsEmptyState onAddFloor={() => setMode("create")} />
+        <FloorsEmptyState canManage={canManage} onAddFloor={() => setMode("create")} />
       ) : (
-        <FloorsList floors={floors} officeId={officeId} onAddFloor={() => setMode("create")} />
+        <FloorsList
+          floors={floors}
+          officeId={officeId}
+          canManage={canManage}
+          onAddFloor={() => setMode("create")}
+        />
       )}
     </Box>
   );

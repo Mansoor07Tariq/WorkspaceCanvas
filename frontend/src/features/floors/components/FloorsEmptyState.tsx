@@ -6,10 +6,11 @@ import { en } from "@/i18n/en";
 const c = en.app.floors;
 
 interface Props {
+  canManage?: boolean;
   onAddFloor: () => void;
 }
 
-export function FloorsEmptyState({ onAddFloor }: Props) {
+export function FloorsEmptyState({ canManage = true, onAddFloor }: Props) {
   return (
     <Box
       sx={{
@@ -26,25 +27,33 @@ export function FloorsEmptyState({ onAddFloor }: Props) {
             width: 80,
             height: 80,
             borderRadius: "50%",
-            bgcolor: (theme) => alpha(theme.palette.primary.main, 0.1),
+            bgcolor: (theme) =>
+              canManage
+                ? alpha(theme.palette.primary.main, 0.1)
+                : alpha(theme.palette.text.disabled, 0.08),
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
           }}
         >
-          <LayersOutlined sx={{ fontSize: 40, color: "primary.main" }} aria-hidden="true" />
+          <LayersOutlined
+            sx={{ fontSize: 40, color: canManage ? "primary.main" : "text.disabled" }}
+            aria-hidden="true"
+          />
         </Box>
         <Stack spacing={1}>
           <Typography variant="h6" sx={{ fontWeight: 700 }}>
-            {c.emptyStateTitle}
+            {canManage ? c.emptyStateTitle : c.emptyStateMemberTitle}
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            {c.emptyStateSubtitle}
+            {canManage ? c.emptyStateSubtitle : c.emptyStateMemberSubtitle}
           </Typography>
         </Stack>
-        <Button variant="contained" onClick={onAddFloor}>
-          {c.emptyStateAction}
-        </Button>
+        {canManage && (
+          <Button variant="contained" onClick={onAddFloor}>
+            {c.emptyStateAction}
+          </Button>
+        )}
       </Stack>
     </Box>
   );
