@@ -10,7 +10,6 @@ export const ROUTES = {
   floorLayout: "/app/offices/:officeId/floors/:floorId/layout",
   bookings: "/app/bookings",
   myBookings: "/app/bookings/my",
-  events: "/app/events",
   people: "/app/people",
   inviteAccept: "/invite/:token",
 } as const;
