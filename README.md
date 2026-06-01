@@ -194,6 +194,7 @@ Detailed notes for each feature and setup step are in the `docs/` folder:
 | [045-my-bookings-and-request-hygiene.md](docs/045-my-bookings-and-request-hygiene.md) | My Bookings view, request hygiene, TD-009/015/020 |
 | [046-mvp-dashboard-role-paths.md](docs/046-mvp-dashboard-role-paths.md) | MVP dashboard — role-aware views, admin setup checklist, member booking cards, workspace health |
 | [047-member-invitations-team-access.md](docs/047-member-invitations-team-access.md) | Member invitations — invite flow, People page, AcceptInvitationPage, dashboard checklist integration |
+| [048-mvp-setup-polish-first-run.md](docs/048-mvp-setup-polish-first-run.md) | MVP setup polish — first-run guidance, member workspace state, booking empty states, canvas member guidance, route consistency |
 | [TECHNICAL_DEBT.md](docs/TECHNICAL_DEBT.md) | Long-lived engineering debt register — open items, severity, recommended fixes |
 
 ## Common Commands

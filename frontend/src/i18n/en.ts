@@ -374,10 +374,14 @@ export const en = {
       // Object library
       libraryTitle: "Object library",
 
-      // Empty state
+      // Empty state (admin)
       emptyStateTitle: "No layout objects yet",
       emptyStateSubtitle:
         "Add objects like desks, tables, doors, windows, plants, and meeting pods to start shaping this floor.",
+      // Empty state (member — read-only, layout not set up)
+      emptyStateMemberTitle: "Floor map not set up yet",
+      emptyStateMemberSubtitle:
+        "This floor has no layout objects. Your admin hasn't built the map for this floor yet.",
 
       // Create form
       createFormTitle: "Add object",
@@ -540,6 +544,7 @@ export const en = {
       heroAdminSetup: "Finish setting up your workspace",
       heroAdminReady: "Your workspace is ready",
       heroMember: "Book your next office day",
+      heroMemberSetup: "Your workspace is being set up",
       heroNoOrg: "Get started with WorkspaceCanvas",
       noOrgTitle: "No workspace yet",
       noOrgMessage:
@@ -582,7 +587,29 @@ export const en = {
       actionBookDesk: "Book a desk",
       actionMyBookings: "My bookings",
       actionCreateOrg: "Create workspace",
+      actionInvitePeople: "Invite people",
+      memberSetupTitle: "Workspace is being set up",
+      memberSetupDesc:
+        "Your admin is still configuring the workspace. You'll be able to book desks once bookable desks are available.",
     },
+  },
+  bookings: {
+    pageTitle: "Desk Booking",
+    selectPrompt: "Select an office and floor to view desk availability.",
+    noOfficesAdminTitle: "No offices yet",
+    noOfficesAdminDesc: "Create your first office to enable desk booking.",
+    noOfficesAdminAction: "Manage offices",
+    noOfficesMemberTitle: "No offices available",
+    noOfficesMemberDesc: "Your workspace has no offices set up yet. Contact your admin.",
+    noFloorsAdminTitle: "No floors yet",
+    noFloorsAdminDesc: "Add a floor to this office before booking desks.",
+    noFloorsAdminAction: "Manage floors",
+    noFloorsMemberTitle: "No floors available",
+    noFloorsMemberDesc: "This office has no floors set up yet. Contact your admin.",
+    noDesksTitle: "No bookable desks",
+    noDesksAdminDesc: "Build the floor map and mark desks as bookable.",
+    noDesksAdminAction: "Build floor map",
+    noDesksMemberDesc: "No desks are available to book on this floor yet. Contact your admin.",
   },
   common: {
     somethingWentWrong: "Something went wrong. Please try again.",

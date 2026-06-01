@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   getSetupChecklist,
+  getWorkspaceSetupState,
   getTodayBooking,
   getNextBooking,
   getSetupProgress,
@@ -380,5 +381,96 @@ describe("getSetupProgress", () => {
 
   it("returns 0 for empty checklist", () => {
     expect(getSetupProgress([])).toBe(0);
+  });
+});
+
+// ─── getSetupChecklist — desks routing ───────────────────────────────────────
+
+describe("getSetupChecklist — desks item routing", () => {
+  it("links desks item to office detail when no floor exists", () => {
+    const result = getSetupChecklist({
+      user: mockUser,
+      hasOrg: true,
+      offices: [mockOffice],
+      floors: [],
+      desks: [],
+    });
+    const desksItem = result.find((i) => i.id === "desks");
+    expect(desksItem?.to).toContain(String(mockOffice.id));
+    expect(desksItem?.to).not.toContain("layout");
+  });
+
+  it("links desks item to floor layout when floor exists", () => {
+    const result = getSetupChecklist({
+      user: mockUser,
+      hasOrg: true,
+      offices: [mockOffice],
+      floors: [mockFloor],
+      desks: [],
+    });
+    const desksItem = result.find((i) => i.id === "desks");
+    expect(desksItem?.to).toContain(String(mockOffice.id));
+    expect(desksItem?.to).toContain(String(mockFloor.id));
+    expect(desksItem?.to).toContain("layout");
+  });
+
+  it("desks item has no route when no office exists", () => {
+    const result = getSetupChecklist({
+      user: mockUser,
+      hasOrg: true,
+      offices: [],
+      floors: [],
+      desks: [],
+    });
+    expect(result.find((i) => i.id === "desks")?.to).toBeUndefined();
+  });
+});
+
+// ─── getWorkspaceSetupState ───────────────────────────────────────────────────
+
+describe("getWorkspaceSetupState", () => {
+  it("returns noOrg when hasOrg is false", () => {
+    expect(getWorkspaceSetupState({ hasOrg: false, offices: [], floors: [], desks: [] })).toBe(
+      "noOrg"
+    );
+  });
+
+  it("returns noOffice when org exists but no offices", () => {
+    expect(getWorkspaceSetupState({ hasOrg: true, offices: [], floors: [], desks: [] })).toBe(
+      "noOffice"
+    );
+  });
+
+  it("returns noFloor when offices exist but no floors", () => {
+    expect(
+      getWorkspaceSetupState({
+        hasOrg: true,
+        offices: [mockOffice],
+        floors: [],
+        desks: [],
+      })
+    ).toBe("noFloor");
+  });
+
+  it("returns noBookableDesks when floors exist but no desks", () => {
+    expect(
+      getWorkspaceSetupState({
+        hasOrg: true,
+        offices: [mockOffice],
+        floors: [mockFloor],
+        desks: [],
+      })
+    ).toBe("noBookableDesks");
+  });
+
+  it("returns ready when offices, floors, and desks all exist", () => {
+    expect(
+      getWorkspaceSetupState({
+        hasOrg: true,
+        offices: [mockOffice],
+        floors: [mockFloor],
+        desks: [mockDesk],
+      })
+    ).toBe("ready");
   });
 });

@@ -7,6 +7,8 @@ interface Props {
   hasOrg: boolean;
   orgName: string | null;
   setupProgress: number;
+  /** For members: whether bookable desks exist so "book your next day" is valid. */
+  isWorkspaceReady?: boolean;
 }
 
 function getGreeting(): string {
@@ -22,6 +24,7 @@ export function DashboardHero({
   hasOrg,
   orgName,
   setupProgress,
+  isWorkspaceReady = true,
 }: Props) {
   const greeting = getGreeting();
   const displayName = firstName || "there";
@@ -35,7 +38,7 @@ export function DashboardHero({
         ? `${en.app.dashboard.heroAdminReady}${orgName ? ` — ${orgName}` : ""}`
         : en.app.dashboard.heroAdminSetup;
   } else {
-    headline = en.app.dashboard.heroMember;
+    headline = isWorkspaceReady ? en.app.dashboard.heroMember : en.app.dashboard.heroMemberSetup;
   }
 
   return (

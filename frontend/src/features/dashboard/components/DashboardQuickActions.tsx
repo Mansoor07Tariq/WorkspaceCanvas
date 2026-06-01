@@ -4,6 +4,7 @@ import {
   BusinessOutlined,
   CalendarMonthOutlined,
   EditOutlined,
+  PeopleOutlined,
 } from "@mui/icons-material";
 import { Link } from "react-router-dom";
 import type { ReactNode } from "react";
@@ -52,6 +53,12 @@ export function DashboardQuickActions({ isOwnerOrAdmin, firstOffice, firstFloor 
       label: en.app.dashboard.actionBuildFloorMap,
       to: floorMapTo,
       icon: <EditOutlined />,
+      variant: "outlined",
+    },
+    {
+      label: en.app.dashboard.actionInvitePeople,
+      to: ROUTES.people,
+      icon: <PeopleOutlined />,
       variant: "outlined",
     },
   ];

@@ -99,9 +99,21 @@ describe("FloorMapCanvas", () => {
     expect(screen.getByTestId("floor-map-stage")).toBeInTheDocument();
   });
 
-  it("shows empty state overlay when no objects", () => {
-    render(<FloorMapCanvas objects={[]} selectedObjectId={null} onSelectObject={vi.fn()} />);
+  it("shows admin empty state overlay when no objects and canManageLayout is true", () => {
+    render(
+      <FloorMapCanvas
+        objects={[]}
+        selectedObjectId={null}
+        onSelectObject={vi.fn()}
+        canManageLayout={true}
+      />
+    );
     expect(screen.getByText(/nothing on this floor yet/i)).toBeInTheDocument();
+  });
+
+  it("shows member empty state overlay when no objects and canManageLayout is false", () => {
+    render(<FloorMapCanvas objects={[]} selectedObjectId={null} onSelectObject={vi.fn()} />);
+    expect(screen.getByText(/floor map not set up yet/i)).toBeInTheDocument();
   });
 
   it("does not show empty state when objects exist", () => {
@@ -109,6 +121,7 @@ describe("FloorMapCanvas", () => {
       <FloorMapCanvas objects={[makeObj()]} selectedObjectId={null} onSelectObject={vi.fn()} />
     );
     expect(screen.queryByText(/nothing on this floor yet/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/floor map not set up yet/i)).not.toBeInTheDocument();
   });
 
   it("renders one group per object", () => {

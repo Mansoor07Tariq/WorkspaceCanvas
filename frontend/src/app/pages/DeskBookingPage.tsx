@@ -11,8 +11,16 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
+import { useNavigate } from "react-router-dom";
 import { LoadingState } from "@/components/feedback/LoadingState";
 import { ErrorAlert } from "@/components/feedback/ErrorAlert";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { BusinessOutlined, LayersOutlined, WeekendOutlined } from "@mui/icons-material";
+import { useAuth } from "@/features/auth/context/AuthContext";
+import {
+  getFirstActiveMembership,
+  canManageWorkspaceContent,
+} from "@/features/organizations/utils/membershipUtils";
 import { useOffices } from "@/features/offices/hooks/useOffices";
 import { useFloors } from "@/features/floors/hooks/useFloors";
 import { useDesks } from "@/features/desks/hooks/useDesks";
@@ -26,6 +34,8 @@ import { DeskAvailabilityList } from "@/features/bookings/components/DeskAvailab
 import { SelectedDeskBookingPanel } from "@/features/bookings/components/SelectedDeskBookingPanel";
 import { BookingFloorMap } from "@/features/bookings/components/BookingFloorMap";
 import { ApiError } from "@/lib/api/apiClient";
+import { ROUTES, officeDetailPath } from "@/routes/paths";
+import { en } from "@/i18n/en";
 
 function getTodayLocalDate(): string {
   const now = new Date();
@@ -62,7 +72,14 @@ function extractBookingError(err: unknown): string {
   return "An unexpected error occurred.";
 }
 
+const c = en.bookings;
+
 export function DeskBookingPage() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const membership = getFirstActiveMembership(user);
+  const isOwnerOrAdmin = canManageWorkspaceContent(membership?.role);
+
   const [selectedOfficeId, setSelectedOfficeId] = useState<number | "">("");
   const [selectedFloorId, setSelectedFloorId] = useState<number | "">("");
   const [selectedDate, setSelectedDate] = useState<string>(getTodayLocalDate());
@@ -193,12 +210,46 @@ export function DeskBookingPage() {
   const floorSelected = typeof selectedFloorId === "number" && selectedFloorId > 0;
   const dataLoading = desksLoading || layoutLoading || bookingsLoading;
 
+  // No-offices empty state — shown before the selector panel
+  const noOfficesReady = !officesLoading && !officesError && offices.length === 0;
+
+  // No-floors empty state — shown when an office is selected but has no floors
+  const officeSelected = typeof selectedOfficeId === "number" && selectedOfficeId > 0;
+  const noFloorsReady = officeSelected && !floorsLoading && !floorsError && floors.length === 0;
+
   return (
     <Container maxWidth="xl" sx={{ py: { xs: 2, sm: 3 } }}>
       <Typography component="h1" variant="h4" sx={{ fontWeight: 700, mb: 3 }}>
-        Desk Booking
+        {c.pageTitle}
       </Typography>
 
+      {/* Role-aware empty state: no offices exist yet */}
+      {noOfficesReady && (
+        <EmptyState
+          icon={<BusinessOutlined sx={{ fontSize: 40, color: "primary.main" }} />}
+          title={isOwnerOrAdmin ? c.noOfficesAdminTitle : c.noOfficesMemberTitle}
+          description={isOwnerOrAdmin ? c.noOfficesAdminDesc : c.noOfficesMemberDesc}
+          actionLabel={isOwnerOrAdmin ? c.noOfficesAdminAction : undefined}
+          onAction={isOwnerOrAdmin ? () => navigate(ROUTES.offices) : undefined}
+        />
+      )}
+
+      {/* Role-aware empty state: office selected but no floors */}
+      {!noOfficesReady && noFloorsReady && (
+        <EmptyState
+          icon={<LayersOutlined sx={{ fontSize: 40, color: "primary.main" }} />}
+          title={isOwnerOrAdmin ? c.noFloorsAdminTitle : c.noFloorsMemberTitle}
+          description={isOwnerOrAdmin ? c.noFloorsAdminDesc : c.noFloorsMemberDesc}
+          actionLabel={isOwnerOrAdmin ? c.noFloorsAdminAction : undefined}
+          onAction={
+            isOwnerOrAdmin && typeof selectedOfficeId === "number"
+              ? () => navigate(officeDetailPath(selectedOfficeId))
+              : undefined
+          }
+        />
+      )}
+
+      {/* Selector panel — always rendered so the user can change their selection */}
       <Stack direction={{ xs: "column", sm: "row" }} spacing={2} sx={{ mb: 3, flexWrap: "wrap" }}>
         {officesError && <Alert severity="error">{officesError}</Alert>}
 
@@ -273,14 +324,36 @@ export function DeskBookingPage() {
                   Failed to load floor layout. Please try again.
                 </Alert>
               )}
-              <BookingSummaryCards
-                availableCount={counts.available}
-                reservedCount={counts.reserved}
-                unavailableCount={counts.unavailable}
-                myBooking={counts.myBooking}
-              />
+              {/* No bookable desks on this floor yet */}
+              {items.length === 0 && !desksError && (
+                <EmptyState
+                  icon={<WeekendOutlined sx={{ fontSize: 40, color: "primary.main" }} />}
+                  title={c.noDesksTitle}
+                  description={isOwnerOrAdmin ? c.noDesksAdminDesc : c.noDesksMemberDesc}
+                  actionLabel={isOwnerOrAdmin ? c.noDesksAdminAction : undefined}
+                  onAction={
+                    isOwnerOrAdmin &&
+                    typeof selectedOfficeId === "number" &&
+                    typeof selectedFloorId === "number"
+                      ? () =>
+                          navigate(
+                            `/app/offices/${selectedOfficeId}/floors/${selectedFloorId}/layout`
+                          )
+                      : undefined
+                  }
+                />
+              )}
 
-              {layoutObjects.length > 0 && (
+              {items.length > 0 && (
+                <BookingSummaryCards
+                  availableCount={counts.available}
+                  reservedCount={counts.reserved}
+                  unavailableCount={counts.unavailable}
+                  myBooking={counts.myBooking}
+                />
+              )}
+
+              {layoutObjects.length > 0 && items.length > 0 && (
                 <Box sx={{ mb: 3 }}>
                   <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
                     Floor map
@@ -294,41 +367,43 @@ export function DeskBookingPage() {
                 </Box>
               )}
 
-              <Grid container spacing={3}>
-                <Grid size={{ xs: 12, md: 8 }}>
-                  <DeskAvailabilityList
-                    items={items}
-                    selectedDeskId={selectedDeskId}
-                    onSelectDesk={handleSelectDesk}
-                    onBookDesk={handleBook}
-                    onCancelBooking={handleCancel}
-                    hasMyBooking={myBooking !== null}
-                    bookingLoading={bookingLoading}
-                    cancelLoading={cancelLoading}
-                  />
+              {items.length > 0 && (
+                <Grid container spacing={3}>
+                  <Grid size={{ xs: 12, md: 8 }}>
+                    <DeskAvailabilityList
+                      items={items}
+                      selectedDeskId={selectedDeskId}
+                      onSelectDesk={handleSelectDesk}
+                      onBookDesk={handleBook}
+                      onCancelBooking={handleCancel}
+                      hasMyBooking={myBooking !== null}
+                      bookingLoading={bookingLoading}
+                      cancelLoading={cancelLoading}
+                    />
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 4 }}>
+                    <SelectedDeskBookingPanel
+                      item={selectedItem}
+                      selectedDate={selectedDate}
+                      hasMyBooking={myBooking !== null}
+                      onBook={handleBook}
+                      onCancel={handleCancel}
+                      bookingLoading={bookingLoading}
+                      cancelLoading={cancelLoading}
+                      bookingError={bookingError}
+                      cancelError={cancelError}
+                      bookingSuccess={bookingSuccess}
+                      cancelSuccess={cancelSuccess}
+                    />
+                  </Grid>
                 </Grid>
-                <Grid size={{ xs: 12, md: 4 }}>
-                  <SelectedDeskBookingPanel
-                    item={selectedItem}
-                    selectedDate={selectedDate}
-                    hasMyBooking={myBooking !== null}
-                    onBook={handleBook}
-                    onCancel={handleCancel}
-                    bookingLoading={bookingLoading}
-                    cancelLoading={cancelLoading}
-                    bookingError={bookingError}
-                    cancelError={cancelError}
-                    bookingSuccess={bookingSuccess}
-                    cancelSuccess={cancelSuccess}
-                  />
-                </Grid>
-              </Grid>
+              )}
             </>
           )}
         </>
       )}
 
-      {!floorSelected && !officesLoading && (
+      {!floorSelected && !officesLoading && !noOfficesReady && (
         <Box
           sx={{
             display: "flex",
@@ -338,7 +413,7 @@ export function DeskBookingPage() {
           }}
         >
           <Typography variant="body1" color="text.secondary">
-            Select an office and floor to view desk availability.
+            {c.selectPrompt}
           </Typography>
         </Box>
       )}
