@@ -10,7 +10,7 @@ PRE_COMMIT := $(VENV)/bin/python -m pre_commit
         frontend backend \
         backend-docker-build backend-docker-up backend-docker-serve backend-docker-down backend-docker-logs \
         frontend-docker-build frontend-docker-up frontend-docker-serve frontend-docker-down frontend-docker-logs \
-        migrate makemigrations superuser \
+        migrate makemigrations superuser seed-demo \
         migration-check backend-check backend-lint backend-format backend-format-check backend-test \
         frontend-lint frontend-format frontend-format-check frontend-test frontend-build \
         lint format format-check test ci \
@@ -44,6 +44,7 @@ help:
 	@echo "    make migrate                Run Django migrations"
 	@echo "    make makemigrations         Generate new Django migrations"
 	@echo "    make superuser              Create a Django superuser"
+	@echo "    make seed-demo              Seed demo workspace data (idempotent, local only)"
 	@echo ""
 	@echo "  Backend quality"
 	@echo "    make migration-check        Check for missing migrations (--check --dry-run)"
@@ -122,6 +123,9 @@ makemigrations:
 
 superuser:
 	cd backend && $(CURDIR)/$(PYTHON) manage.py createsuperuser
+
+seed-demo:
+	cd backend && $(CURDIR)/$(PYTHON) manage.py seed_demo_workspace
 
 # ─── Backend quality ────────────────────────────────────────────────────────────
 

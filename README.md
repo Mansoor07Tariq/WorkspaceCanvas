@@ -195,7 +195,49 @@ Detailed notes for each feature and setup step are in the `docs/` folder:
 | [046-mvp-dashboard-role-paths.md](docs/046-mvp-dashboard-role-paths.md) | MVP dashboard — role-aware views, admin setup checklist, member booking cards, workspace health |
 | [047-member-invitations-team-access.md](docs/047-member-invitations-team-access.md) | Member invitations — invite flow, People page, AcceptInvitationPage, dashboard checklist integration |
 | [048-mvp-setup-polish-first-run.md](docs/048-mvp-setup-polish-first-run.md) | MVP setup polish — first-run guidance, member workspace state, booking empty states, canvas member guidance, route consistency |
+| [049-role-based-ux-permission-polish.md](docs/049-role-based-ux-permission-polish.md) | Role-based UX and permission polish — centralized frontend permission helpers, member-only UI guards, My Bookings nav, dead code cleanup |
+| [050-demo-data-and-mvp-qa-checklist.md](docs/050-demo-data-and-mvp-qa-checklist.md) | Demo data seed command, demo credentials, end-to-end demo walkthrough, manual MVP QA checklist |
 | [TECHNICAL_DEBT.md](docs/TECHNICAL_DEBT.md) | Long-lived engineering debt register — open items, severity, recommended fixes |
+
+## Demo Data (Seed Command)
+
+Populate a complete local demo workspace in one command:
+
+```bash
+make seed-demo
+# or:
+cd backend && python manage.py seed_demo_workspace
+```
+
+This creates a demo organisation, office, floor, 13 layout objects, 5 desks, bookings, and team members.
+
+**Demo credentials** (local development only — never use in production):
+
+| Role | Email | Password |
+|------|-------|----------|
+| Admin (Owner) | `admin@workspacecanvas.demo` | `DemoPass123!` |
+| Member | `member@workspacecanvas.demo` | `DemoPass123!` |
+| Member 2 | `member2@workspacecanvas.demo` | `DemoPass123!` |
+
+**Quick demo route:**
+
+1. `make seed-demo` to seed data
+2. Log in as admin → Dashboard (setup complete, health cards populated)
+3. Offices → Demo HQ → Ground Floor → Floor Layout (13 objects on canvas)
+4. Desk Booking (`/app/bookings`) → select today → see availability colours on map
+5. People (`/app/people`) → members list + pending invitation
+6. Log out → log in as member → booking-focused dashboard, read-only floor layout
+7. My Bookings (`/app/bookings/my`) → cancel a booking
+
+The seed command is **idempotent** — safe to run multiple times. Use `--reset-demo` to wipe and re-seed:
+
+```bash
+cd backend && python manage.py seed_demo_workspace --reset-demo
+```
+
+See [docs/050-demo-data-and-mvp-qa-checklist.md](docs/050-demo-data-and-mvp-qa-checklist.md) for the full demo walkthrough and manual QA checklist.
+
+---
 
 ## Common Commands
 
