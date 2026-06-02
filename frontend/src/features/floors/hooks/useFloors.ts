@@ -1,5 +1,6 @@
-import { useEffect, useReducer, useState } from "react";
+import { useEffect, useReducer, useRef, useState } from "react";
 import { getApiErrorMessage } from "@/lib/api/getApiErrorMessage";
+import { getCachedValue, setCachedValue } from "@/lib/api/requestCache";
 import { listFloors } from "../api/floorApi";
 import type { Floor } from "../types/floor.types";
 
@@ -27,6 +28,11 @@ function reducer(state: State, action: Action): State {
 
 const initial: State = { floors: [], loading: true, error: null };
 
+// Office ids are globally unique, so this key is org-safe without an org segment.
+function floorsCacheKey(officeId: number): string {
+  return `floors:${officeId}`;
+}
+
 interface UseFloorsResult {
   floors: Floor[];
   loading: boolean;
@@ -37,15 +43,31 @@ interface UseFloorsResult {
 export function useFloors(officeId: number): UseFloorsResult {
   const [state, dispatch] = useReducer(reducer, initial);
   const [tick, setTick] = useState(0);
+  const forceRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
+    const cacheKey = floorsCacheKey(officeId);
+
+    const force = forceRef.current;
+    forceRef.current = false;
+
+    if (!force) {
+      const cached = getCachedValue<Floor[]>(cacheKey);
+      if (cached !== undefined) {
+        dispatch({ type: "fetch_success", floors: cached });
+        return;
+      }
+    }
 
     async function fetchFloors() {
       dispatch({ type: "fetch_start" });
       try {
         const data = await listFloors(officeId);
-        if (!cancelled) dispatch({ type: "fetch_success", floors: data });
+        if (!cancelled) {
+          setCachedValue(cacheKey, data);
+          dispatch({ type: "fetch_success", floors: data });
+        }
       } catch (err: unknown) {
         if (!cancelled) dispatch({ type: "fetch_error", payload: getApiErrorMessage(err) });
       }
@@ -58,5 +80,11 @@ export function useFloors(officeId: number): UseFloorsResult {
     };
   }, [officeId, tick]);
 
-  return { ...state, refresh: () => setTick((n) => n + 1) };
+  return {
+    ...state,
+    refresh: () => {
+      forceRef.current = true;
+      setTick((n) => n + 1);
+    },
+  };
 }

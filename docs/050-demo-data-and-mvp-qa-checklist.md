@@ -85,6 +85,12 @@ A pending invitation for `guest@workspacecanvas.demo` is also created. The invit
 | Status | Active |
 | Allowed domain | `workspacecanvas.demo` |
 
+> **Note (PR 055):** the seed creates a **single** organization, so the
+> multi-org workspace switcher (TD-037) does not appear in the demo — the
+> dashboard/offices/booking/people pages behave exactly as in single-org mode.
+> To exercise the switcher manually, add a second active membership for the
+> demo user in a second active organization.
+
 ### Memberships
 
 | User | Role | Status |

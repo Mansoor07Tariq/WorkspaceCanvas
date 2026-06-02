@@ -78,6 +78,14 @@ A multi-office admin sees totals across **all** offices, and member readiness
 reflects any bookable desk anywhere in the org. `useDashboardData` no longer
 fetches desks; it resolves the first office/floor only for navigation links.
 
+**Update (PR 055, TD-037)**: The dashboard context follows the **selected
+organization** (`useSelectedOrganization`), not always the first active
+membership. Users with multiple active memberships get a topbar organization
+switcher; the dashboard summary, offices, and quick actions are scoped to the
+selected org (`useWorkspaceSummary(orgId)` / `useDashboardData(orgId)` /
+`?organization=`). Single-org users are unaffected (the hook falls back to the
+first active membership). See `docs/055-architecture-cleanup-hook-caching-multi-org.md`.
+
 ---
 
 ## Setup Checklist Logic

@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { AppBar, Box, Button, Drawer, IconButton, Toolbar, Typography } from "@mui/material";
 import { MenuOutlined } from "@mui/icons-material";
 import { useAuth } from "@/features/auth/context/AuthContext";
+import { OrganizationSwitcher } from "@/features/organizations/components/OrganizationSwitcher";
 import { AppSidebar, SIDEBAR_WIDTH } from "./AppSidebar";
 import { en } from "@/i18n/en";
 
@@ -31,6 +32,7 @@ export function AppShell({ children, onLogout }: Props) {
           <Typography variant="h6" sx={{ flexGrow: 1, fontWeight: 700 }}>
             {en.app.shell.brand}
           </Typography>
+          <OrganizationSwitcher />
           {user && (
             <Typography
               variant="body2"

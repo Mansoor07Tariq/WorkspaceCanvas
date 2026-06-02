@@ -25,7 +25,8 @@ from .models import (
 from .permissions import (
     get_first_active_membership,
     get_floor_for_office,
-    get_office_for_membership,
+    get_office_for_user,
+    resolve_membership,
     user_can_manage_offices,
 )
 from .serializers import (
@@ -57,6 +58,23 @@ _FLOOR_SLUG_ERROR = (
 )
 _NO_MEMBERSHIP = "You do not have an active organization membership."
 _NO_MANAGE_OFFICES = "Only organization owners and admins can manage offices."
+
+
+def _selected_org_id(request: Request) -> int | None:
+    """Parse the optional ``?organization=<id>`` selected-org query param.
+
+    Returns the int id, or None when absent/blank/non-numeric (callers then
+    fall back to the first active membership). The id is never trusted on its
+    own — ``resolve_membership`` validates it against the caller's active
+    memberships.
+    """
+    raw = request.query_params.get("organization")
+    if not raw:
+        return None
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return None
 
 
 def _throttle_cache_key(throttle: SimpleRateThrottle, request: Request) -> str:
@@ -112,7 +130,9 @@ class OrganizationSummaryView(APIView):
         summary="Org-wide workspace summary for the current user's organization",
     )
     def get(self, request: Request) -> Response:
-        membership = get_first_active_membership(request.user)
+        # PR 055: honour an explicit selected org (?organization=), validated
+        # against the caller's active memberships; else first active membership.
+        membership = resolve_membership(request.user, _selected_org_id(request))
         if membership is None:
             return Response(
                 {"detail": _NO_MEMBERSHIP},
@@ -188,7 +208,9 @@ class OfficeListCreateView(APIView):
         summary="List offices for the current user's active organization",
     )
     def get(self, request: Request) -> Response:
-        membership = get_first_active_membership(request.user)
+        # PR 055: optional ?organization= selects which org's offices to list,
+        # validated against active memberships; else first active membership.
+        membership = resolve_membership(request.user, _selected_org_id(request))
         if membership is None:
             return Response(
                 {"detail": _NO_MEMBERSHIP},
@@ -206,7 +228,9 @@ class OfficeListCreateView(APIView):
         summary="Create an office in the current user's active organization",
     )
     def post(self, request: Request) -> Response:
-        membership = get_first_active_membership(request.user)
+        # PR 055: create the office in the selected org (?organization=) when
+        # provided, else the first active membership's org.
+        membership = resolve_membership(request.user, _selected_org_id(request))
         if membership is None:
             return Response(
                 {"detail": _NO_MEMBERSHIP},
@@ -271,7 +295,9 @@ class FloorListCreateView(APIView):
                 {"detail": _NO_MEMBERSHIP},
                 status=status.HTTP_403_FORBIDDEN,
             )
-        office = get_office_for_membership(membership, office_id)
+        # PR 055: resolve the office among the caller's active orgs (not just the
+        # first active membership), and use that org's membership for role checks.
+        office, membership = get_office_for_user(request.user, office_id)
         if office is None:
             return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
         floors = Floor.objects.filter(office=office, is_active=True)
@@ -289,7 +315,9 @@ class FloorListCreateView(APIView):
                 {"detail": _NO_MEMBERSHIP},
                 status=status.HTTP_403_FORBIDDEN,
             )
-        office = get_office_for_membership(membership, office_id)
+        # PR 055: resolve the office among the caller's active orgs (not just the
+        # first active membership), and use that org's membership for role checks.
+        office, membership = get_office_for_user(request.user, office_id)
         if office is None:
             return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
         if not user_can_manage_offices(membership):
@@ -376,7 +404,9 @@ class LayoutObjectListCreateView(APIView):
             return Response(
                 {"detail": _NO_MEMBERSHIP}, status=status.HTTP_403_FORBIDDEN
             )
-        office = get_office_for_membership(membership, office_id)
+        # PR 055: resolve the office among the caller's active orgs (not just the
+        # first active membership), and use that org's membership for role checks.
+        office, membership = get_office_for_user(request.user, office_id)
         if office is None:
             return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
         floor = get_floor_for_office(office, floor_id)
@@ -391,7 +421,9 @@ class LayoutObjectListCreateView(APIView):
             return Response(
                 {"detail": _NO_MEMBERSHIP}, status=status.HTTP_403_FORBIDDEN
             )
-        office = get_office_for_membership(membership, office_id)
+        # PR 055: resolve the office among the caller's active orgs (not just the
+        # first active membership), and use that org's membership for role checks.
+        office, membership = get_office_for_user(request.user, office_id)
         if office is None:
             return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
         floor = get_floor_for_office(office, floor_id)
@@ -429,46 +461,55 @@ class LayoutObjectDetailView(APIView):
 
     def _get_object(
         self,
-        membership,
+        user,
         office_id: int,
         floor_id: int,
         object_id: int,
     ):
-        office = get_office_for_membership(membership, office_id)
+        # PR 055: resolve the office among the caller's active orgs and return
+        # the per-office membership (so role checks use the office's org).
+        office, membership = get_office_for_user(user, office_id)
         if office is None:
-            return None, Response(
-                {"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND
+            return (
+                None,
+                Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND),
+                None,
             )
         floor = get_floor_for_office(office, floor_id)
         if floor is None:
-            return None, Response(
-                {"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND
+            return (
+                None,
+                Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND),
+                None,
             )
         try:
             obj = FloorLayoutObject.objects.get(
                 pk=object_id, floor=floor, is_active=True
             )
         except FloorLayoutObject.DoesNotExist:
-            return None, Response(
-                {"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND
+            return (
+                None,
+                Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND),
+                None,
             )
-        return obj, None
+        return obj, None, membership
 
     def patch(
         self, request: Request, office_id: int, floor_id: int, object_id: int
     ) -> Response:
-        membership = get_first_active_membership(request.user)
-        if membership is None:
+        if get_first_active_membership(request.user) is None:
             return Response(
                 {"detail": _NO_MEMBERSHIP}, status=status.HTTP_403_FORBIDDEN
             )
+        obj, err, membership = self._get_object(
+            request.user, office_id, floor_id, object_id
+        )
+        if err is not None:
+            return err
         if not user_can_manage_offices(membership):
             return Response(
                 {"detail": _NO_MANAGE_OFFICES}, status=status.HTTP_403_FORBIDDEN
             )
-        obj, err = self._get_object(membership, office_id, floor_id, object_id)
-        if err is not None:
-            return err
         serializer = UpdateLayoutObjectSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -480,18 +521,19 @@ class LayoutObjectDetailView(APIView):
     def delete(
         self, request: Request, office_id: int, floor_id: int, object_id: int
     ) -> Response:
-        membership = get_first_active_membership(request.user)
-        if membership is None:
+        if get_first_active_membership(request.user) is None:
             return Response(
                 {"detail": _NO_MEMBERSHIP}, status=status.HTTP_403_FORBIDDEN
             )
+        obj, err, membership = self._get_object(
+            request.user, office_id, floor_id, object_id
+        )
+        if err is not None:
+            return err
         if not user_can_manage_offices(membership):
             return Response(
                 {"detail": _NO_MANAGE_OFFICES}, status=status.HTTP_403_FORBIDDEN
             )
-        obj, err = self._get_object(membership, office_id, floor_id, object_id)
-        if err is not None:
-            return err
         obj.is_active = False
         obj.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -529,7 +571,9 @@ class DeskListCreateView(APIView):
             return Response(
                 {"detail": _NO_MEMBERSHIP}, status=status.HTTP_403_FORBIDDEN
             )
-        office = get_office_for_membership(membership, office_id)
+        # PR 055: resolve the office among the caller's active orgs (not just the
+        # first active membership), and use that org's membership for role checks.
+        office, membership = get_office_for_user(request.user, office_id)
         if office is None:
             return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
         floor = get_floor_for_office(office, floor_id)
@@ -546,7 +590,9 @@ class DeskListCreateView(APIView):
             return Response(
                 {"detail": _NO_MEMBERSHIP}, status=status.HTTP_403_FORBIDDEN
             )
-        office = get_office_for_membership(membership, office_id)
+        # PR 055: resolve the office among the caller's active orgs (not just the
+        # first active membership), and use that org's membership for role checks.
+        office, membership = get_office_for_user(request.user, office_id)
         if office is None:
             return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
         floor = get_floor_for_office(office, floor_id)
@@ -630,36 +676,44 @@ class DeskDetailView(APIView):
     permission_classes = [IsAuthenticated]
     throttle_classes = [_DeskWriteThrottle]
 
-    def _get_desk(self, membership, office_id: int, floor_id: int, desk_id: int):
-        office = get_office_for_membership(membership, office_id)
+    def _get_desk(self, user, office_id: int, floor_id: int, desk_id: int):
+        # PR 055: resolve office among the caller's active orgs + per-office membership.
+        office, membership = get_office_for_user(user, office_id)
         if office is None:
-            return None, Response(
-                {"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND
+            return (
+                None,
+                Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND),
+                None,
             )
         floor = get_floor_for_office(office, floor_id)
         if floor is None:
-            return None, Response(
-                {"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND
+            return (
+                None,
+                Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND),
+                None,
             )
         try:
             desk = Desk.objects.select_related("layout_object").get(
                 pk=desk_id, floor=floor, is_active=True
             )
         except Desk.DoesNotExist:
-            return None, Response(
-                {"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND
+            return (
+                None,
+                Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND),
+                None,
             )
-        return desk, None
+        return desk, None, membership
 
     def get(
         self, request: Request, office_id: int, floor_id: int, desk_id: int
     ) -> Response:
-        membership = get_first_active_membership(request.user)
-        if membership is None:
+        if get_first_active_membership(request.user) is None:
             return Response(
                 {"detail": _NO_MEMBERSHIP}, status=status.HTTP_403_FORBIDDEN
             )
-        desk, err = self._get_desk(membership, office_id, floor_id, desk_id)
+        desk, err, _membership = self._get_desk(
+            request.user, office_id, floor_id, desk_id
+        )
         if err is not None:
             return err
         return Response(DeskResponseSerializer(desk).data)
@@ -667,18 +721,19 @@ class DeskDetailView(APIView):
     def patch(
         self, request: Request, office_id: int, floor_id: int, desk_id: int
     ) -> Response:
-        membership = get_first_active_membership(request.user)
-        if membership is None:
+        if get_first_active_membership(request.user) is None:
             return Response(
                 {"detail": _NO_MEMBERSHIP}, status=status.HTTP_403_FORBIDDEN
             )
+        desk, err, membership = self._get_desk(
+            request.user, office_id, floor_id, desk_id
+        )
+        if err is not None:
+            return err
         if not user_can_manage_offices(membership):
             return Response(
                 {"detail": _NO_MANAGE_OFFICES}, status=status.HTTP_403_FORBIDDEN
             )
-        desk, err = self._get_desk(membership, office_id, floor_id, desk_id)
-        if err is not None:
-            return err
 
         serializer = UpdateDeskSerializer(data=request.data)
         if not serializer.is_valid():
@@ -715,18 +770,19 @@ class DeskDetailView(APIView):
     def delete(
         self, request: Request, office_id: int, floor_id: int, desk_id: int
     ) -> Response:
-        membership = get_first_active_membership(request.user)
-        if membership is None:
+        if get_first_active_membership(request.user) is None:
             return Response(
                 {"detail": _NO_MEMBERSHIP}, status=status.HTTP_403_FORBIDDEN
             )
+        desk, err, membership = self._get_desk(
+            request.user, office_id, floor_id, desk_id
+        )
+        if err is not None:
+            return err
         if not user_can_manage_offices(membership):
             return Response(
                 {"detail": _NO_MANAGE_OFFICES}, status=status.HTTP_403_FORBIDDEN
             )
-        desk, err = self._get_desk(membership, office_id, floor_id, desk_id)
-        if err is not None:
-            return err
         with transaction.atomic():
             # Cancel all active bookings before soft-deleting the desk.
             # cancelled_by is set to the requesting user for API-driven deactivation.
@@ -769,7 +825,9 @@ class DeskBookingListCreateView(APIView):
             return Response(
                 {"detail": _NO_MEMBERSHIP}, status=status.HTTP_403_FORBIDDEN
             )
-        office = get_office_for_membership(membership, office_id)
+        # PR 055: resolve the office among the caller's active orgs (not just the
+        # first active membership), and use that org's membership for role checks.
+        office, membership = get_office_for_user(request.user, office_id)
         if office is None:
             return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
         floor = get_floor_for_office(office, floor_id)
@@ -813,7 +871,9 @@ class DeskBookingListCreateView(APIView):
             return Response(
                 {"detail": _NO_MEMBERSHIP}, status=status.HTTP_403_FORBIDDEN
             )
-        office = get_office_for_membership(membership, office_id)
+        # PR 055: resolve the office among the caller's active orgs (not just the
+        # first active membership), and use that org's membership for role checks.
+        office, membership = get_office_for_user(request.user, office_id)
         if office is None:
             return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
         floor = get_floor_for_office(office, floor_id)
@@ -889,7 +949,9 @@ class DeskBookingDetailView(APIView):
             return Response(
                 {"detail": _NO_MEMBERSHIP}, status=status.HTTP_403_FORBIDDEN
             )
-        office = get_office_for_membership(membership, office_id)
+        # PR 055: resolve the office among the caller's active orgs (not just the
+        # first active membership), and use that org's membership for role checks.
+        office, membership = get_office_for_user(request.user, office_id)
         if office is None:
             return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
         floor = get_floor_for_office(office, floor_id)
@@ -927,7 +989,9 @@ class DeskBookingCancelView(APIView):
             return Response(
                 {"detail": _NO_MEMBERSHIP}, status=status.HTTP_403_FORBIDDEN
             )
-        office = get_office_for_membership(membership, office_id)
+        # PR 055: resolve the office among the caller's active orgs (not just the
+        # first active membership), and use that org's membership for role checks.
+        office, membership = get_office_for_user(request.user, office_id)
         if office is None:
             return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
         floor = get_floor_for_office(office, floor_id)

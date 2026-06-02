@@ -19,7 +19,7 @@ function getBrowserTimezone(): string {
   }
 }
 
-export function useOfficeCreationForm(onCreated: (office: Office) => void) {
+export function useOfficeCreationForm(onCreated: (office: Office) => void, orgId?: number | null) {
   const { submission, startSubmission, setGeneralError, endSubmission } = useFormSubmission();
 
   const [stepIndex, setStepIndex] = useState(0);
@@ -70,7 +70,7 @@ export function useOfficeCreationForm(onCreated: (office: Office) => void) {
   function handleCreate() {
     if (!validateCurrentStep()) return;
     startSubmission();
-    createOffice(buildOfficePayload(fields))
+    createOffice(buildOfficePayload(fields), orgId)
       .then((office) => onCreated(office))
       .catch((err: unknown) => {
         setGeneralError(getApiErrorMessage(err));

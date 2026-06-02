@@ -6,6 +6,7 @@ import { PageLoading } from "@/components/feedback/PageLoading";
 import { ErrorBoundary } from "@/components/feedback/ErrorBoundary";
 import { AppShell } from "@/app/layout/AppShell";
 import { useAuth } from "@/features/auth/context/AuthContext";
+import { SelectedOrganizationProvider } from "@/features/organizations/context/SelectedOrganizationProvider";
 import { ROUTES } from "@/routes/paths";
 
 // Auth pages — lazy-loaded so none of their imports reach the initial bundle.
@@ -97,9 +98,11 @@ function AppLayout() {
   }
 
   return (
-    <AppShell onLogout={() => void handleLogout()}>
-      <Outlet />
-    </AppShell>
+    <SelectedOrganizationProvider>
+      <AppShell onLogout={() => void handleLogout()}>
+        <Outlet />
+      </AppShell>
+    </SelectedOrganizationProvider>
   );
 }
 

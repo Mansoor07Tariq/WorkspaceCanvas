@@ -64,10 +64,10 @@ export interface DashboardDataResult {
   firstFloor: Floor | null;
 }
 
-export function useDashboardData(): DashboardDataResult {
+export function useDashboardData(orgId?: number | null): DashboardDataResult {
   const today = getTodayString();
 
-  const { offices, loading: officesLoading, error: officesError } = useOffices();
+  const { offices, loading: officesLoading, error: officesError } = useOffices(orgId);
   const firstOffice = offices[0] ?? null;
 
   const [floorsState, dispatchFloors] = useReducer(floorsReducer, {

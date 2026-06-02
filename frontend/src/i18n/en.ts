@@ -127,6 +127,7 @@ export const en = {
       brand: "WorkspaceCanvas",
       logout: "Log out",
       openNav: "Open navigation",
+      workspaceSwitcherLabel: "Workspace",
     },
     sidebar: {
       lockedTooltip: "Complete your profile to unlock this section.",

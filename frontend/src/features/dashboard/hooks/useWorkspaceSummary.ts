@@ -1,4 +1,5 @@
-import { useEffect, useReducer, useState } from "react";
+import { useEffect, useReducer, useRef, useState } from "react";
+import { getCachedValue, setCachedValue } from "@/lib/api/requestCache";
 import { getWorkspaceSummary } from "../api/dashboardApi";
 import type { WorkspaceSummary } from "../types/dashboard.types";
 
@@ -34,10 +35,15 @@ export interface UseWorkspaceSummaryResult {
   refresh: () => void;
 }
 
+// Namespaced by org so a selected-org switch (PR 055) never serves another org's summary.
+function summaryCacheKey(orgId: number): string {
+  return `summary:${orgId}`;
+}
+
 /**
- * Org-wide workspace summary (TD-035). The backend resolves the organization
- * from the caller's active membership; `orgId` is used only to decide whether
- * to fetch (skipped for no-org users) and to refetch when the org changes.
+ * Org-wide workspace summary (TD-035). `orgId` decides whether to fetch (skipped
+ * for no-org users), scopes the request to the selected org (PR 055 multi-org),
+ * and namespaces the TTL cache key.
  */
 export function useWorkspaceSummary(orgId: number | null): UseWorkspaceSummaryResult {
   const [state, dispatch] = useReducer(reducer, {
@@ -46,18 +52,35 @@ export function useWorkspaceSummary(orgId: number | null): UseWorkspaceSummaryRe
     error: null,
   });
   const [tick, setTick] = useState(0);
+  const forceRef = useRef(false);
 
   useEffect(() => {
     if (orgId === null) {
       dispatch({ type: "reset" });
       return;
     }
+    const cacheKey = summaryCacheKey(orgId);
+
+    const force = forceRef.current;
+    forceRef.current = false;
+
+    if (!force) {
+      const cached = getCachedValue<WorkspaceSummary>(cacheKey);
+      if (cached !== undefined) {
+        dispatch({ type: "success", payload: cached });
+        return;
+      }
+    }
+
     const controller = new AbortController();
     dispatch({ type: "start" });
 
-    getWorkspaceSummary()
+    getWorkspaceSummary(orgId)
       .then((data) => {
-        if (!controller.signal.aborted) dispatch({ type: "success", payload: data });
+        if (!controller.signal.aborted) {
+          setCachedValue(cacheKey, data);
+          dispatch({ type: "success", payload: data });
+        }
       })
       .catch(() => {
         if (!controller.signal.aborted) dispatch({ type: "error" });
@@ -66,5 +89,11 @@ export function useWorkspaceSummary(orgId: number | null): UseWorkspaceSummaryRe
     return () => controller.abort();
   }, [orgId, tick]);
 
-  return { ...state, refresh: () => setTick((n) => n + 1) };
+  return {
+    ...state,
+    refresh: () => {
+      forceRef.current = true;
+      setTick((n) => n + 1);
+    },
+  };
 }
