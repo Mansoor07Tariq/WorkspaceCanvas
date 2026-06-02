@@ -12,7 +12,9 @@ export function AvailabilityMapLegend() {
       spacing={2}
       role="list"
       aria-label="Map legend"
-      sx={{ mt: 1, flexWrap: "wrap" }}
+      // Rendered above the scrollable canvas (TD-034). flexWrap keeps every
+      // status label visible on narrow viewports without horizontal overflow.
+      sx={{ mb: 1, flexWrap: "wrap", rowGap: 0.5 }}
     >
       {AVAILABILITY_LEGEND_ORDER.map((status) => {
         const style = getAvailabilityCanvasStyle(status, false);

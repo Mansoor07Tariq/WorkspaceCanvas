@@ -406,3 +406,25 @@ class DeskBookingResponseSerializer(serializers.ModelSerializer):
             data.pop("user", None)
             data.pop("cancelled_by", None)
         return data
+
+
+class OrganizationSummarySerializer(serializers.Serializer):
+    """Org-wide workspace summary for the dashboard (TD-035).
+
+    Count-only — exposes no member identities, booking identities, or
+    invitation tokens. ``pending_invitations_count`` is gated to managers in
+    the view and returned as 0 for regular members.
+    """
+
+    organization = serializers.IntegerField()
+    offices_count = serializers.IntegerField()
+    floors_count = serializers.IntegerField()
+    layout_objects_count = serializers.IntegerField()
+    bookable_desks_count = serializers.IntegerField()
+    active_members_count = serializers.IntegerField()
+    pending_invitations_count = serializers.IntegerField()
+    has_offices = serializers.BooleanField()
+    has_floors = serializers.BooleanField()
+    has_layout_objects = serializers.BooleanField()
+    has_bookable_desks = serializers.BooleanField()
+    setup_complete = serializers.BooleanField()

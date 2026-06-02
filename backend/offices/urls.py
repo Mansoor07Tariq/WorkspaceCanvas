@@ -10,10 +10,12 @@ from .views import (
     LayoutObjectDetailView,
     LayoutObjectListCreateView,
     OfficeListCreateView,
+    OrganizationSummaryView,
 )
 
 urlpatterns = [
     path("", OfficeListCreateView.as_view(), name="office-list-create"),
+    path("summary/", OrganizationSummaryView.as_view(), name="organization-summary"),
     path(
         "<int:office_id>/floors/",
         FloorListCreateView.as_view(),

@@ -12,7 +12,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import SimpleRateThrottle
 from rest_framework.views import APIView
 
-from accounts.models import Membership
+from accounts.models import Invitation, Membership
 
 from .models import (
     DESK_CAPABLE_TYPES,
@@ -39,6 +39,7 @@ from .serializers import (
     FloorResponseSerializer,
     LayoutObjectResponseSerializer,
     OfficeResponseSerializer,
+    OrganizationSummarySerializer,
     UpdateDeskSerializer,
     UpdateLayoutObjectSerializer,
 )
@@ -93,6 +94,89 @@ class _FloorPostScopedThrottle(SimpleRateThrottle):
         if request.method != "POST":
             return True
         return super().allow_request(request, view)
+
+
+class OrganizationSummaryView(APIView):
+    """Org-wide workspace summary for the dashboard (TD-035).
+
+    Resolves the organization from the caller's first active membership —
+    consistent with every other offices endpoint. Counts are org-wide (all
+    offices/floors), not first-office-only, and use aggregate ``count()``
+    queries to avoid N+1.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        responses={200: OrganizationSummarySerializer},
+        summary="Org-wide workspace summary for the current user's organization",
+    )
+    def get(self, request: Request) -> Response:
+        membership = get_first_active_membership(request.user)
+        if membership is None:
+            return Response(
+                {"detail": _NO_MEMBERSHIP},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        org = membership.organization
+
+        offices_count = Office.objects.filter(organization=org, is_active=True).count()
+        floors_count = Floor.objects.filter(
+            office__organization=org,
+            office__is_active=True,
+            is_active=True,
+        ).count()
+        layout_objects_count = FloorLayoutObject.objects.filter(
+            floor__office__organization=org,
+            floor__office__is_active=True,
+            floor__is_active=True,
+            is_active=True,
+        ).count()
+        # "Bookable desks" = active desk resources on an active floor/office,
+        # mirroring the desk list endpoint (is_active=True). Decommissioned
+        # desks and those on archived floors/offices are excluded.
+        bookable_desks_count = Desk.objects.filter(
+            organization=org,
+            is_active=True,
+            office__is_active=True,
+            floor__is_active=True,
+        ).count()
+        active_members_count = Membership.objects.filter(
+            organization=org,
+            status=Membership.Status.ACTIVE,
+        ).count()
+
+        # Pending invitation count is manager-only; members get 0 so the
+        # endpoint stays safe to read for every active member.
+        if user_can_manage_offices(membership):
+            pending_invitations_count = Invitation.objects.filter(
+                organization=org,
+                status=Invitation.Status.PENDING,
+            ).count()
+        else:
+            pending_invitations_count = 0
+
+        has_offices = offices_count > 0
+        has_floors = floors_count > 0
+        has_layout_objects = layout_objects_count > 0
+        has_bookable_desks = bookable_desks_count > 0
+        setup_complete = has_offices and has_floors and has_bookable_desks
+
+        data = {
+            "organization": org.id,
+            "offices_count": offices_count,
+            "floors_count": floors_count,
+            "layout_objects_count": layout_objects_count,
+            "bookable_desks_count": bookable_desks_count,
+            "active_members_count": active_members_count,
+            "pending_invitations_count": pending_invitations_count,
+            "has_offices": has_offices,
+            "has_floors": has_floors,
+            "has_layout_objects": has_layout_objects,
+            "has_bookable_desks": has_bookable_desks,
+            "setup_complete": setup_complete,
+        }
+        return Response(OrganizationSummarySerializer(data).data)
 
 
 class OfficeListCreateView(APIView):

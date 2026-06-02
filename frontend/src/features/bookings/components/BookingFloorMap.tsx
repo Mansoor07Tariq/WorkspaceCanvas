@@ -68,6 +68,10 @@ export function BookingFloorMap({ items, layoutObjects, selectedDeskId, onDeskSe
 
   return (
     <Box>
+      {/* TD-034: legend sits ABOVE the scrollable canvas as a persistent header
+          so it never detaches from the desk map when the canvas scrolls
+          horizontally on narrow viewports. */}
+      <AvailabilityMapLegend />
       <Suspense fallback={<CanvasLoadingFallback />}>
         <FloorMapCanvas
           objects={layoutObjects}
@@ -80,7 +84,6 @@ export function BookingFloorMap({ items, layoutObjects, selectedDeskId, onDeskSe
           showGrid={false}
         />
       </Suspense>
-      <AvailabilityMapLegend />
     </Box>
   );
 }

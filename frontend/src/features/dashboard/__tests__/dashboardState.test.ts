@@ -8,9 +8,6 @@ import {
 } from "../utils/dashboardState";
 import type { CurrentUser } from "@/features/auth/types/auth.types";
 import type { DeskBooking } from "@/features/bookings/types/booking.types";
-import type { Office } from "@/features/offices/types/office.types";
-import type { Floor } from "@/features/floors/types/floor.types";
-import type { Desk } from "@/features/desks/types/desk.types";
 
 const mockUser: CurrentUser = {
   id: 1,
@@ -31,50 +28,8 @@ const mockUser: CurrentUser = {
   memberships: [],
 };
 
-const mockOffice: Office = {
-  id: 10,
-  name: "Dublin HQ",
-  slug: "dublin-hq",
-  address_line_1: "1 Main St",
-  address_line_2: "",
-  city: "Dublin",
-  county_or_state: "Co. Dublin",
-  country: "Ireland",
-  timezone: "Europe/Dublin",
-  is_active: true,
-  created_at: "2025-01-01T00:00:00Z",
-  updated_at: "2025-01-01T00:00:00Z",
-};
-
-const mockFloor: Floor = {
-  id: 20,
-  office: 10,
-  name: "Ground Floor",
-  slug: "ground-floor",
-  level_number: 0,
-  is_active: true,
-  created_at: "2025-01-01T00:00:00Z",
-  updated_at: "2025-01-01T00:00:00Z",
-};
-
-const mockDesk: Desk = {
-  id: 30,
-  organization: 1,
-  office: 10,
-  floor: 20,
-  layout_object: 5,
-  layout_object_type: "desk",
-  layout_object_label: "Desk A1",
-  name: "Desk A1",
-  code: "A1",
-  status: "available",
-  status_display: "Available",
-  amenities: {},
-  notes: "",
-  is_active: true,
-  created_at: "2025-01-01T00:00:00Z",
-  updated_at: "2025-01-01T00:00:00Z",
-};
+const OFFICE_ID = 10;
+const FLOOR_ID = 20;
 
 function makeBooking(overrides: Partial<DeskBooking> = {}): DeskBooking {
   return {
@@ -108,9 +63,9 @@ describe("getSetupChecklist", () => {
     const result = getSetupChecklist({
       user: mockUser,
       hasOrg: true,
-      offices: [],
-      floors: [],
-      desks: [],
+      hasOffices: false,
+      hasFloors: false,
+      hasBookableDesks: false,
     });
     expect(result).toHaveLength(6);
   });
@@ -119,9 +74,9 @@ describe("getSetupChecklist", () => {
     const result = getSetupChecklist({
       user: mockUser,
       hasOrg: false,
-      offices: [],
-      floors: [],
-      desks: [],
+      hasOffices: false,
+      hasFloors: false,
+      hasBookableDesks: false,
     });
     expect(result.find((i) => i.id === "profile")?.completed).toBe(true);
   });
@@ -130,9 +85,9 @@ describe("getSetupChecklist", () => {
     const result = getSetupChecklist({
       user: { ...mockUser, is_profile_completed: false },
       hasOrg: false,
-      offices: [],
-      floors: [],
-      desks: [],
+      hasOffices: false,
+      hasFloors: false,
+      hasBookableDesks: false,
     });
     expect(result.find((i) => i.id === "profile")?.completed).toBe(false);
   });
@@ -141,9 +96,9 @@ describe("getSetupChecklist", () => {
     const result = getSetupChecklist({
       user: mockUser,
       hasOrg: true,
-      offices: [],
-      floors: [],
-      desks: [],
+      hasOffices: false,
+      hasFloors: false,
+      hasBookableDesks: false,
     });
     expect(result.find((i) => i.id === "org")?.completed).toBe(true);
   });
@@ -152,65 +107,66 @@ describe("getSetupChecklist", () => {
     const result = getSetupChecklist({
       user: mockUser,
       hasOrg: false,
-      offices: [],
-      floors: [],
-      desks: [],
+      hasOffices: false,
+      hasFloors: false,
+      hasBookableDesks: false,
     });
     expect(result.find((i) => i.id === "org")?.completed).toBe(false);
   });
 
-  it("office item is completed when offices exist", () => {
+  it("office item is completed when hasOffices is true", () => {
     const result = getSetupChecklist({
       user: mockUser,
       hasOrg: true,
-      offices: [mockOffice],
-      floors: [],
-      desks: [],
+      hasOffices: true,
+      hasFloors: false,
+      hasBookableDesks: false,
     });
     expect(result.find((i) => i.id === "office")?.completed).toBe(true);
   });
 
-  it("office item is not completed when offices is empty", () => {
+  it("office item is not completed when hasOffices is false", () => {
     const result = getSetupChecklist({
       user: mockUser,
       hasOrg: true,
-      offices: [],
-      floors: [],
-      desks: [],
+      hasOffices: false,
+      hasFloors: false,
+      hasBookableDesks: false,
     });
     expect(result.find((i) => i.id === "office")?.completed).toBe(false);
   });
 
-  it("floor item is completed when floors exist", () => {
+  it("floor item is completed when hasFloors is true", () => {
     const result = getSetupChecklist({
       user: mockUser,
       hasOrg: true,
-      offices: [mockOffice],
-      floors: [mockFloor],
-      desks: [],
+      hasOffices: true,
+      hasFloors: true,
+      hasBookableDesks: false,
     });
     expect(result.find((i) => i.id === "floor")?.completed).toBe(true);
   });
 
-  it("floor item has a to route when office exists", () => {
+  it("floor item has a to route when firstOfficeId is provided", () => {
     const result = getSetupChecklist({
       user: mockUser,
       hasOrg: true,
-      offices: [mockOffice],
-      floors: [],
-      desks: [],
+      hasOffices: true,
+      hasFloors: false,
+      hasBookableDesks: false,
+      firstOfficeId: OFFICE_ID,
     });
     const floorItem = result.find((i) => i.id === "floor");
-    expect(floorItem?.to).toContain(String(mockOffice.id));
+    expect(floorItem?.to).toContain(String(OFFICE_ID));
   });
 
-  it("desks item is completed when desks exist", () => {
+  it("desks item is completed when hasBookableDesks is true (org-wide)", () => {
     const result = getSetupChecklist({
       user: mockUser,
       hasOrg: true,
-      offices: [mockOffice],
-      floors: [mockFloor],
-      desks: [mockDesk],
+      hasOffices: true,
+      hasFloors: true,
+      hasBookableDesks: true,
     });
     expect(result.find((i) => i.id === "desks")?.completed).toBe(true);
   });
@@ -219,9 +175,9 @@ describe("getSetupChecklist", () => {
     const result = getSetupChecklist({
       user: mockUser,
       hasOrg: true,
-      offices: [],
-      floors: [],
-      desks: [],
+      hasOffices: false,
+      hasFloors: false,
+      hasBookableDesks: false,
       memberCount: 1,
     });
     const item = result.find((i) => i.id === "invite");
@@ -233,9 +189,9 @@ describe("getSetupChecklist", () => {
     const result = getSetupChecklist({
       user: mockUser,
       hasOrg: true,
-      offices: [],
-      floors: [],
-      desks: [],
+      hasOffices: false,
+      hasFloors: false,
+      hasBookableDesks: false,
       memberCount: 2,
     });
     expect(result.find((i) => i.id === "invite")?.completed).toBe(true);
@@ -245,9 +201,9 @@ describe("getSetupChecklist", () => {
     const result = getSetupChecklist({
       user: mockUser,
       hasOrg: true,
-      offices: [],
-      floors: [],
-      desks: [],
+      hasOffices: false,
+      hasFloors: false,
+      hasBookableDesks: false,
     });
     expect(result.find((i) => i.id === "invite")?.completed).toBe(false);
   });
@@ -256,9 +212,9 @@ describe("getSetupChecklist", () => {
     const result = getSetupChecklist({
       user: mockUser,
       hasOrg: true,
-      offices: [],
-      floors: [],
-      desks: [],
+      hasOffices: false,
+      hasFloors: false,
+      hasBookableDesks: false,
     });
     expect(result.find((i) => i.id === "invite")?.to).toBe("/app/people");
   });
@@ -267,11 +223,25 @@ describe("getSetupChecklist", () => {
     const result = getSetupChecklist({
       user: null,
       hasOrg: false,
-      offices: [],
-      floors: [],
-      desks: [],
+      hasOffices: false,
+      hasFloors: false,
+      hasBookableDesks: false,
     });
     expect(result.find((i) => i.id === "profile")?.completed).toBe(false);
+  });
+
+  it("desks item is complete even when first office has no floor (org-wide readiness)", () => {
+    // TD-035: desks live in another office; the first office may have no floor.
+    const result = getSetupChecklist({
+      user: mockUser,
+      hasOrg: true,
+      hasOffices: true,
+      hasFloors: true,
+      hasBookableDesks: true,
+      firstOfficeId: OFFICE_ID,
+      firstFloorId: null,
+    });
+    expect(result.find((i) => i.id === "desks")?.completed).toBe(true);
   });
 });
 
@@ -347,9 +317,9 @@ describe("getSetupProgress", () => {
     const checklist = getSetupChecklist({
       user: { ...mockUser, is_profile_completed: false },
       hasOrg: false,
-      offices: [],
-      floors: [],
-      desks: [],
+      hasOffices: false,
+      hasFloors: false,
+      hasBookableDesks: false,
     });
     expect(getSetupProgress(checklist)).toBe(0);
   });
@@ -358,9 +328,9 @@ describe("getSetupProgress", () => {
     const checklist = getSetupChecklist({
       user: mockUser,
       hasOrg: true,
-      offices: [mockOffice],
-      floors: [mockFloor],
-      desks: [mockDesk],
+      hasOffices: true,
+      hasFloors: true,
+      hasBookableDesks: true,
       memberCount: 2,
     });
     expect(getSetupProgress(checklist)).toBe(100);
@@ -370,9 +340,9 @@ describe("getSetupProgress", () => {
     const checklist = getSetupChecklist({
       user: mockUser,
       hasOrg: true,
-      offices: [mockOffice],
-      floors: [mockFloor],
-      desks: [mockDesk],
+      hasOffices: true,
+      hasFloors: true,
+      hasBookableDesks: true,
       memberCount: 1,
     });
     // 5 of 6 complete
@@ -387,30 +357,33 @@ describe("getSetupProgress", () => {
 // ─── getSetupChecklist — desks routing ───────────────────────────────────────
 
 describe("getSetupChecklist — desks item routing", () => {
-  it("links desks item to office detail when no floor exists", () => {
+  it("links desks item to office detail when no first floor exists", () => {
     const result = getSetupChecklist({
       user: mockUser,
       hasOrg: true,
-      offices: [mockOffice],
-      floors: [],
-      desks: [],
+      hasOffices: true,
+      hasFloors: false,
+      hasBookableDesks: false,
+      firstOfficeId: OFFICE_ID,
     });
     const desksItem = result.find((i) => i.id === "desks");
-    expect(desksItem?.to).toContain(String(mockOffice.id));
+    expect(desksItem?.to).toContain(String(OFFICE_ID));
     expect(desksItem?.to).not.toContain("layout");
   });
 
-  it("links desks item to floor layout when floor exists", () => {
+  it("links desks item to floor layout when first floor exists", () => {
     const result = getSetupChecklist({
       user: mockUser,
       hasOrg: true,
-      offices: [mockOffice],
-      floors: [mockFloor],
-      desks: [],
+      hasOffices: true,
+      hasFloors: true,
+      hasBookableDesks: false,
+      firstOfficeId: OFFICE_ID,
+      firstFloorId: FLOOR_ID,
     });
     const desksItem = result.find((i) => i.id === "desks");
-    expect(desksItem?.to).toContain(String(mockOffice.id));
-    expect(desksItem?.to).toContain(String(mockFloor.id));
+    expect(desksItem?.to).toContain(String(OFFICE_ID));
+    expect(desksItem?.to).toContain(String(FLOOR_ID));
     expect(desksItem?.to).toContain("layout");
   });
 
@@ -418,9 +391,9 @@ describe("getSetupChecklist — desks item routing", () => {
     const result = getSetupChecklist({
       user: mockUser,
       hasOrg: true,
-      offices: [],
-      floors: [],
-      desks: [],
+      hasOffices: false,
+      hasFloors: false,
+      hasBookableDesks: false,
     });
     expect(result.find((i) => i.id === "desks")?.to).toBeUndefined();
   });
@@ -430,24 +403,34 @@ describe("getSetupChecklist — desks item routing", () => {
 
 describe("getWorkspaceSetupState", () => {
   it("returns noOrg when hasOrg is false", () => {
-    expect(getWorkspaceSetupState({ hasOrg: false, offices: [], floors: [], desks: [] })).toBe(
-      "noOrg"
-    );
+    expect(
+      getWorkspaceSetupState({
+        hasOrg: false,
+        hasOffices: false,
+        hasFloors: false,
+        hasBookableDesks: false,
+      })
+    ).toBe("noOrg");
   });
 
   it("returns noOffice when org exists but no offices", () => {
-    expect(getWorkspaceSetupState({ hasOrg: true, offices: [], floors: [], desks: [] })).toBe(
-      "noOffice"
-    );
+    expect(
+      getWorkspaceSetupState({
+        hasOrg: true,
+        hasOffices: false,
+        hasFloors: false,
+        hasBookableDesks: false,
+      })
+    ).toBe("noOffice");
   });
 
   it("returns noFloor when offices exist but no floors", () => {
     expect(
       getWorkspaceSetupState({
         hasOrg: true,
-        offices: [mockOffice],
-        floors: [],
-        desks: [],
+        hasOffices: true,
+        hasFloors: false,
+        hasBookableDesks: false,
       })
     ).toBe("noFloor");
   });
@@ -456,20 +439,20 @@ describe("getWorkspaceSetupState", () => {
     expect(
       getWorkspaceSetupState({
         hasOrg: true,
-        offices: [mockOffice],
-        floors: [mockFloor],
-        desks: [],
+        hasOffices: true,
+        hasFloors: true,
+        hasBookableDesks: false,
       })
     ).toBe("noBookableDesks");
   });
 
-  it("returns ready when offices, floors, and desks all exist", () => {
+  it("returns ready when offices, floors, and desks all exist (org-wide)", () => {
     expect(
       getWorkspaceSetupState({
         hasOrg: true,
-        offices: [mockOffice],
-        floors: [mockFloor],
-        desks: [mockDesk],
+        hasOffices: true,
+        hasFloors: true,
+        hasBookableDesks: true,
       })
     ).toBe("ready");
   });
