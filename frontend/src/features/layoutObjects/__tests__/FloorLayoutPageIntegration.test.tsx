@@ -114,6 +114,12 @@ vi.mock("@/features/auth", () => ({
   useAuth: mockUseAuth,
 }));
 
+// TD-045: FloorLayoutPage resolves its role via useSelectedOrganization, which
+// reads useAuth from the context module directly — mock that path too.
+vi.mock("@/features/auth/context/AuthContext", () => ({
+  useAuth: mockUseAuth,
+}));
+
 vi.mock("@/features/layoutObjects/api/layoutObjectApi");
 vi.mock("@/features/layoutObjects/api/floorApi", () => ({ listFloors: vi.fn() }));
 

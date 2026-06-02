@@ -105,6 +105,7 @@ function makeUser(role: "owner" | "admin" | "member" | null): CurrentUser {
 
 const officeFixture = {
   id: 1,
+  organization: 1,
   name: "Dublin",
   slug: "dublin",
   address_line_1: "",

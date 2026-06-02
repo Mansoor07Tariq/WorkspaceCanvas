@@ -10,6 +10,22 @@ export function getFirstActiveMembership(user: CurrentUser | null) {
   return user.memberships.find((m) => m.has_active_access) ?? null;
 }
 
+/**
+ * TD-045: resolve the caller's active membership for a specific organization so
+ * UI role gating matches the org of the office/floor being viewed (not just the
+ * first active membership). Returns null when the org id is unknown or the user
+ * has no active membership in it — callers fall back to the selected membership.
+ */
+export function getMembershipForOrganization(
+  memberships: MembershipInline[],
+  organizationId: number | null | undefined
+): MembershipInline | null {
+  if (organizationId == null) return null;
+  return (
+    memberships.find((m) => m.organization_id === organizationId && m.has_active_access) ?? null
+  );
+}
+
 /** Returns true if the given role can create, edit, and delete workspace content. */
 export function canManageWorkspaceContent(role?: string): boolean {
   return role === "owner" || role === "admin";

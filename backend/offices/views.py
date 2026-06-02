@@ -300,7 +300,11 @@ class FloorListCreateView(APIView):
         office, membership = get_office_for_user(request.user, office_id)
         if office is None:
             return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
-        floors = Floor.objects.filter(office=office, is_active=True)
+        # select_related("office") so the serializer's office.organization_id
+        # (TD-045) does not trigger a per-floor query.
+        floors = Floor.objects.select_related("office").filter(
+            office=office, is_active=True
+        )
         return Response(FloorResponseSerializer(floors, many=True).data)
 
     @extend_schema(

@@ -16,6 +16,7 @@ const mockList = vi.mocked(listOffices);
 function office(id: number, name: string): Office {
   return {
     id,
+    organization: 1,
     name,
     slug: name.toLowerCase(),
     address_line_1: "",

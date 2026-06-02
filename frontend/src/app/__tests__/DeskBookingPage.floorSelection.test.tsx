@@ -65,6 +65,7 @@ const baseAuth: AuthContextValue = {
 
 const FLOOR_A: Floor = {
   id: 10,
+  organization: 1,
   office: 1,
   name: "Floor A",
   slug: "floor-a",

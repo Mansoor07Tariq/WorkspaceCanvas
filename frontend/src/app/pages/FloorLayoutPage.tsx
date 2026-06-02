@@ -6,11 +6,11 @@ import { LoadingState } from "@/components/feedback/LoadingState";
 import { ErrorAlert } from "@/components/feedback/ErrorAlert";
 import { en } from "@/i18n/en";
 import { ROUTES, officeDetailPath } from "@/routes/paths";
-import { useAuth } from "@/features/auth";
 import {
-  getFirstActiveMembership,
+  getMembershipForOrganization,
   canManageWorkspaceContent,
 } from "@/features/organizations/utils/membershipUtils";
+import { useSelectedOrganization } from "@/features/organizations/context/SelectedOrganizationProvider";
 import { useLayoutObjects } from "@/features/layoutObjects/hooks/useLayoutObjects";
 import { useLayoutObjectForm } from "@/features/layoutObjects/hooks/useLayoutObjectForm";
 import { useCanvasInteractions } from "@/features/layoutObjects/hooks/useCanvasInteractions";
@@ -51,9 +51,7 @@ export function FloorLayoutPage() {
   const officeId = parseInt(officeIdParam ?? "", 10);
   const floorId = parseInt(floorIdParam ?? "", 10);
 
-  const { user } = useAuth();
-  const membership = getFirstActiveMembership(user);
-  const canManageLayout = canManageWorkspaceContent(membership?.role);
+  const { activeMemberships, selectedMembership } = useSelectedOrganization();
 
   const [selectedObjectId, setSelectedObjectId] = useState<number | null>(null);
 
@@ -69,6 +67,17 @@ export function FloorLayoutPage() {
     isNaN(officeId) ? 0 : officeId,
     isNaN(floorId) ? 0 : floorId
   );
+
+  // TD-045: gate layout-editing affordances on the membership for THIS floor's
+  // organization (resolved from the loaded desks, which carry their org id), so
+  // a multi-org user whose role differs across orgs sees the correct edit vs
+  // read-only mode even when this floor is not their selected org. Fall back to
+  // the selected membership before data loads / on a floor with no desks yet.
+  // Backend enforces the real permission regardless.
+  const floorOrganizationId = desks[0]?.organization ?? null;
+  const membership =
+    getMembershipForOrganization(activeMemberships, floorOrganizationId) ?? selectedMembership;
+  const canManageLayout = canManageWorkspaceContent(membership?.role);
 
   const bookableObjectIds = useMemo(
     () => new Set(desks.map((desk) => desk.layout_object)),

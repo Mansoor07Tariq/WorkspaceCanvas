@@ -1,5 +1,7 @@
 export interface Floor {
   id: number;
+  /** Owning organization id (TD-045: used to resolve per-office UI role). */
+  organization: number;
   office: number;
   name: string;
   slug: string;

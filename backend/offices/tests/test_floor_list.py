@@ -275,6 +275,7 @@ def test_response_fields_present(owner_client, active_office):
     floor = response.data[0]
     expected_fields = (
         "id",
+        "organization",
         "office",
         "name",
         "slug",
@@ -285,3 +286,5 @@ def test_response_fields_present(owner_client, active_office):
     )
     for field in expected_fields:
         assert field in floor
+    # TD-045: organization id is exposed so the frontend can resolve per-office role.
+    assert floor["organization"] == active_office.organization_id

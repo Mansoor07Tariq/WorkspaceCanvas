@@ -211,6 +211,7 @@ def test_response_fields(member_client, office_in_active_org):
     office = response.data[0]
     expected_fields = {
         "id",
+        "organization",
         "name",
         "slug",
         "address_line_1",
@@ -224,3 +225,5 @@ def test_response_fields(member_client, office_in_active_org):
         "updated_at",
     }
     assert expected_fields.issubset(set(office.keys()))
+    # TD-045: organization id exposed for per-office frontend role resolution.
+    assert office["organization"] == office_in_active_org.organization_id

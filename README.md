@@ -6,7 +6,7 @@ The long-term goal is to provide companies with a clean internal tool where admi
 
 ## Current Status
 
-This project is in active development. The authentication stack, organization setup, office/floor management, canvas builder, desk management, and desk booking API are all complete.
+This project is **MVP-ready** (final browser QA + codebase safety review completed in PR 056). The authentication stack, organization setup, office/floor management, canvas builder, desk management, desk booking, team invitations, multi-organization switching, and the role-aware dashboard are all complete. The technical-debt register has no open items.
 
 ### Completed
 
@@ -67,6 +67,13 @@ This project is in active development. The authentication stack, organization se
 - Membership created/reactivated on accept; invited user lands on member dashboard
 - People page (`/app/people`) replacing the previous ComingSoonPage
 
+**Multi-organization and performance**
+
+- Selected-organization provider + topbar switcher (shown only for users with more than one active org); dashboard/offices/bookings/people follow the selected org
+- Backend `?organization=` scoping with `get_office_for_user` so nested office/floor/desk/booking endpoints resolve offices in any of the user's active orgs (tenant isolation enforced)
+- In-memory TTL request cache (30s) across offices/floors/desks/layout objects/workspace summary **and bookings** (TD-044), with book/cancel/desk-mutation invalidation
+- Per-office/selected-org UI role gating on Office Detail and Floor Layout (TD-045)
+
 ### Upcoming Work
 
 - Events module
@@ -115,7 +122,7 @@ WorkspaceCanvas/
   docs/
     001-project-setup.md
     002-postgres-config.md
-    ... (053 docs total; see Documentation table below)
+    ... (056 docs total; see Documentation table below)
     TECHNICAL_DEBT.md
 
   frontend/
@@ -204,6 +211,7 @@ Detailed notes for each feature and setup step are in the `docs/` folder:
 | [053-invitation-email-delivery-management.md](docs/053-invitation-email-delivery-management.md) | Invitation email delivery, resend (token/expiry refresh), and pending-invitation expiry UI; email backend config; resolves TD-038/039/040 |
 | [054-dashboard-accuracy-booking-canvas-cleanup.md](docs/054-dashboard-accuracy-booking-canvas-cleanup.md) | Org-wide dashboard summary endpoint (accurate multi-office counts/readiness); canvas node style selector + booking floor-selection integration test; availability legend layout fix; resolves TD-032/033/034/035 |
 | [055-architecture-cleanup-hook-caching-multi-org.md](docs/055-architecture-cleanup-hook-caching-multi-org.md) | `useCanvasInteractions` extraction; TTL request cache + invalidation; selected-organization provider/switcher with backend `?organization=` support and `get_office_for_user`; resolves TD-019/021/037 |
+| [056-final-mvp-browser-qa-codebase-safety.md](docs/056-final-mvp-browser-qa-codebase-safety.md) | Final MVP browser QA + full codebase safety/security/privacy/tenant-isolation/architecture review; booking-hook TTL caching + book/cancel invalidation (TD-044); per-office/selected-org UI role gate backed by `organization` on office/floor serializers (TD-045); MVP readiness verdict |
 | [TECHNICAL_DEBT.md](docs/TECHNICAL_DEBT.md) | Long-lived engineering debt register — open items, severity, recommended fixes |
 
 ## Demo Data (Seed Command)

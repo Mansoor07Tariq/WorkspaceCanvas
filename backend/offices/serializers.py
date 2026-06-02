@@ -57,6 +57,7 @@ class OfficeResponseSerializer(serializers.ModelSerializer):
         model = Office
         fields = [
             "id",
+            "organization",
             "name",
             "slug",
             "address_line_1",
@@ -83,10 +84,19 @@ class CreateFloorSerializer(serializers.Serializer):
 
 
 class FloorResponseSerializer(serializers.ModelSerializer):
+    # TD-045: expose the owning organization so the frontend can resolve the
+    # correct per-office membership/role for UI gating (backend still enforces
+    # permissions independently). Derived from the office FK — no privacy leak
+    # (the org id is already known to any member of that org).
+    organization = serializers.IntegerField(
+        source="office.organization_id", read_only=True
+    )
+
     class Meta:
         model = Floor
         fields = [
             "id",
+            "organization",
             "office",
             "name",
             "slug",
