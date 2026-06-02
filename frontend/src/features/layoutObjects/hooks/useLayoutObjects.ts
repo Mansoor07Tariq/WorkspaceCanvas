@@ -1,5 +1,6 @@
-import { useReducer, useEffect, useState } from "react";
+import { useReducer, useEffect, useRef, useState } from "react";
 import { getApiErrorMessage } from "@/lib/api/getApiErrorMessage";
+import { getCachedValue, setCachedValue } from "@/lib/api/requestCache";
 import { listLayoutObjects } from "../api/layoutObjectApi";
 import type { LayoutObject } from "../types/layoutObject.types";
 
@@ -51,11 +52,18 @@ const initialState: State = {
   savingObjectIds: new Set(),
 };
 
+// office+floor ids are globally unique, so this key is org-safe.
+function layoutObjectsCacheKey(officeId: number, floorId: number): string {
+  return `layoutObjects:${officeId}:${floorId}`;
+}
+
 export function useLayoutObjects(officeId: number, floorId: number) {
   const [state, dispatch] = useReducer(reducer, initialState);
   const [tick, setTick] = useState(0);
+  const forceRef = useRef(false);
 
   function refresh() {
+    forceRef.current = true;
     setTick((t) => t + 1);
   }
 
@@ -70,11 +78,27 @@ export function useLayoutObjects(officeId: number, floorId: number) {
   useEffect(() => {
     if (!officeId || !floorId) return;
     let cancelled = false;
+    const cacheKey = layoutObjectsCacheKey(officeId, floorId);
+
+    const force = forceRef.current;
+    forceRef.current = false;
+
+    if (!force) {
+      const cached = getCachedValue<LayoutObject[]>(cacheKey);
+      if (cached !== undefined) {
+        dispatch({ type: "fetch_success", payload: cached });
+        return;
+      }
+    }
+
     dispatch({ type: "fetch_start" });
 
     listLayoutObjects(officeId, floorId)
       .then((data) => {
-        if (!cancelled) dispatch({ type: "fetch_success", payload: data });
+        if (!cancelled) {
+          setCachedValue(cacheKey, data);
+          dispatch({ type: "fetch_success", payload: data });
+        }
       })
       .catch((err) => {
         if (!cancelled) dispatch({ type: "fetch_error", payload: getApiErrorMessage(err) });

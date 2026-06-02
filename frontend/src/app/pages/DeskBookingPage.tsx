@@ -16,11 +16,8 @@ import { LoadingState } from "@/components/feedback/LoadingState";
 import { ErrorAlert } from "@/components/feedback/ErrorAlert";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { BusinessOutlined, LayersOutlined, WeekendOutlined } from "@mui/icons-material";
-import { useAuth } from "@/features/auth/context/AuthContext";
-import {
-  getFirstActiveMembership,
-  canManageWorkspaceContent,
-} from "@/features/organizations/utils/membershipUtils";
+import { canManageWorkspaceContent } from "@/features/organizations/utils/membershipUtils";
+import { useSelectedOrganization } from "@/features/organizations/context/SelectedOrganizationProvider";
 import { useOffices } from "@/features/offices/hooks/useOffices";
 import { useFloors } from "@/features/floors/hooks/useFloors";
 import { useDesks } from "@/features/desks/hooks/useDesks";
@@ -76,9 +73,9 @@ const c = en.bookings;
 
 export function DeskBookingPage() {
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const membership = getFirstActiveMembership(user);
-  const isOwnerOrAdmin = canManageWorkspaceContent(membership?.role);
+  // PR 055: booking context follows the selected organization.
+  const { selectedMembership, selectedOrganizationId } = useSelectedOrganization();
+  const isOwnerOrAdmin = canManageWorkspaceContent(selectedMembership?.role);
 
   const [selectedOfficeId, setSelectedOfficeId] = useState<number | "">("");
   const [selectedFloorId, setSelectedFloorId] = useState<number | "">("");
@@ -92,7 +89,11 @@ export function DeskBookingPage() {
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [cancelSuccess, setCancelSuccess] = useState(false);
 
-  const { offices, loading: officesLoading, error: officesError } = useOffices();
+  const {
+    offices,
+    loading: officesLoading,
+    error: officesError,
+  } = useOffices(selectedOrganizationId);
 
   const floorOfficeId = typeof selectedOfficeId === "number" ? selectedOfficeId : 0;
   const { floors, loading: floorsLoading, error: floorsError } = useFloors(floorOfficeId);

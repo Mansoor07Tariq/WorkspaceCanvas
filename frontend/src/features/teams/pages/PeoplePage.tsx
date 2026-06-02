@@ -1,12 +1,9 @@
 import { useState } from "react";
 import { Alert, Card, CardContent, Container, Snackbar, Typography } from "@mui/material";
 import { WorkspacesOutlined } from "@mui/icons-material";
-import { useAuth } from "@/features/auth/context/AuthContext";
 import { useNavigate } from "react-router-dom";
-import {
-  canManageWorkspaceContent,
-  getFirstActiveMembership,
-} from "@/features/organizations/utils/membershipUtils";
+import { canManageWorkspaceContent } from "@/features/organizations/utils/membershipUtils";
+import { useSelectedOrganization } from "@/features/organizations/context/SelectedOrganizationProvider";
 import { useTeamMembers } from "../hooks/useTeamMembers";
 import { useInvitations } from "../hooks/useInvitations";
 import { MembersList } from "../components/MembersList";
@@ -20,17 +17,13 @@ import { en } from "@/i18n/en";
 const c = en.app.people;
 
 export function PeoplePage() {
-  const { user } = useAuth();
-  return <PeopleContent user={user} />;
+  return <PeopleContent />;
 }
 
-interface PeopleContentProps {
-  user: import("@/features/auth/types/auth.types").CurrentUser | null;
-}
-
-function PeopleContent({ user }: PeopleContentProps) {
+function PeopleContent() {
   const navigate = useNavigate();
-  const membership = getFirstActiveMembership(user);
+  // PR 055: People is scoped to the selected organization.
+  const { selectedMembership: membership } = useSelectedOrganization();
   const orgId = membership?.organization_id ?? null;
   const isManager = canManageWorkspaceContent(membership?.role);
 

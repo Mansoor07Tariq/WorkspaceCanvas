@@ -4,8 +4,8 @@ import { useAuth } from "@/features/auth/context/AuthContext";
 import {
   hasActiveMembership,
   canManageOfficeSetup,
-  getFirstActiveMembership,
 } from "@/features/organizations/utils/membershipUtils";
+import { useSelectedOrganization } from "@/features/organizations/context/SelectedOrganizationProvider";
 import { OrganizationSetupFlow } from "@/features/organizations/components/OrganizationSetupFlow";
 import { LoadingState } from "@/components/feedback/LoadingState";
 import { OfficesEmptyState } from "@/features/offices/components/OfficesEmptyState";
@@ -17,14 +17,14 @@ type PageMode = "list" | "create";
 
 export function AppOfficesPage() {
   const { user } = useAuth();
+  const { selectedMembership, selectedOrganizationId } = useSelectedOrganization();
   const [orgJustCreated, setOrgJustCreated] = useState(false);
   const [mode, setMode] = useState<PageMode>("list");
 
   const hasOrg = orgJustCreated || hasActiveMembership(user);
-  const membership = getFirstActiveMembership(user);
-  const canManage = canManageOfficeSetup(membership?.role);
+  const canManage = canManageOfficeSetup(selectedMembership?.role);
 
-  const { offices, loading, refresh } = useOffices();
+  const { offices, loading, refresh } = useOffices(selectedOrganizationId);
 
   if (!hasOrg) {
     return (
@@ -39,6 +39,7 @@ export function AppOfficesPage() {
   if (canManage && mode === "create") {
     return (
       <OfficeCreationFlow
+        orgId={selectedOrganizationId}
         onCreated={() => {
           refresh();
           setMode("list");

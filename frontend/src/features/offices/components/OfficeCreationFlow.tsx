@@ -32,9 +32,11 @@ const NUMBERED_STEPS: OfficeCreationStep[] = OFFICE_CREATION_STEPS.filter((s) =>
 
 interface Props {
   onCreated: (office: Office) => void;
+  /** Selected org to create the office in (PR 055 multi-org); defaults to first active. */
+  orgId?: number | null;
 }
 
-export function OfficeCreationFlow({ onCreated }: Props) {
+export function OfficeCreationFlow({ onCreated, orgId }: Props) {
   const reducedMotion = usePrefersReducedMotion();
   const {
     fields,
@@ -47,7 +49,7 @@ export function OfficeCreationFlow({ onCreated }: Props) {
     goNext,
     goBack,
     handleCreate,
-  } = useOfficeCreationForm(onCreated);
+  } = useOfficeCreationForm(onCreated, orgId);
 
   const numberedIndex = NUMBERED_STEPS.indexOf(currentStep);
 

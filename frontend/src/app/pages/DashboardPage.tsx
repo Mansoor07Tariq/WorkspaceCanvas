@@ -2,10 +2,8 @@ import { Alert, Box, Button, Container, Grid, Typography } from "@mui/material";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/features/auth/context/AuthContext";
 import { ProfileOnboardingCarousel } from "@/features/profile";
-import {
-  getFirstActiveMembership,
-  canManageWorkspaceContent,
-} from "@/features/organizations/utils/membershipUtils";
+import { canManageWorkspaceContent } from "@/features/organizations/utils/membershipUtils";
+import { useSelectedOrganization } from "@/features/organizations/context/SelectedOrganizationProvider";
 import {
   getSetupChecklist,
   getWorkspaceSetupState,
@@ -41,10 +39,14 @@ interface DashboardContentProps {
 }
 
 function DashboardContent({ user }: DashboardContentProps) {
-  const membership = getFirstActiveMembership(user);
+  // PR 055: dashboard context follows the selected organization (falls back to
+  // the first active membership for single-org users / in isolation).
+  const { selectedMembership: membership } = useSelectedOrganization();
   const hasOrg = !!membership;
   const isOwnerOrAdmin = canManageWorkspaceContent(membership?.role);
   const firstName = user?.first_name || user?.full_name?.split(" ")[0] || "";
+
+  const orgId = membership?.organization_id ?? null;
 
   const {
     officesLoading,
@@ -55,9 +57,8 @@ function DashboardContent({ user }: DashboardContentProps) {
     today,
     firstOffice,
     firstFloor,
-  } = useDashboardData();
+  } = useDashboardData(orgId);
 
-  const orgId = membership?.organization_id ?? null;
   const { members } = useTeamMembers(isOwnerOrAdmin ? orgId : null);
 
   // Org-wide workspace summary (TD-035): authoritative source for counts and
