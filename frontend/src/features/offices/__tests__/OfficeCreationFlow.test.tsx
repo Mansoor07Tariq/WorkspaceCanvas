@@ -17,6 +17,7 @@ const mockCreateOffice = vi.mocked(createOffice);
 
 const mockOffice = {
   id: 1,
+  organization: 1,
   name: "Dublin Office",
   slug: "dublin-office",
   address_line_1: "",

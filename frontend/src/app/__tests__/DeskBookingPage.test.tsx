@@ -139,6 +139,7 @@ describe("DeskBookingPage", () => {
       offices: [
         {
           id: 1,
+          organization: 1,
           name: "HQ",
           slug: "hq",
           address_line_1: "",

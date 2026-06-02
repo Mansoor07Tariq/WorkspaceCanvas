@@ -124,4 +124,80 @@ describe("useDeskBookings", () => {
     await waitFor(() => expect(result.current.bookings).toEqual([second]));
     expect(mockListFloorBookings).toHaveBeenCalledTimes(2);
   });
+
+  // ─── TD-044: caching ─────────────────────────────────────────────────────────
+
+  it("caches the first fetch; a second mount with the same office/floor/date serves the cache without refetching", async () => {
+    const booking = makeBooking();
+    mockListFloorBookings.mockResolvedValue([booking]);
+
+    const first = renderHook(() => useDeskBookings(1, 2, "2026-06-01"));
+    await waitFor(() => expect(first.result.current.loading).toBe(false));
+    expect(mockListFloorBookings).toHaveBeenCalledTimes(1);
+
+    const second = renderHook(() => useDeskBookings(1, 2, "2026-06-01"));
+    // Cache hit is synchronous: no loading flicker, data already present.
+    expect(second.result.current.loading).toBe(false);
+    expect(second.result.current.bookings).toEqual([booking]);
+    expect(mockListFloorBookings).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not reuse the cache for a different date", async () => {
+    mockListFloorBookings.mockResolvedValue([]);
+
+    const first = renderHook(() => useDeskBookings(1, 2, "2026-06-01"));
+    await waitFor(() => expect(first.result.current.loading).toBe(false));
+
+    const second = renderHook(() => useDeskBookings(1, 2, "2026-06-02"));
+    await waitFor(() => expect(second.result.current.loading).toBe(false));
+
+    expect(mockListFloorBookings).toHaveBeenCalledTimes(2);
+    expect(mockListFloorBookings).toHaveBeenLastCalledWith(1, 2, "2026-06-02");
+  });
+
+  it("does not reuse the cache for a different floor", async () => {
+    mockListFloorBookings.mockResolvedValue([]);
+
+    const first = renderHook(() => useDeskBookings(1, 2, "2026-06-01"));
+    await waitFor(() => expect(first.result.current.loading).toBe(false));
+
+    const second = renderHook(() => useDeskBookings(1, 9, "2026-06-01"));
+    await waitFor(() => expect(second.result.current.loading).toBe(false));
+
+    expect(mockListFloorBookings).toHaveBeenCalledTimes(2);
+    expect(mockListFloorBookings).toHaveBeenLastCalledWith(1, 9, "2026-06-01");
+  });
+
+  it("refresh() bypasses the cache even when a fresh entry exists", async () => {
+    const first = makeBooking({ id: 1 });
+    const second = makeBooking({ id: 2 });
+    mockListFloorBookings.mockResolvedValueOnce([first]).mockResolvedValueOnce([second]);
+
+    const a = renderHook(() => useDeskBookings(1, 2, "2026-06-01"));
+    await waitFor(() => expect(a.result.current.loading).toBe(false));
+    expect(mockListFloorBookings).toHaveBeenCalledTimes(1);
+
+    // Second mount is a cache hit (still 1 call).
+    const b = renderHook(() => useDeskBookings(1, 2, "2026-06-01"));
+    expect(mockListFloorBookings).toHaveBeenCalledTimes(1);
+
+    // refresh forces a network fetch.
+    b.result.current.refresh();
+    await waitFor(() => expect(b.result.current.bookings).toEqual([second]));
+    expect(mockListFloorBookings).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not cache the empty result produced by a missing scope", async () => {
+    mockListFloorBookings.mockResolvedValue([makeBooking()]);
+
+    // Missing date → empty list, nothing cached.
+    const empty = renderHook(() => useDeskBookings(1, 2, ""));
+    expect(empty.result.current.bookings).toEqual([]);
+    expect(mockListFloorBookings).not.toHaveBeenCalled();
+
+    // A real fetch for the same office/floor still happens (no poisoned cache).
+    const real = renderHook(() => useDeskBookings(1, 2, "2026-06-01"));
+    await waitFor(() => expect(real.result.current.loading).toBe(false));
+    expect(mockListFloorBookings).toHaveBeenCalledTimes(1);
+  });
 });

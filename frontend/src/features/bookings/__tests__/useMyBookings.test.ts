@@ -134,6 +134,52 @@ describe("useMyBookings", () => {
     expect(result.current.cancelSuccess).toBeUndefined();
   });
 
+  // ─── TD-044: caching ─────────────────────────────────────────────────────────
+
+  it("caches per param context; a second mount with the same params serves the cache", async () => {
+    const booking = makeBooking();
+    mockListMyBookings.mockResolvedValue([booking]);
+
+    const first = renderHook(() => useMyBookings({ status: "active" }));
+    await waitFor(() => expect(first.result.current.loading).toBe(false));
+    expect(mockListMyBookings).toHaveBeenCalledTimes(1);
+
+    const second = renderHook(() => useMyBookings({ status: "active" }));
+    expect(second.result.current.loading).toBe(false);
+    expect(second.result.current.bookings).toEqual([booking]);
+    expect(mockListMyBookings).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not reuse the cache for a different status filter", async () => {
+    mockListMyBookings.mockResolvedValue([]);
+
+    const first = renderHook(() => useMyBookings({ status: "active" }));
+    await waitFor(() => expect(first.result.current.loading).toBe(false));
+
+    const second = renderHook(() => useMyBookings({ status: "cancelled" }));
+    await waitFor(() => expect(second.result.current.loading).toBe(false));
+
+    expect(mockListMyBookings).toHaveBeenCalledTimes(2);
+  });
+
+  it("refresh() bypasses the cache", async () => {
+    const first = makeBooking({ id: 1 });
+    const second = makeBooking({ id: 2 });
+    mockListMyBookings.mockResolvedValueOnce([first]).mockResolvedValueOnce([second]);
+
+    const a = renderHook(() => useMyBookings({ status: "active" }));
+    await waitFor(() => expect(a.result.current.loading).toBe(false));
+    expect(mockListMyBookings).toHaveBeenCalledTimes(1);
+
+    // Cache hit (still 1 call).
+    const b = renderHook(() => useMyBookings({ status: "active" }));
+    expect(mockListMyBookings).toHaveBeenCalledTimes(1);
+
+    act(() => b.result.current.refresh());
+    await waitFor(() => expect(b.result.current.bookings).toEqual([second]));
+    expect(mockListMyBookings).toHaveBeenCalledTimes(2);
+  });
+
   it("does not update state from stale request when params change (TD-020)", async () => {
     // First fetch resolves slowly; second fetch resolves immediately.
     // The stale first response should not overwrite the second's data.

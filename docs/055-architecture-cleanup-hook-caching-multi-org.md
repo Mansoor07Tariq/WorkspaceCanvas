@@ -233,9 +233,15 @@ caching, or a FloorLayoutPage redesign.
 
 ## Remaining debt
 
-- Booking hooks (`useDeskBookings`/`useMyBookings`) are not yet cached
-  (date/status keying + book/cancel invalidation) — a future enhancement.
-- `FloorLayoutPage`/`OfficeDetailPage` role gates use the first active
-  membership rather than the selected/per-office membership; the backend
-  enforces per-office permissions, so this is a minor UI-affordance gap for
-  multi-org users whose role differs across orgs.
+Both of the items below were tracked as TD-044 / TD-045 and **resolved in PR 056**
+(see `docs/056-final-mvp-browser-qa-codebase-safety.md`):
+
+- ~~Booking hooks (`useDeskBookings`/`useMyBookings`) are not yet cached
+  (date/status keying + book/cancel invalidation) — a future enhancement.~~
+  **Resolved (TD-044, PR 056):** TTL caching keyed on office/floor/date and
+  status/from/to, with `invalidateBookingCaches()` on book/cancel/desk-mutation.
+- ~~`FloorLayoutPage`/`OfficeDetailPage` role gates use the first active
+  membership rather than the selected/per-office membership.~~
+  **Resolved (TD-045, PR 056):** role resolved from the office's org
+  (`organization` now on the office/floor serializers) via
+  `getMembershipForOrganization`, falling back to the selected membership.

@@ -1,5 +1,6 @@
 import { api } from "@/lib/api/apiClient";
 import { invalidateCache } from "@/lib/api/requestCache";
+import { invalidateBookingCaches } from "@/features/bookings/api/bookingApi";
 import type { CreateDeskPayload, Desk, UpdateDeskPayload } from "../types/desk.types";
 
 function baseUrl(officeId: number, floorId: number): string {
@@ -42,10 +43,15 @@ export async function updateDesk(
 ): Promise<Desk> {
   const desk = await api.patch<Desk>(detailUrl(officeId, floorId, deskId), data);
   invalidateDeskCaches(officeId, floorId);
+  // A status change (e.g. → maintenance) changes desk availability in booking views.
+  invalidateBookingCaches();
   return desk;
 }
 
 export async function deleteDesk(officeId: number, floorId: number, deskId: number): Promise<void> {
   await api.delete<void>(detailUrl(officeId, floorId, deskId));
   invalidateDeskCaches(officeId, floorId);
+  // TD-044: deactivating a desk cancels its active bookings on the backend, so
+  // any cached booking availability must be dropped.
+  invalidateBookingCaches();
 }

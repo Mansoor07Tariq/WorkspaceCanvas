@@ -26,6 +26,7 @@ import {
   listMyBookings,
   cancelMyBooking,
 } from "../api/bookingApi";
+import { setCachedValue, getCachedValue, clearRequestCache } from "@/lib/api/requestCache";
 
 const mockApi = api as {
   get: ReturnType<typeof vi.fn>;
@@ -170,5 +171,54 @@ describe("bookingApi", () => {
     cancelMyBooking(99);
     const sentPayload = mockApi.post.mock.calls[0][1];
     expect(sentPayload).toEqual({});
+  });
+
+  // ─── TD-044: booking mutations invalidate the booking caches ─────────────────
+
+  describe("cache invalidation", () => {
+    beforeEach(() => clearRequestCache());
+
+    function seedBookingCaches() {
+      setCachedValue("deskBookings:1:3:2026-06-01", [{ id: 1 }]);
+      setCachedValue("myBookings:::", [{ id: 1 }]);
+      setCachedValue("desks:1:3", [{ id: 9 }]); // unrelated — must survive
+    }
+
+    it("createDeskBooking clears deskBookings and myBookings caches", async () => {
+      mockApi.post.mockResolvedValue({});
+      seedBookingCaches();
+      await createDeskBooking(1, 3, { desk: 7, booking_date: "2026-06-01" });
+      expect(getCachedValue("deskBookings:1:3:2026-06-01")).toBeUndefined();
+      expect(getCachedValue("myBookings:::")).toBeUndefined();
+      expect(getCachedValue("desks:1:3")).toBeDefined();
+    });
+
+    it("cancelDeskBooking clears deskBookings and myBookings caches", async () => {
+      mockApi.post.mockResolvedValue({});
+      seedBookingCaches();
+      await cancelDeskBooking(1, 3, 42);
+      expect(getCachedValue("deskBookings:1:3:2026-06-01")).toBeUndefined();
+      expect(getCachedValue("myBookings:::")).toBeUndefined();
+      expect(getCachedValue("desks:1:3")).toBeDefined();
+    });
+
+    it("cancelMyBooking clears deskBookings and myBookings caches", async () => {
+      mockApi.post.mockResolvedValue({});
+      seedBookingCaches();
+      await cancelMyBooking(99);
+      expect(getCachedValue("deskBookings:1:3:2026-06-01")).toBeUndefined();
+      expect(getCachedValue("myBookings:::")).toBeUndefined();
+      expect(getCachedValue("desks:1:3")).toBeDefined();
+    });
+
+    it("a rejected createDeskBooking does not clear the caches", async () => {
+      mockApi.post.mockRejectedValue(new Error("boom"));
+      seedBookingCaches();
+      await expect(
+        createDeskBooking(1, 3, { desk: 7, booking_date: "2026-06-01" })
+      ).rejects.toThrow("boom");
+      expect(getCachedValue("deskBookings:1:3:2026-06-01")).toBeDefined();
+      expect(getCachedValue("myBookings:::")).toBeDefined();
+    });
   });
 });

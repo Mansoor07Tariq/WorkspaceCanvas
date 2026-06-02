@@ -7,6 +7,7 @@ import {
   canInviteMembers,
   canBookDesk,
   isActiveMembership,
+  getMembershipForOrganization,
 } from "../utils/membershipUtils";
 import type { CurrentUser, MembershipInline } from "@/features/auth/types/auth.types";
 
@@ -160,5 +161,36 @@ describe("isActiveMembership", () => {
 
   it("returns false for undefined", () => {
     expect(isActiveMembership(undefined)).toBe(false);
+  });
+});
+
+describe("getMembershipForOrganization (TD-045)", () => {
+  const orgA = makeMembership({ id: 1, organization_id: 10, role: "admin" });
+  const orgB = makeMembership({ id: 2, organization_id: 20, role: "member" });
+  const memberships = [orgA, orgB];
+
+  it("returns the membership matching the organization id", () => {
+    expect(getMembershipForOrganization(memberships, 20)).toBe(orgB);
+    expect(getMembershipForOrganization(memberships, 10)).toBe(orgA);
+  });
+
+  it("does not just return the first membership (per-org resolution)", () => {
+    // Regression for TD-045: previously the first active membership (org A admin)
+    // was used regardless of which org's office was viewed.
+    expect(getMembershipForOrganization(memberships, 20)?.role).toBe("member");
+  });
+
+  it("returns null when no active membership exists for the org", () => {
+    expect(getMembershipForOrganization(memberships, 999)).toBeNull();
+  });
+
+  it("ignores disabled memberships for the org", () => {
+    const disabled = makeMembership({ organization_id: 30, has_active_access: false });
+    expect(getMembershipForOrganization([disabled], 30)).toBeNull();
+  });
+
+  it("returns null when organization id is null or undefined", () => {
+    expect(getMembershipForOrganization(memberships, null)).toBeNull();
+    expect(getMembershipForOrganization(memberships, undefined)).toBeNull();
   });
 });

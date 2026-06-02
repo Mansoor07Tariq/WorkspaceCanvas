@@ -1,5 +1,6 @@
-import { useEffect, useReducer, useState } from "react";
+import { useEffect, useReducer, useRef, useState } from "react";
 import { getApiErrorMessage } from "@/lib/api/getApiErrorMessage";
+import { getCachedValue, setCachedValue } from "@/lib/api/requestCache";
 import { listMyBookings, cancelMyBooking } from "../api/bookingApi";
 import type { DeskBooking, MyBookingQueryParams } from "../types/booking.types";
 
@@ -44,21 +45,45 @@ const initialState: State = {
   cancelError: undefined,
 };
 
+// TD-044: my-bookings span all of the user's active orgs (the backend scopes to
+// request.user), so the per-user cache only needs the query filters in the key.
+// Book/cancel anywhere clears the whole `myBookings:` namespace.
+function myBookingsCacheKey(params?: MyBookingQueryParams): string {
+  return `myBookings:${params?.status ?? ""}:${params?.from ?? ""}:${params?.to ?? ""}`;
+}
+
 export function useMyBookings(params?: MyBookingQueryParams) {
   const [state, dispatch] = useReducer(reducer, initialState);
   const [tick, setTick] = useState(0);
+  const forceRef = useRef(false);
 
   function refresh() {
+    forceRef.current = true;
     setTick((t) => t + 1);
   }
 
   useEffect(() => {
+    const cacheKey = myBookingsCacheKey(params);
+    const force = forceRef.current;
+    forceRef.current = false;
+
+    if (!force) {
+      const cached = getCachedValue<DeskBooking[]>(cacheKey);
+      if (cached !== undefined) {
+        dispatch({ type: "fetch_success", payload: cached });
+        return;
+      }
+    }
+
     const controller = new AbortController();
     let cancelled = false;
     dispatch({ type: "fetch_start" });
     listMyBookings(params)
       .then((data) => {
-        if (!cancelled) dispatch({ type: "fetch_success", payload: data });
+        if (!cancelled) {
+          setCachedValue(cacheKey, data);
+          dispatch({ type: "fetch_success", payload: data });
+        }
       })
       .catch((err) => {
         if (!cancelled && !controller.signal.aborted)
@@ -76,6 +101,8 @@ export function useMyBookings(params?: MyBookingQueryParams) {
     try {
       await cancelMyBooking(bookingId);
       dispatch({ type: "cancel_success", payload: "Booking cancelled successfully." });
+      // cancelMyBooking() clears the myBookings:/deskBookings: namespaces; refresh
+      // bypasses the cache to refetch this view immediately.
       refresh();
     } catch (err) {
       dispatch({ type: "cancel_error", payload: getApiErrorMessage(err) });

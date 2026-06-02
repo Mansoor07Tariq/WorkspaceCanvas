@@ -1,5 +1,7 @@
 export interface Office {
   id: number;
+  /** Owning organization id (TD-045: used to resolve per-office UI role). */
+  organization: number;
   name: string;
   slug: string;
   address_line_1: string;

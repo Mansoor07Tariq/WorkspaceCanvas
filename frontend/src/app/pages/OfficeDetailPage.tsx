@@ -6,11 +6,11 @@ import { LoadingState } from "@/components/feedback/LoadingState";
 import { ErrorAlert } from "@/components/feedback/ErrorAlert";
 import { en } from "@/i18n/en";
 import { ROUTES } from "@/routes/paths";
-import { useAuth } from "@/features/auth/context/AuthContext";
 import {
   canManageOfficeSetup,
-  getFirstActiveMembership,
+  getMembershipForOrganization,
 } from "@/features/organizations/utils/membershipUtils";
+import { useSelectedOrganization } from "@/features/organizations/context/SelectedOrganizationProvider";
 import { useFloors } from "@/features/floors/hooks/useFloors";
 import { FloorsEmptyState } from "@/features/floors/components/FloorsEmptyState";
 import { FloorCreationFlow } from "@/features/floors/components/FloorCreationFlow";
@@ -25,12 +25,20 @@ export function OfficeDetailPage() {
   const navigate = useNavigate();
   const [mode, setMode] = useState<PageMode>("list");
 
-  const { user } = useAuth();
-  const membership = getFirstActiveMembership(user);
-  const canManage = canManageOfficeSetup(membership?.role);
+  const { activeMemberships, selectedMembership } = useSelectedOrganization();
 
   const officeId = parseInt(officeIdParam ?? "", 10);
   const { floors, loading, error, refresh } = useFloors(isNaN(officeId) ? 0 : officeId);
+
+  // TD-045: gate on the membership for THIS office's organization (resolved from
+  // the loaded floors), so a multi-org user whose role differs across orgs sees
+  // the correct affordance even when this office is not their selected org. Fall
+  // back to the selected membership before the floors load / when the office has
+  // no floors yet. Backend enforces the real permission regardless.
+  const officeOrganizationId = floors[0]?.organization ?? null;
+  const membership =
+    getMembershipForOrganization(activeMemberships, officeOrganizationId) ?? selectedMembership;
+  const canManage = canManageOfficeSetup(membership?.role);
 
   if (isNaN(officeId)) {
     return <Navigate to={ROUTES.offices} replace />;

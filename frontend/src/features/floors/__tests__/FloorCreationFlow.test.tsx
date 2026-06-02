@@ -17,6 +17,7 @@ const mockCreateFloor = vi.mocked(createFloor);
 
 const mockFloor = {
   id: 1,
+  organization: 1,
   office: 42,
   name: "Ground Floor",
   slug: "ground-floor",
