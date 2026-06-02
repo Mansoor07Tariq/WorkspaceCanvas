@@ -34,6 +34,10 @@ def list_create_url(org_id: int) -> str:
     return f"/api/accounts/organizations/{org_id}/invitations/"
 
 
+def resend_url(org_id: int, inv_id: int) -> str:
+    return f"/api/accounts/organizations/{org_id}/invitations/{inv_id}/resend/"
+
+
 def detail_url(token) -> str:
     return f"/api/accounts/invitations/{token}/"
 
@@ -95,6 +99,19 @@ def test_invite_create_is_throttled(monkeypatch, org, owner):
         {"email": "b@throttle.test", "role": MemberRole.MEMBER},
         format="json",
     )
+    assert second.status_code == 429
+
+
+def test_invite_resend_is_throttled(monkeypatch, org, owner, pending_invitation):
+    """Resend shares the invite_write scope; a second call returns 429."""
+    _tight_throttle(monkeypatch, "invite_write", "1/min")
+    client = APIClient()
+    client.force_authenticate(user=owner)
+
+    first = client.post(resend_url(org.id, pending_invitation.id))
+    assert first.status_code == 200
+
+    second = client.post(resend_url(org.id, pending_invitation.id))
     assert second.status_code == 429
 
 

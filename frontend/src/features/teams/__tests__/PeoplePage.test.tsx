@@ -128,6 +128,8 @@ function defaultInvHooks() {
     createError: null,
     createInvite: vi.fn(),
     cancelInvite: vi.fn(),
+    resendInvite: vi.fn(),
+    resendingId: null,
     refresh: vi.fn(),
   });
 }
@@ -224,6 +226,8 @@ describe("PeoplePage — members list", () => {
       createError: null,
       createInvite: vi.fn(),
       cancelInvite: vi.fn(),
+      resendInvite: vi.fn(),
+      resendingId: null,
       refresh: vi.fn(),
     });
     renderPage();
@@ -251,6 +255,8 @@ describe("PeoplePage — pending invitations", () => {
       createError: null,
       createInvite: vi.fn(),
       cancelInvite: vi.fn(),
+      resendInvite: vi.fn(),
+      resendingId: null,
       refresh: vi.fn(),
     });
     renderPage();
@@ -272,12 +278,83 @@ describe("PeoplePage — pending invitations", () => {
       createError: null,
       createInvite: vi.fn(),
       cancelInvite: vi.fn(),
+      resendInvite: vi.fn(),
+      resendingId: null,
       refresh: vi.fn(),
     });
     renderPage();
     expect(
       screen.getByRole("button", { name: /cancel invitation for invited@example.com/i })
     ).toBeInTheDocument();
+  });
+});
+
+describe("PeoplePage — resend invitation", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  function withInvitation(resendInvite: (id: number) => Promise<Invitation | null>) {
+    mockUseTeamMembers.mockReturnValue({
+      members: [],
+      loading: false,
+      error: null,
+      refresh: vi.fn(),
+    });
+    mockUseInvitations.mockReturnValue({
+      invitations: [mockInvitation],
+      loading: false,
+      error: null,
+      creating: false,
+      createError: null,
+      resendingId: null,
+      createInvite: vi.fn(),
+      cancelInvite: vi.fn(),
+      resendInvite,
+      refresh: vi.fn(),
+    });
+  }
+
+  it("shows resend button for owner and calls resendInvite", async () => {
+    const user = userEvent.setup();
+    const resendInvite = vi.fn().mockResolvedValue(mockInvitation);
+    withInvitation(resendInvite);
+    renderPage(ownerUser);
+    await user.click(
+      screen.getByRole("button", { name: /resend invitation to invited@example.com/i })
+    );
+    expect(resendInvite).toHaveBeenCalledWith(10);
+  });
+
+  it("shows a success alert after a successful resend", async () => {
+    const user = userEvent.setup();
+    const resendInvite = vi.fn().mockResolvedValue(mockInvitation);
+    withInvitation(resendInvite);
+    renderPage(ownerUser);
+    await user.click(
+      screen.getByRole("button", { name: /resend invitation to invited@example.com/i })
+    );
+    expect(
+      await screen.findByText(/invitation resent to invited@example.com/i)
+    ).toBeInTheDocument();
+  });
+
+  it("shows an error alert when resend fails", async () => {
+    const user = userEvent.setup();
+    const resendInvite = vi.fn().mockRejectedValue(new Error("boom"));
+    withInvitation(resendInvite);
+    renderPage(ownerUser);
+    await user.click(
+      screen.getByRole("button", { name: /resend invitation to invited@example.com/i })
+    );
+    expect(await screen.findByText(/could not resend the invitation/i)).toBeInTheDocument();
+  });
+
+  it("does not show resend button for member", () => {
+    const resendInvite = vi.fn();
+    withInvitation(resendInvite);
+    renderPage(memberUser);
+    expect(screen.queryByRole("button", { name: /resend invitation/i })).not.toBeInTheDocument();
   });
 });
 
@@ -313,6 +390,8 @@ describe("PeoplePage — invite form", () => {
       createError: null,
       createInvite: mockCreateInvite,
       cancelInvite: vi.fn(),
+      resendInvite: vi.fn(),
+      resendingId: null,
       refresh: vi.fn(),
     });
     renderPage();

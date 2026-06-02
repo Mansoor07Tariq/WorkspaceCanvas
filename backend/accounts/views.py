@@ -1,14 +1,24 @@
+import smtplib
+import uuid
+from datetime import timedelta
+
 from django.db import transaction
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
-from rest_framework.exceptions import NotFound, PermissionDenied, ValidationError
+from rest_framework.exceptions import (
+    APIException,
+    NotFound,
+    PermissionDenied,
+    ValidationError,
+)
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle, SimpleRateThrottle
 from rest_framework.views import APIView
 
+from .emails import send_invitation_email
 from .models import Invitation, MemberRole, Membership, Organization
 from .serializers import (
     CreateInvitationSerializer,
@@ -18,6 +28,30 @@ from .serializers import (
     MembershipSerializer,
     OrganizationResponseSerializer,
 )
+
+INVITATION_TTL = timedelta(days=7)
+
+
+class EmailDeliveryError(APIException):
+    """Raised when an invitation email cannot be delivered.
+
+    Returns 503 with a generic message; SMTP internals are never leaked to the
+    client. The surrounding transaction is rolled back so no half-sent
+    invitation is persisted.
+    """
+
+    status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+    default_detail = (
+        "We could not send the invitation email right now. Please try again."
+    )
+    default_code = "email_delivery_failed"
+
+
+def _send_invitation_email_or_503(invitation: Invitation) -> None:
+    try:
+        send_invitation_email(invitation)
+    except (smtplib.SMTPException, OSError, ConnectionError) as exc:
+        raise EmailDeliveryError() from exc
 
 
 def _invite_throttle_cache_key(throttle: SimpleRateThrottle, request: Request) -> str:
@@ -183,7 +217,11 @@ class InvitationListCreateView(APIView):
             context={"request": request, "organization": org},
         )
         serializer.is_valid(raise_exception=True)
-        invitation = serializer.save()
+        # Create + send inside one transaction: if delivery fails the
+        # invitation is rolled back rather than left pending with no email.
+        with transaction.atomic():
+            invitation = serializer.save()
+            _send_invitation_email_or_503(invitation)
         return Response(
             InvitationSerializer(invitation).data,
             status=status.HTTP_201_CREATED,
@@ -211,6 +249,34 @@ class InvitationCancelView(APIView):
             )
         invitation.status = Invitation.Status.CANCELLED
         invitation.save(update_fields=["status", "updated_at"])
+        return Response(InvitationSerializer(invitation).data)
+
+
+class InvitationResendView(APIView):
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [_InviteWriteThrottle]
+
+    @extend_schema(
+        responses={200: InvitationSerializer},
+        summary="Resend a pending invitation (refreshes token and expiry)",
+    )
+    def post(self, request: Request, org_id: int, inv_id: int) -> Response:
+        org = _get_active_org_or_404(org_id)
+        _require_manager(request.user, org)
+        try:
+            invitation = Invitation.objects.get(id=inv_id, organization=org)
+        except Invitation.DoesNotExist:
+            raise NotFound("Invitation not found.")
+        if invitation.status != Invitation.Status.PENDING:
+            raise ValidationError({"detail": "Only pending invitations can be resent."})
+        # Refresh token + expiry so a previously shared (possibly leaked) link
+        # is invalidated, then send the new link. If delivery fails the whole
+        # update rolls back and the old token/expiry remain intact.
+        with transaction.atomic():
+            invitation.token = uuid.uuid4()
+            invitation.expires_at = timezone.now() + INVITATION_TTL
+            invitation.save(update_fields=["token", "expires_at", "updated_at"])
+            _send_invitation_email_or_503(invitation)
         return Response(InvitationSerializer(invitation).data)
 
 

@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useReducer, useState } from "react";
-import { cancelInvitation, createInvitation, listInvitations } from "../api/teamsApi";
+import {
+  cancelInvitation,
+  createInvitation,
+  listInvitations,
+  resendInvitation,
+} from "../api/teamsApi";
 import type { CreateInvitationPayload, Invitation } from "../types/teams.types";
 
 interface State {
@@ -8,6 +13,7 @@ interface State {
   error: string | null;
   creating: boolean;
   createError: string | null;
+  resendingId: number | null;
 }
 
 type Action =
@@ -18,7 +24,19 @@ type Action =
   | { type: "create_success"; payload: Invitation }
   | { type: "create_error"; payload: string }
   | { type: "cancel_success"; id: number }
+  | { type: "resend_start"; id: number }
+  | { type: "resend_success"; payload: Invitation }
+  | { type: "resend_settled" }
   | { type: "reset" };
+
+const initialState: State = {
+  invitations: [],
+  loading: false,
+  error: null,
+  creating: false,
+  createError: null,
+  resendingId: null,
+};
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
@@ -43,8 +61,20 @@ function reducer(state: State, action: Action): State {
         ...state,
         invitations: state.invitations.filter((i) => i.id !== action.id),
       };
+    case "resend_start":
+      return { ...state, resendingId: action.id };
+    case "resend_success":
+      return {
+        ...state,
+        resendingId: null,
+        invitations: state.invitations.map((i) =>
+          i.id === action.payload.id ? action.payload : i
+        ),
+      };
+    case "resend_settled":
+      return { ...state, resendingId: null };
     case "reset":
-      return { invitations: [], loading: false, error: null, creating: false, createError: null };
+      return initialState;
   }
 }
 
@@ -54,19 +84,15 @@ export interface UseInvitationsResult {
   error: string | null;
   creating: boolean;
   createError: string | null;
+  resendingId: number | null;
   createInvite: (payload: CreateInvitationPayload) => Promise<Invitation | null>;
   cancelInvite: (invitationId: number) => Promise<void>;
+  resendInvite: (invitationId: number) => Promise<Invitation | null>;
   refresh: () => void;
 }
 
 export function useInvitations(orgId: number | null): UseInvitationsResult {
-  const [state, dispatch] = useReducer(reducer, {
-    invitations: [],
-    loading: false,
-    error: null,
-    creating: false,
-    createError: null,
-  });
+  const [state, dispatch] = useReducer(reducer, initialState);
   const [tick, setTick] = useState(0);
 
   const refresh = useCallback(() => setTick((n) => n + 1), []);
@@ -125,5 +151,21 @@ export function useInvitations(orgId: number | null): UseInvitationsResult {
     [orgId, refresh]
   );
 
-  return { ...state, createInvite, cancelInvite, refresh };
+  const resendInvite = useCallback(
+    async (invitationId: number): Promise<Invitation | null> => {
+      if (!orgId) return null;
+      dispatch({ type: "resend_start", id: invitationId });
+      try {
+        const inv = await resendInvitation(orgId, invitationId);
+        dispatch({ type: "resend_success", payload: inv });
+        return inv;
+      } catch (err: unknown) {
+        dispatch({ type: "resend_settled" });
+        throw err;
+      }
+    },
+    [orgId]
+  );
+
+  return { ...state, createInvite, cancelInvite, resendInvite, refresh };
 }

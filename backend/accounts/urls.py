@@ -6,6 +6,7 @@ from .views import (
     InvitationCancelView,
     InvitationDetailView,
     InvitationListCreateView,
+    InvitationResendView,
     MemberListView,
 )
 
@@ -29,6 +30,11 @@ urlpatterns = [
         "organizations/<int:org_id>/invitations/<int:inv_id>/cancel/",
         InvitationCancelView.as_view(),
         name="invitation-cancel",
+    ),
+    path(
+        "organizations/<int:org_id>/invitations/<int:inv_id>/resend/",
+        InvitationResendView.as_view(),
+        name="invitation-resend",
     ),
     path(
         "invitations/<uuid:token>/",

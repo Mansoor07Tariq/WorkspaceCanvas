@@ -1,5 +1,11 @@
 # PR 047 — Member Invitations and Team Access
 
+> **Update (PR 053):** invitations now send an email on create, expiry is shown
+> in the pending-invitations UI, and admins can resend (which refreshes the
+> token + expiry, invalidating the old link). The deferred items listed at the
+> bottom of this doc — email delivery, resend, and expiry UI — are resolved
+> there. See [053-invitation-email-delivery-management.md](053-invitation-email-delivery-management.md).
+
 ## Purpose
 
 This PR implements the MVP team invitation flow for WorkspaceCanvas. It lets admins and owners invite people to their organization, manage pending invitations, and ensures invited members land on the correct dashboard path after accepting.
