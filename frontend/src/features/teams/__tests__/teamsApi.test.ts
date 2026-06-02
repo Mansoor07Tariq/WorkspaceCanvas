@@ -4,6 +4,7 @@ import {
   listInvitations,
   createInvitation,
   cancelInvitation,
+  resendInvitation,
   getInvitationByToken,
   acceptInvitation,
 } from "../api/teamsApi";
@@ -52,6 +53,16 @@ describe("teamsApi", () => {
       "/api/accounts/organizations/10/invitations/42/cancel/",
       {}
     );
+  });
+
+  it("resendInvitation posts to correct URL", async () => {
+    mockPost.mockResolvedValueOnce({ id: 42, token: "new-token" });
+    const result = await resendInvitation(10, 42);
+    expect(mockPost).toHaveBeenCalledWith(
+      "/api/accounts/organizations/10/invitations/42/resend/",
+      {}
+    );
+    expect(result).toEqual({ id: 42, token: "new-token" });
   });
 
   it("getInvitationByToken calls correct URL", async () => {

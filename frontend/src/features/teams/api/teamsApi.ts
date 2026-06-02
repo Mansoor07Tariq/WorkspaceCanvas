@@ -28,6 +28,13 @@ export function cancelInvitation(orgId: number, invitationId: number): Promise<I
   );
 }
 
+export function resendInvitation(orgId: number, invitationId: number): Promise<Invitation> {
+  return api.post<Invitation>(
+    `/api/accounts/organizations/${orgId}/invitations/${invitationId}/resend/`,
+    {}
+  );
+}
+
 export function getInvitationByToken(token: string): Promise<InvitationPublic> {
   return api.get<InvitationPublic>(`/api/accounts/invitations/${token}/`);
 }

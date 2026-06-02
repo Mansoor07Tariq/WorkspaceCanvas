@@ -1,4 +1,5 @@
-import { Card, CardContent, Container, Typography } from "@mui/material";
+import { useState } from "react";
+import { Alert, Card, CardContent, Container, Snackbar, Typography } from "@mui/material";
 import { WorkspacesOutlined } from "@mui/icons-material";
 import { useAuth } from "@/features/auth/context/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -39,13 +40,33 @@ function PeopleContent({ user }: PeopleContentProps) {
     loading: invitationsLoading,
     creating,
     createError,
+    resendingId,
     createInvite,
     cancelInvite,
+    resendInvite,
   } = useInvitations(isManager ? orgId : null);
+
+  const [feedback, setFeedback] = useState<{
+    severity: "success" | "error";
+    message: string;
+  } | null>(null);
 
   async function handleInvite(payload: CreateInvitationPayload): Promise<boolean> {
     const result = await createInvite(payload);
     return result !== null;
+  }
+
+  async function handleResend(invitationId: number): Promise<void> {
+    const target = invitations.find((i) => i.id === invitationId);
+    try {
+      await resendInvite(invitationId);
+      setFeedback({
+        severity: "success",
+        message: c.resendSuccess.replace("{email}", target?.email ?? ""),
+      });
+    } catch {
+      setFeedback({ severity: "error", message: c.resendError });
+    }
   }
 
   if (!membership) {
@@ -85,7 +106,9 @@ function PeopleContent({ user }: PeopleContentProps) {
             <PendingInvitationsList
               invitations={invitations}
               loading={invitationsLoading}
+              resendingId={resendingId}
               onCancel={(id) => void cancelInvite(id)}
+              onResend={(id) => void handleResend(id)}
             />
           </CardContent>
         </Card>
@@ -99,6 +122,23 @@ function PeopleContent({ user }: PeopleContentProps) {
           <MembersList members={members} loading={membersLoading} error={membersError} />
         </CardContent>
       </Card>
+
+      <Snackbar
+        open={feedback !== null}
+        autoHideDuration={5000}
+        onClose={() => setFeedback(null)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        {feedback ? (
+          <Alert
+            severity={feedback.severity}
+            onClose={() => setFeedback(null)}
+            sx={{ width: "100%" }}
+          >
+            {feedback.message}
+          </Alert>
+        ) : undefined}
+      </Snackbar>
     </Container>
   );
 }

@@ -58,7 +58,9 @@ This project is in active development. The authentication stack, organization se
 
 - Invitation model with UUID token, expiry, status, invited_by, accepted_by
 - Owner/admin can invite members by email with role selection (Member / Admin)
-- Pending invitations list with copyable invite link (link-based MVP; no SMTP required)
+- **Invitation email** sent on create (console backend in dev, SMTP via env in production); invite link still copyable in the UI
+- **Resend invitation** (owner/admin) — refreshes the token and expiry, invalidates the old link, and re-sends the email
+- Pending invitations list shows **expiry** ("Expires in N days" / "Expired")
 - Cancel pending invitation
 - `AcceptInvitationPage` at `/invite/<token>` — shows org/role, prompts login for unauthenticated users
 - Email-match verification on accept; expired/cancelled invitations rejected
@@ -113,7 +115,7 @@ WorkspaceCanvas/
   docs/
     001-project-setup.md
     002-postgres-config.md
-    ... (052 docs total; see Documentation table below)
+    ... (053 docs total; see Documentation table below)
     TECHNICAL_DEBT.md
 
   frontend/
@@ -199,6 +201,7 @@ Detailed notes for each feature and setup step are in the `docs/` folder:
 | [050-demo-data-and-mvp-qa-checklist.md](docs/050-demo-data-and-mvp-qa-checklist.md) | Demo data seed command, demo credentials, end-to-end demo walkthrough, manual MVP QA checklist |
 | [051-final-mvp-polish-responsive-pass.md](docs/051-final-mvp-polish-responsive-pass.md) | Final MVP polish — AppLayout layout route, Events route removed, PeoplePage h1 consistency, MyBookingsPage i18n |
 | [052-mvp-final-review-security-launch-checklist.md](docs/052-mvp-final-review-security-launch-checklist.md) | Final MVP review — security/privacy/tenant-isolation pass, demo seed verification, full QA checklist, launch readiness verdict; invitation throttling + h1 fixes |
+| [053-invitation-email-delivery-management.md](docs/053-invitation-email-delivery-management.md) | Invitation email delivery, resend (token/expiry refresh), and pending-invitation expiry UI; email backend config; resolves TD-038/039/040 |
 | [TECHNICAL_DEBT.md](docs/TECHNICAL_DEBT.md) | Long-lived engineering debt register — open items, severity, recommended fixes |
 
 ## Demo Data (Seed Command)
