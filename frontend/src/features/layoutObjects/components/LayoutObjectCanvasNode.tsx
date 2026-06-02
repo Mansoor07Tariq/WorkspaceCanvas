@@ -1,15 +1,11 @@
 import { forwardRef, useCallback } from "react";
 import { Group, Rect, Circle, Text } from "react-konva";
 import type Konva from "konva";
-import {
-  SELECTED_STROKE,
-  SELECTED_STROKE_WIDTH,
-  getLayoutObjectRenderConfig,
-} from "../utils/layoutObjectRenderConfig";
+import { getLayoutObjectRenderConfig } from "../utils/layoutObjectRenderConfig";
+import { getLayoutObjectNodeStyle } from "../utils/layoutObjectNodeStyle";
 import { calculateTransformResult, getTopLeftFromCenterPosition } from "../utils/coordinateHelpers";
 import type { LayoutObject } from "../types/layoutObject.types";
 import type { DeskAvailabilityStatus } from "@/features/bookings/utils/bookingAvailability";
-import { getAvailabilityCanvasStyle } from "@/features/bookings/utils/bookingCanvasUtils";
 
 interface Props {
   obj: LayoutObject;
@@ -69,29 +65,15 @@ export const LayoutObjectCanvasNode = forwardRef<Konva.Group, Props>(
     const config = getLayoutObjectRenderConfig(obj.object_type);
     const displayLabel = obj.label || config.shortCode;
 
-    // In booking mode, apply availability colour overlay when status is provided.
-    // In editor mode (no availabilityStatus), fall back to normal config styles.
-    const availStyle =
-      availabilityStatus !== undefined
-        ? getAvailabilityCanvasStyle(availabilityStatus, isAvailabilitySelected)
-        : null;
-
-    const stroke = availStyle ? availStyle.stroke : isSelected ? SELECTED_STROKE : config.stroke;
-    const strokeWidth = availStyle
-      ? availStyle.strokeWidth
-      : isSelected
-        ? SELECTED_STROKE_WIDTH
-        : config.strokeWidth;
-    const baseOpacity = availStyle ? availStyle.opacity : config.opacity;
-
-    const shapeProps = {
-      fill: availStyle ? availStyle.fill : config.fill,
-      stroke,
-      strokeWidth,
-      // Keep a minimum opacity so room overlays don't vanish during save
-      opacity: isSaving ? Math.max(baseOpacity * 0.65, 0.35) : baseOpacity,
-      dash: config.dashPattern.length > 0 ? config.dashPattern : undefined,
-    };
+    // Style decision is delegated to a pure, unit-tested selector (TD-032):
+    // availability palette in booking mode, render config + selection in editor.
+    const shapeProps = getLayoutObjectNodeStyle({
+      objectType: obj.object_type,
+      isSelected,
+      isSaving,
+      availabilityStatus,
+      isAvailabilitySelected,
+    });
 
     // Group origin at center of bounding box — correct for rotation and drag
     const cx = x + w / 2;

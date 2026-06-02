@@ -68,11 +68,15 @@ After PR 045, every major feature (booking, my bookings, office/floor/desk manag
 |---|---|---|
 | User / role | `useAuth()` → `user.memberships[0].role` | Always available post-login |
 | Offices | `useOffices()` | Always fetched once org exists |
-| Floors | `listFloors(firstOffice.id)` via `useDashboardData` | Only fetched if offices exist |
-| Desks | `listDesks(officeId, firstFloorId)` via `useDashboardData` | Only fetched if floors exist |
+| Workspace counts & readiness | `useWorkspaceSummary()` → `GET /api/offices/summary/` | **Org-wide** aggregate counts and `has_*`/`setup_complete` booleans (PR 054) |
+| First office / first floor | `useDashboardData()` | Resolved only for convenience deep-links (checklist actions / quick actions) |
 | Today & upcoming bookings | `useMyBookings({ from: today, status: "active" })` | Filtered to active bookings from today onward |
 
-**Limitation**: Floors and desks are fetched for the **first** office/floor only. If an admin has multiple offices, the health cards and checklist reflect the first office's data. This is an MVP limitation documented in TECHNICAL_DEBT.md.
+**Update (PR 054, TD-035)**: Health-card counts and setup-completion are now
+org-wide via the `GET /api/offices/summary/` endpoint, not first-office-only.
+A multi-office admin sees totals across **all** offices, and member readiness
+reflects any bookable desk anywhere in the org. `useDashboardData` no longer
+fetches desks; it resolves the first office/floor only for navigation links.
 
 ---
 

@@ -28,4 +28,23 @@ describe("AvailabilityMapLegend", () => {
     expect(screen.getByTestId("legend-item-bookedByMe")).toBeInTheDocument();
     expect(screen.getByTestId("legend-item-unavailable")).toBeInTheDocument();
   });
+
+  it("renders the legend items in availability order", () => {
+    render(<AvailabilityMapLegend />);
+    const items = screen.getAllByRole("listitem");
+    expect(items.map((el) => el.getAttribute("data-testid"))).toEqual([
+      "legend-item-available",
+      "legend-item-reserved",
+      "legend-item-bookedByMe",
+      "legend-item-unavailable",
+    ]);
+  });
+
+  it("wraps the legend container so labels do not overflow (TD-034)", () => {
+    render(<AvailabilityMapLegend />);
+    // The legend wrapper opts into flex-wrap so every status label stays
+    // visible on narrow viewports instead of clipping.
+    const list = screen.getByRole("list", { name: /map legend/i });
+    expect(list).toHaveStyle({ flexWrap: "wrap" });
+  });
 });

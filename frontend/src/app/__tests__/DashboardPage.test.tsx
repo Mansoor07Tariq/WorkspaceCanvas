@@ -49,6 +49,10 @@ vi.mock("@/features/teams/hooks/useTeamMembers", () => ({
   useTeamMembers: vi.fn(),
 }));
 
+vi.mock("@/features/dashboard/hooks/useWorkspaceSummary", () => ({
+  useWorkspaceSummary: vi.fn(),
+}));
+
 // ─── Lazy import mocked hooks after vi.mock ───────────────────────────────────
 
 import { useOffices } from "@/features/offices/hooks/useOffices";
@@ -56,12 +60,33 @@ import { useMyBookings } from "@/features/bookings/hooks/useMyBookings";
 import { listFloors } from "@/features/floors/api/floorApi";
 import { listDesks } from "@/features/desks/api/deskApi";
 import { useTeamMembers } from "@/features/teams/hooks/useTeamMembers";
+import { useWorkspaceSummary } from "@/features/dashboard/hooks/useWorkspaceSummary";
+import type { WorkspaceSummary } from "@/features/dashboard/types/dashboard.types";
 
 const mockUseOffices = vi.mocked(useOffices);
 const mockUseMyBookings = vi.mocked(useMyBookings);
 const mockListFloors = vi.mocked(listFloors);
 const mockListDesks = vi.mocked(listDesks);
 const mockUseTeamMembers = vi.mocked(useTeamMembers);
+const mockUseWorkspaceSummary = vi.mocked(useWorkspaceSummary);
+
+function makeSummary(overrides: Partial<WorkspaceSummary> = {}): WorkspaceSummary {
+  return {
+    organization: 10,
+    offices_count: 0,
+    floors_count: 0,
+    layout_objects_count: 0,
+    bookable_desks_count: 0,
+    active_members_count: 1,
+    pending_invitations_count: 0,
+    has_offices: false,
+    has_floors: false,
+    has_layout_objects: false,
+    has_bookable_desks: false,
+    setup_complete: false,
+    ...overrides,
+  };
+}
 
 // ─── Shared fixtures ──────────────────────────────────────────────────────────
 
@@ -153,6 +178,12 @@ function setupDefaultHooks() {
   mockListDesks.mockResolvedValue([]);
   mockUseTeamMembers.mockReturnValue({
     members: [],
+    loading: false,
+    error: null,
+    refresh: vi.fn(),
+  });
+  mockUseWorkspaceSummary.mockReturnValue({
+    summary: makeSummary(),
     loading: false,
     error: null,
     refresh: vi.fn(),
@@ -325,7 +356,10 @@ describe("DashboardPage — member role", () => {
 });
 
 describe("DashboardPage — booking cards", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setupDefaultHooks();
+  });
 
   it("shows today booking card section heading", async () => {
     setupDefaultHooks();
@@ -428,7 +462,10 @@ describe("DashboardPage — booking cards", () => {
 });
 
 describe("DashboardPage — loading state", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setupDefaultHooks();
+  });
 
   it("shows loading indicator while bookings are loading", () => {
     mockUseOffices.mockReturnValue({ offices: [], loading: false, error: null, refresh: vi.fn() });
@@ -450,7 +487,10 @@ describe("DashboardPage — loading state", () => {
 });
 
 describe("DashboardPage — admin checklist items", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setupDefaultHooks();
+  });
 
   it("shows office checklist item incomplete when no offices", async () => {
     mockUseOffices.mockReturnValue({ offices: [], loading: false, error: null, refresh: vi.fn() });
@@ -529,7 +569,10 @@ describe("DashboardPage — admin invite people action", () => {
 });
 
 describe("DashboardPage — member workspace not ready", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setupDefaultHooks();
+  });
 
   it("shows workspace-being-set-up status when member has org but no desks", async () => {
     mockUseOffices.mockReturnValue({ offices: [], loading: false, error: null, refresh: vi.fn() });
@@ -607,6 +650,118 @@ describe("DashboardPage — member workspace not ready", () => {
     await waitFor(() => {
       expect(screen.getByText(en.app.dashboard.heroMemberSetup)).toBeInTheDocument();
     });
+  });
+});
+
+describe("DashboardPage — org-wide workspace summary (TD-035)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setupDefaultHooks();
+  });
+
+  it("health cards show org-wide totals across all offices", async () => {
+    mockUseWorkspaceSummary.mockReturnValue({
+      summary: makeSummary({
+        offices_count: 3,
+        floors_count: 4,
+        bookable_desks_count: 18,
+        has_offices: true,
+        has_floors: true,
+        has_bookable_desks: true,
+        setup_complete: true,
+      }),
+      loading: false,
+      error: null,
+      refresh: vi.fn(),
+    });
+
+    renderPage({ user: adminUser });
+    await waitFor(() => {
+      expect(screen.getByText("3")).toBeInTheDocument();
+      expect(screen.getByText("4")).toBeInTheDocument();
+      expect(screen.getByText("18")).toBeInTheDocument();
+    });
+  });
+
+  it("marks the desks checklist item complete when desks exist in a non-first office", async () => {
+    // Bookable desks live in a different office; the summary reports org-wide
+    // readiness even though the first office's first floor is empty.
+    mockUseWorkspaceSummary.mockReturnValue({
+      summary: makeSummary({
+        offices_count: 2,
+        floors_count: 1,
+        bookable_desks_count: 5,
+        has_offices: true,
+        has_floors: true,
+        has_bookable_desks: true,
+        setup_complete: true,
+      }),
+      loading: false,
+      error: null,
+      refresh: vi.fn(),
+    });
+
+    renderPage({ user: adminUser });
+    await waitFor(() => {
+      // Completed checklist items hide their action link; the "Build floor map"
+      // action only renders while the desks item is incomplete.
+      expect(
+        screen.queryByRole("link", {
+          name: `${en.app.dashboard.checklistItemDesksAction} →`,
+        })
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it("does not show member workspace-not-ready status when summary reports bookable desks", async () => {
+    mockUseWorkspaceSummary.mockReturnValue({
+      summary: makeSummary({
+        offices_count: 1,
+        floors_count: 1,
+        bookable_desks_count: 2,
+        has_offices: true,
+        has_floors: true,
+        has_bookable_desks: true,
+        setup_complete: true,
+      }),
+      loading: false,
+      error: null,
+      refresh: vi.fn(),
+    });
+
+    renderPage({ user: memberUser });
+    await waitFor(() => {
+      expect(screen.getByText(en.app.dashboard.heroMember)).toBeInTheDocument();
+    });
+    expect(screen.queryByText(en.app.dashboard.memberSetupTitle)).not.toBeInTheDocument();
+  });
+
+  it("surfaces a health-card error when the summary fails to load", async () => {
+    mockUseWorkspaceSummary.mockReturnValue({
+      summary: null,
+      loading: false,
+      error: "Failed to load workspace overview.",
+      refresh: vi.fn(),
+    });
+
+    renderPage({ user: adminUser });
+    await waitFor(() => {
+      expect(screen.getByText("Failed to load workspace overview.")).toBeInTheDocument();
+    });
+    // Dashboard still renders (no crash) — h1 present.
+    expect(screen.getByRole("heading", { level: 1 })).toBeInTheDocument();
+  });
+
+  it("does not flash the member setup banner while the summary is loading", () => {
+    mockUseWorkspaceSummary.mockReturnValue({
+      summary: null,
+      loading: true,
+      error: null,
+      refresh: vi.fn(),
+    });
+
+    renderPage({ user: memberUser });
+    expect(screen.queryByText(en.app.dashboard.memberSetupTitle)).not.toBeInTheDocument();
   });
 });
 

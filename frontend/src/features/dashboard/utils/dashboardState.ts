@@ -1,7 +1,4 @@
 import type { DeskBooking } from "@/features/bookings/types/booking.types";
-import type { Desk } from "@/features/desks/types/desk.types";
-import type { Floor } from "@/features/floors/types/floor.types";
-import type { Office } from "@/features/offices/types/office.types";
 import type { CurrentUser } from "@/features/auth/types/auth.types";
 import { ROUTES, officeDetailPath, floorLayoutPath } from "@/routes/paths";
 
@@ -17,47 +14,54 @@ export interface SetupChecklistItem {
 /**
  * Coarse workspace readiness state, used by member dashboard and booking page
  * to decide what to show when prerequisites are missing.
+ *
+ * Completion is org-wide (TD-035): readiness reflects any office/floor/desk in
+ * the organization, not just the first office's first floor.
  */
 export type WorkspaceSetupState = "noOrg" | "noOffice" | "noFloor" | "noBookableDesks" | "ready";
 
 interface GetWorkspaceSetupStateInput {
   hasOrg: boolean;
-  offices: Office[];
-  floors: Floor[];
-  desks: Desk[];
+  hasOffices: boolean;
+  hasFloors: boolean;
+  hasBookableDesks: boolean;
 }
 
 export function getWorkspaceSetupState({
   hasOrg,
-  offices,
-  floors,
-  desks,
+  hasOffices,
+  hasFloors,
+  hasBookableDesks,
 }: GetWorkspaceSetupStateInput): WorkspaceSetupState {
   if (!hasOrg) return "noOrg";
-  if (offices.length === 0) return "noOffice";
-  if (floors.length === 0) return "noFloor";
-  if (desks.length === 0) return "noBookableDesks";
+  if (!hasOffices) return "noOffice";
+  if (!hasFloors) return "noFloor";
+  if (!hasBookableDesks) return "noBookableDesks";
   return "ready";
 }
 
 interface GetChecklistInput {
   user: CurrentUser | null;
   hasOrg: boolean;
-  offices: Office[];
-  floors: Floor[];
-  desks: Desk[];
+  hasOffices: boolean;
+  hasFloors: boolean;
+  hasBookableDesks: boolean;
+  /** First office/floor ids — used only for convenience deep-links, not completion. */
+  firstOfficeId?: number | null;
+  firstFloorId?: number | null;
   memberCount?: number;
 }
 
 export function getSetupChecklist({
   user,
   hasOrg,
-  offices,
-  floors,
-  desks,
+  hasOffices,
+  hasFloors,
+  hasBookableDesks,
+  firstOfficeId,
+  firstFloorId,
   memberCount,
 }: GetChecklistInput): SetupChecklistItem[] {
-  const firstOfficeId = offices[0]?.id;
   // invite is complete when there is at least one other active member (count > 1)
   const hasInvitedMember = memberCount != null ? memberCount > 1 : false;
 
@@ -72,22 +76,22 @@ export function getSetupChecklist({
     },
     {
       id: "office",
-      completed: offices.length > 0,
+      completed: hasOffices,
       to: ROUTES.offices,
     },
     {
       id: "floor",
-      completed: floors.length > 0,
+      completed: hasFloors,
       to: firstOfficeId != null ? officeDetailPath(firstOfficeId) : undefined,
     },
     {
       id: "desks",
-      completed: desks.length > 0,
+      completed: hasBookableDesks,
       // Go directly to floor layout if a floor exists; otherwise land on office detail
       to:
         firstOfficeId != null
-          ? floors[0]?.id != null
-            ? floorLayoutPath(firstOfficeId, floors[0].id)
+          ? firstFloorId != null
+            ? floorLayoutPath(firstOfficeId, firstFloorId)
             : officeDetailPath(firstOfficeId)
           : undefined,
     },

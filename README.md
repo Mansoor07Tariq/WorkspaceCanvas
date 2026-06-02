@@ -202,6 +202,7 @@ Detailed notes for each feature and setup step are in the `docs/` folder:
 | [051-final-mvp-polish-responsive-pass.md](docs/051-final-mvp-polish-responsive-pass.md) | Final MVP polish — AppLayout layout route, Events route removed, PeoplePage h1 consistency, MyBookingsPage i18n |
 | [052-mvp-final-review-security-launch-checklist.md](docs/052-mvp-final-review-security-launch-checklist.md) | Final MVP review — security/privacy/tenant-isolation pass, demo seed verification, full QA checklist, launch readiness verdict; invitation throttling + h1 fixes |
 | [053-invitation-email-delivery-management.md](docs/053-invitation-email-delivery-management.md) | Invitation email delivery, resend (token/expiry refresh), and pending-invitation expiry UI; email backend config; resolves TD-038/039/040 |
+| [054-dashboard-accuracy-booking-canvas-cleanup.md](docs/054-dashboard-accuracy-booking-canvas-cleanup.md) | Org-wide dashboard summary endpoint (accurate multi-office counts/readiness); canvas node style selector + booking floor-selection integration test; availability legend layout fix; resolves TD-032/033/034/035 |
 | [TECHNICAL_DEBT.md](docs/TECHNICAL_DEBT.md) | Long-lived engineering debt register — open items, severity, recommended fixes |
 
 ## Demo Data (Seed Command)

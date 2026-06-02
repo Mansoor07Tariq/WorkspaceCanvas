@@ -113,6 +113,17 @@ describe("BookingFloorMap", () => {
     expect(canvas).toHaveAttribute("data-mode", "booking");
   });
 
+  it("renders the legend before the map canvas (TD-034)", async () => {
+    render(
+      <BookingFloorMap items={[]} layoutObjects={[]} selectedDeskId={null} onDeskSelect={vi.fn()} />
+    );
+    const legend = screen.getByRole("list", { name: /map legend/i });
+    const canvas = await screen.findByTestId("floor-map-canvas");
+    // Legend must precede the (scrollable) canvas in the DOM so it stays
+    // visually connected on narrow viewports.
+    expect(legend.compareDocumentPosition(canvas) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it("renders the map legend", async () => {
     render(
       <BookingFloorMap items={[]} layoutObjects={[]} selectedDeskId={null} onDeskSelect={vi.fn()} />

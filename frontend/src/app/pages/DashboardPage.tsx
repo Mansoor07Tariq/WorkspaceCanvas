@@ -14,6 +14,7 @@ import {
   getSetupProgress,
 } from "@/features/dashboard/utils/dashboardState";
 import { useDashboardData } from "@/features/dashboard/hooks/useDashboardData";
+import { useWorkspaceSummary } from "@/features/dashboard/hooks/useWorkspaceSummary";
 import { useTeamMembers } from "@/features/teams/hooks/useTeamMembers";
 import { DashboardHero } from "@/features/dashboard/components/DashboardHero";
 import { TodayBookingCard } from "@/features/dashboard/components/TodayBookingCard";
@@ -46,14 +47,8 @@ function DashboardContent({ user }: DashboardContentProps) {
   const firstName = user?.first_name || user?.full_name?.split(" ")[0] || "";
 
   const {
-    offices,
     officesLoading,
-    officesError,
-    floors,
-    floorsLoading,
     floorsError,
-    desks,
-    desksLoading,
     bookings,
     bookingsLoading,
     bookingsError,
@@ -64,6 +59,14 @@ function DashboardContent({ user }: DashboardContentProps) {
 
   const orgId = membership?.organization_id ?? null;
   const { members } = useTeamMembers(isOwnerOrAdmin ? orgId : null);
+
+  // Org-wide workspace summary (TD-035): authoritative source for counts and
+  // setup-completion across ALL offices/floors, not just the first office.
+  const {
+    summary,
+    loading: summaryLoading,
+    error: summaryError,
+  } = useWorkspaceSummary(hasOrg ? orgId : null);
 
   if (!hasOrg) {
     return (
@@ -89,21 +92,36 @@ function DashboardContent({ user }: DashboardContentProps) {
     );
   }
 
-  const setupState = getWorkspaceSetupState({ hasOrg, offices, floors, desks });
+  // Org-wide readiness booleans come from the summary endpoint (TD-035).
+  // On summary error they default to false and an error is surfaced in the
+  // health cards / hero rather than showing misleading "complete" state.
+  const hasOffices = summary?.has_offices ?? false;
+  const hasFloors = summary?.has_floors ?? false;
+  const hasBookableDesks = summary?.has_bookable_desks ?? false;
+
+  const setupState = getWorkspaceSetupState({
+    hasOrg,
+    hasOffices,
+    hasFloors,
+    hasBookableDesks,
+  });
   const isWorkspaceReady = setupState === "ready";
 
   const checklist = getSetupChecklist({
     user,
     hasOrg,
-    offices,
-    floors,
-    desks,
+    hasOffices,
+    hasFloors,
+    hasBookableDesks,
+    firstOfficeId: firstOffice?.id ?? null,
+    firstFloorId: firstFloor?.id ?? null,
     memberCount: members.length,
   });
   const setupProgress = getSetupProgress(checklist);
   const todayBooking = getTodayBooking(bookings, today);
   const nextBooking = getNextBooking(bookings, today);
-  const dataLoading = officesLoading || floorsLoading || desksLoading;
+  // Setup/health blocks are driven by the summary; offices list only gates nav.
+  const dataLoading = officesLoading || summaryLoading;
 
   return (
     <Container maxWidth="lg" sx={{ py: { xs: 2, sm: 4 } }}>
@@ -117,7 +135,7 @@ function DashboardContent({ user }: DashboardContentProps) {
           isWorkspaceReady={isWorkspaceReady}
         />
 
-        {!isOwnerOrAdmin && !isWorkspaceReady && <MemberWorkspaceStatus />}
+        {!isOwnerOrAdmin && !summaryLoading && !isWorkspaceReady && <MemberWorkspaceStatus />}
 
         {floorsError && (
           <Alert severity="warning" role="alert" sx={{ mb: 2 }}>
@@ -150,11 +168,11 @@ function DashboardContent({ user }: DashboardContentProps) {
           <>
             <AdminSetupChecklist checklist={checklist} loading={dataLoading} />
             <WorkspaceHealthCards
-              officesCount={offices.length}
-              floorsCount={floors.length}
-              desksCount={desks.length}
-              loading={dataLoading}
-              error={officesError}
+              officesCount={summary?.offices_count ?? 0}
+              floorsCount={summary?.floors_count ?? 0}
+              desksCount={summary?.bookable_desks_count ?? 0}
+              loading={summaryLoading}
+              error={summaryError}
             />
           </>
         )}
