@@ -16,7 +16,7 @@ export function OfficesList({ offices, canManage = true, onAddOffice }: Props) {
   return (
     <Box sx={{ p: { xs: 2, sm: 3 } }}>
       <Stack direction="row" sx={{ justifyContent: "space-between", alignItems: "center", mb: 3 }}>
-        <Typography variant="h6" sx={{ fontWeight: 700 }}>
+        <Typography variant="h6" component="h1" sx={{ fontWeight: 700 }}>
           {c.listTitle}
         </Typography>
         {canManage && (

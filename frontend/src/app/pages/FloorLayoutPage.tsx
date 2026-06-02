@@ -306,7 +306,7 @@ export function FloorLayoutPage() {
         {c.backToFloors}
       </Button>
       <Stack direction="row" spacing={1.5} sx={{ alignItems: "center" }}>
-        <Typography variant="h6" sx={{ fontWeight: 700 }}>
+        <Typography variant="h6" component="h1" sx={{ fontWeight: 700 }}>
           {floorState?.floorName ?? c.pageTitle}
         </Typography>
         {floorState?.levelNumber !== undefined && (

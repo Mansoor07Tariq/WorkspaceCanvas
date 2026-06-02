@@ -113,7 +113,7 @@ WorkspaceCanvas/
   docs/
     001-project-setup.md
     002-postgres-config.md
-    ... (041 docs total; see Documentation table below)
+    ... (052 docs total; see Documentation table below)
     TECHNICAL_DEBT.md
 
   frontend/
@@ -198,6 +198,7 @@ Detailed notes for each feature and setup step are in the `docs/` folder:
 | [049-role-based-ux-permission-polish.md](docs/049-role-based-ux-permission-polish.md) | Role-based UX and permission polish — centralized frontend permission helpers, member-only UI guards, My Bookings nav, dead code cleanup |
 | [050-demo-data-and-mvp-qa-checklist.md](docs/050-demo-data-and-mvp-qa-checklist.md) | Demo data seed command, demo credentials, end-to-end demo walkthrough, manual MVP QA checklist |
 | [051-final-mvp-polish-responsive-pass.md](docs/051-final-mvp-polish-responsive-pass.md) | Final MVP polish — AppLayout layout route, Events route removed, PeoplePage h1 consistency, MyBookingsPage i18n |
+| [052-mvp-final-review-security-launch-checklist.md](docs/052-mvp-final-review-security-launch-checklist.md) | Final MVP review — security/privacy/tenant-isolation pass, demo seed verification, full QA checklist, launch readiness verdict; invitation throttling + h1 fixes |
 | [TECHNICAL_DEBT.md](docs/TECHNICAL_DEBT.md) | Long-lived engineering debt register — open items, severity, recommended fixes |
 
 ## Demo Data (Seed Command)
