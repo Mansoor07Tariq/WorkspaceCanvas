@@ -1,8 +1,9 @@
 import { forwardRef, useCallback } from "react";
-import { Group, Rect, Circle, Text } from "react-konva";
+import { Group, Circle, Text } from "react-konva";
 import type Konva from "konva";
 import { getLayoutObjectRenderConfig } from "../utils/layoutObjectRenderConfig";
 import { getLayoutObjectNodeStyle } from "../utils/layoutObjectNodeStyle";
+import { getLayoutObjectRenderer } from "../renderers";
 import { calculateTransformResult, getTopLeftFromCenterPosition } from "../utils/coordinateHelpers";
 import type { LayoutObject } from "../types/layoutObject.types";
 import type { DeskAvailabilityStatus } from "@/features/bookings/utils/bookingAvailability";
@@ -30,6 +31,8 @@ interface Props {
   isAvailabilitySelected?: boolean;
   /** Called when the user clicks this object in booking mode. */
   onAvailabilitySelect?: () => void;
+  /** True when the canvas is in booking mode (read-only, availability overlay). */
+  isBookingMode?: boolean;
 }
 
 const LABEL_FONT_SIZE = 11;
@@ -53,6 +56,7 @@ export const LayoutObjectCanvasNode = forwardRef<Konva.Group, Props>(
       availabilityStatus,
       isAvailabilitySelected = false,
       onAvailabilitySelect,
+      isBookingMode = false,
     },
     ref
   ) {
@@ -64,6 +68,11 @@ export const LayoutObjectCanvasNode = forwardRef<Konva.Group, Props>(
 
     const config = getLayoutObjectRenderConfig(obj.object_type);
     const displayLabel = obj.label || config.shortCode;
+
+    // The inner visual is delegated to a per-type renderer (renderer registry).
+    // Today every type resolves to the default renderer, preserving output; this
+    // is the seam future enhanced renderers (PR 061) plug into.
+    const Renderer = getLayoutObjectRenderer(obj.object_type);
 
     // Style decision is delegated to a pure, unit-tested selector (TD-032):
     // availability palette in booking mode, render config + selection in editor.
@@ -154,18 +163,16 @@ export const LayoutObjectCanvasNode = forwardRef<Konva.Group, Props>(
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
       >
-        {config.shape === "circle" ? (
-          <Circle x={0} y={0} radius={Math.min(w, h) / 2} {...shapeProps} />
-        ) : (
-          <Rect
-            x={-w / 2}
-            y={-h / 2}
-            width={w}
-            height={h}
-            cornerRadius={config.cornerRadius}
-            {...shapeProps}
-          />
-        )}
+        <Renderer
+          object={obj}
+          config={config}
+          style={shapeProps}
+          width={w}
+          height={h}
+          isSelected={isSelected}
+          isSaving={isSaving}
+          isBookingMode={isBookingMode}
+        />
         <Text
           x={-w / 2}
           y={-h / 2}

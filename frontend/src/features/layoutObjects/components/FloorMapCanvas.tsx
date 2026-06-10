@@ -182,6 +182,7 @@ export function FloorMapCanvas({
                 onTransformEnd={isBookingMode ? undefined : onObjectTransformEnd}
                 isSaving={savingObjectIds?.has(obj.id)}
                 hasDesk={bookableObjectIds?.has(obj.id)}
+                isBookingMode={isBookingMode}
                 availabilityStatus={availabilityStatus}
                 isAvailabilitySelected={isAvailabilitySelected}
                 onAvailabilitySelect={

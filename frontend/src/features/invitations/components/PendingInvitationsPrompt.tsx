@@ -160,7 +160,7 @@ export function PendingInvitationsPrompt() {
               }}
             >
               <Box sx={{ minWidth: 0 }}>
-                <Typography fontWeight={600} noWrap>
+                <Typography sx={{ fontWeight: 600 }} noWrap>
                   {invitation.organization_name}
                 </Typography>
                 <Chip
