@@ -3,6 +3,7 @@ import { tokenStorage } from "@/lib/tokenStorage";
 import { getCurrentUser } from "@/features/auth/api/authApi";
 import { useAuth } from "@/features/auth/context/AuthContext";
 import { getSafeReturnTo } from "@/features/auth/utils/authUtils";
+import { readPendingInvitePath } from "@/features/invitations/lib/pendingInviteToken";
 import { ROUTES } from "@/routes/paths";
 import { getApiErrorMessage } from "@/lib/api/getApiErrorMessage";
 
@@ -24,7 +25,10 @@ export function usePostAuthNavigation() {
       const user = await getCurrentUser();
       setAuthenticatedUser(user);
       const state = location.state as { returnTo?: unknown } | null;
-      const dest = getSafeReturnTo(state?.returnTo) ?? ROUTES.app;
+      // Prefer explicit router state; fall back to a sessionStorage-persisted
+      // invite token (survives the signup → verify → login round-trip that drops
+      // router state); finally default to the app dashboard.
+      const dest = getSafeReturnTo(state?.returnTo) ?? readPendingInvitePath() ?? ROUTES.app;
       if (options) navigate(dest, options);
       else navigate(dest);
       return undefined;

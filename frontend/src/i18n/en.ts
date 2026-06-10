@@ -190,6 +190,7 @@ export const en = {
         back: "Back",
         skip: "Skip",
         finish: "Complete profile",
+        completingTitle: "Setting up your workspace…",
 
         avatarUploadLabel: "Upload photo",
         avatarChangeLabel: "Change photo",

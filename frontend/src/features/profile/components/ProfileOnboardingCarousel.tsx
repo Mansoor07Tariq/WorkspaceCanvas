@@ -2,6 +2,7 @@ import { Box, Button, Paper, Stack } from "@mui/material";
 import { alpha } from "@mui/material/styles";
 import { useTheme } from "@mui/material";
 import { ErrorAlert } from "@/components/feedback/ErrorAlert";
+import { FullScreenTransition } from "@/components/feedback/FullScreenTransition";
 import { LoadingButton } from "@/components/ui/LoadingButton";
 import { en } from "@/i18n/en";
 import { useAuth } from "@/features/auth/context/AuthContext";
@@ -20,6 +21,7 @@ import {
   carouselSkipButtonSx,
   carouselNextButtonSx,
 } from "../styles/profile.styles";
+import { resolveMediaUrl } from "@/lib/resolveMediaUrl";
 import { ProfileOnboardingBackground } from "./onboarding/ProfileOnboardingBackground";
 import { ProfileOnboardingProgress } from "./onboarding/ProfileOnboardingProgress";
 import { ProfileCompletionProgressBar } from "./onboarding/ProfileCompletionProgressBar";
@@ -48,6 +50,7 @@ export function ProfileOnboardingCarousel() {
     avatarPreview,
     avatarError,
     submission,
+    completing,
     selectAvatarFile,
     clearAvatarFile,
     goNext,
@@ -108,7 +111,7 @@ export function ProfileOnboardingCarousel() {
             email={user?.email ?? ""}
             timezone={fields.timezone}
             avatarPreview={avatarFile ? avatarPreview : null}
-            avatarUrl={user?.avatar ?? null}
+            avatarUrl={resolveMediaUrl(user?.avatar)}
           />
         );
       default: {
@@ -121,6 +124,9 @@ export function ProfileOnboardingCarousel() {
   // MUI AppBar is 64px on desktop; fill the remaining viewport height.
   return (
     <Box sx={carouselOuterSx}>
+      {/* PR 057 (Error 3): controlled completion transition before app hand-off */}
+      <FullScreenTransition open={completing} message={c.completingTitle} />
+
       {/* Decorative background layer */}
       <ProfileOnboardingBackground />
 

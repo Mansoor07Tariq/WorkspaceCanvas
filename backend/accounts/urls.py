@@ -8,6 +8,7 @@ from .views import (
     InvitationListCreateView,
     InvitationResendView,
     MemberListView,
+    MyPendingInvitationsView,
 )
 
 urlpatterns = [
@@ -35,6 +36,11 @@ urlpatterns = [
         "organizations/<int:org_id>/invitations/<int:inv_id>/resend/",
         InvitationResendView.as_view(),
         name="invitation-resend",
+    ),
+    path(
+        "invitations/pending/",
+        MyPendingInvitationsView.as_view(),
+        name="invitation-pending",
     ),
     path(
         "invitations/<uuid:token>/",

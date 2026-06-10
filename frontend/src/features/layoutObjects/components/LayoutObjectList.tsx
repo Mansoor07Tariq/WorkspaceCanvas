@@ -13,7 +13,7 @@ interface Props {
   objects: LayoutObject[];
   selectedObjectId?: number | null;
   onSelectObject?: (id: number) => void;
-  onDeleted: () => void;
+  onDeleted: (id: number) => void;
   canManageLayout?: boolean;
   bookableObjectIds?: ReadonlySet<number>;
 }
@@ -34,7 +34,7 @@ export function LayoutObjectList({
     setDeletingId(id);
     try {
       await deleteLayoutObject(officeId, floorId, id);
-      onDeleted();
+      onDeleted(id);
     } finally {
       setDeletingId(null);
     }

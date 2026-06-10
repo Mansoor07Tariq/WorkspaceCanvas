@@ -645,6 +645,45 @@ def test_google_service_missing_email_raises(mock_get, settings):
     assert exc_info.value.code == "missing_email"
 
 
+@pytest.mark.django_db
+def test_google_service_access_token_fetches_userinfo_for_profile(settings):
+    """
+    The access_token path calls tokeninfo (for auth/aud validation) and then
+    makes a second call to the userinfo endpoint to retrieve profile fields.
+    Both calls are served by _get_json; the mock uses side_effect to return
+    different payloads in sequence.
+    """
+    settings.GOOGLE_CLIENT_ID = ""
+    tokeninfo_payload = {
+        "sub": "google-sub-123",
+        "email": "alice@example.com",
+        "email_verified": "true",
+        "aud": "gid",
+    }
+    userinfo_payload = {
+        "sub": "google-sub-123",
+        "email": "alice@example.com",
+        "email_verified": True,
+        "name": "Test User",
+        "given_name": "Test",
+        "family_name": "User",
+        "picture": "",
+        "locale": "en",
+    }
+    with patch(
+        "users.social_auth._get_json",
+        side_effect=[tokeninfo_payload, userinfo_payload],
+    ):
+        result = verify_google_token(access_token="fake-access-token")
+
+    assert result["email"] == "alice@example.com"
+    assert result["full_name"] == "Test User"
+    assert result["first_name"] == "Test"
+    assert result["last_name"] == "User"
+    assert result["locale"] == "en"
+    assert result["provider"] == "google"
+
+
 # ---------------------------------------------------------------------------
 # 3. Microsoft ID token unit tests (real RSA + mocked OIDC/JWKS)
 # ---------------------------------------------------------------------------
@@ -770,6 +809,47 @@ def test_microsoft_id_token_unknown_kid_raises(rsa_key_pair, test_jwk, ms_settin
             with pytest.raises(SocialAuthError) as exc_info:
                 _verify_microsoft_id_token(token)
     assert exc_info.value.code == "invalid_token"
+
+
+@pytest.mark.django_db
+def test_microsoft_id_token_splits_full_name_when_given_family_absent(
+    rsa_key_pair, test_jwk, ms_settings
+):
+    """
+    When a Microsoft ID token contains 'name' but not 'given_name'/'family_name'
+    (common for personal Microsoft accounts), the service should split the full
+    name on the first space to populate first_name and last_name.
+    """
+    private_key, _ = rsa_key_pair
+    metadata = {
+        "issuer": "https://login.microsoftonline.com/{tenantid}/v2.0",
+        "jwks_uri": "https://example.com/jwks",
+    }
+    jwks = {"keys": [test_jwk]}
+
+    now = int(time.time())
+    # Build a token with name but no given_name or family_name claims
+    payload = {
+        "oid": "test-oid-999",
+        "email": "carol@example.com",
+        "name": "Test User",
+        "aud": "test-client-id",
+        "iss": "https://login.microsoftonline.com/test-tid/v2.0",
+        "tid": "test-tid",
+        "iat": now,
+        "nbf": now,
+        "exp": now + 3600,
+    }
+    token = jwt.encode(
+        payload, private_key, algorithm="RS256", headers={"kid": "test-kid"}
+    )
+    with patch("users.social_auth._get_microsoft_oidc_metadata", return_value=metadata):
+        with patch("users.social_auth._get_microsoft_jwks", return_value=jwks):
+            result = _verify_microsoft_id_token(token)
+
+    assert result["full_name"] == "Test User"
+    assert result["first_name"] == "Test"
+    assert result["last_name"] == "User"
 
 
 # ---------------------------------------------------------------------------

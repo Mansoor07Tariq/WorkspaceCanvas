@@ -106,6 +106,10 @@ def verify_google_token(
     - Email verified by Google
     - Audience matches GOOGLE_CLIENT_ID (when configured)
 
+    For access tokens, a second call to the userinfo endpoint is made to
+    retrieve profile fields (name, given_name, family_name, picture, locale)
+    which are not returned by the tokeninfo endpoint for access tokens.
+
     Returns normalized identity dict.
     Raises SocialAuthError on any failure.
     """
@@ -144,17 +148,27 @@ def verify_google_token(
                 "Google token audience is invalid.", code="invalid_audience"
             )
 
-    picture_url = data.get("picture") or ""
+    # For access tokens, tokeninfo does not return profile fields — fetch them
+    # separately from the userinfo endpoint using the access token as bearer.
+    if access_token:
+        profile = _get_json(
+            "https://www.googleapis.com/oauth2/v3/userinfo",
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+    else:
+        profile = data
+
+    picture_url = profile.get("picture") or ""
     return {
         "provider": "google",
-        "provider_user_id": data.get("sub"),
+        "provider_user_id": data.get("sub") or profile.get("sub"),
         "email": email.lower(),
         "email_verified": True,
-        "full_name": data.get("name", ""),
-        "first_name": data.get("given_name", ""),
-        "last_name": data.get("family_name", ""),
-        "locale": data.get("locale", ""),
-        "job_title": "",  # not available from Google tokeninfo
+        "full_name": profile.get("name", ""),
+        "first_name": profile.get("given_name", ""),
+        "last_name": profile.get("family_name", ""),
+        "locale": profile.get("locale", ""),
+        "job_title": "",  # not available from Google tokeninfo or userinfo
         "avatar_bytes": _fetch_avatar_bytes(picture_url),
         "tenant_id": None,
     }
@@ -332,16 +346,25 @@ def _verify_microsoft_id_token(id_token: str) -> dict:
             code="missing_email",
         )
 
+    full_name = claims.get("name", "")
+    # given_name/family_name are non-standard MS ID token claims and are absent
+    # for many tenants (especially personal Microsoft accounts).  Fall back to
+    # splitting the display name on the first space when both are missing.
+    first_name = claims.get("given_name", "")
+    last_name = claims.get("family_name", "")
+    if full_name and not first_name and not last_name:
+        parts = full_name.split(" ", 1)
+        first_name = parts[0]
+        last_name = parts[1] if len(parts) > 1 else ""
+
     return {
         "provider": "microsoft",
         "provider_user_id": claims.get("oid") or claims.get("sub"),
         "email": email.lower(),
         "email_verified": True,
-        "full_name": claims.get("name", ""),
-        # given_name/family_name are non-standard MS ID token claims;
-        # jobTitle and preferredLanguage are not included in ID tokens.
-        "first_name": claims.get("given_name", ""),
-        "last_name": claims.get("family_name", ""),
+        "full_name": full_name,
+        "first_name": first_name,
+        "last_name": last_name,
         "locale": "",
         "job_title": "",
         "avatar_bytes": None,  # no access token available in ID token path

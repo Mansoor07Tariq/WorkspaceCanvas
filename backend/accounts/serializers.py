@@ -217,6 +217,35 @@ class InvitationPublicSerializer(serializers.ModelSerializer):
         ]
 
 
+class PendingInvitationSerializer(serializers.ModelSerializer):
+    """The authenticated user's own pending invitation.
+
+    Exposes the token because the recipient (whose email matches the invitation)
+    is entitled to accept it — the token is the accept credential, and the view
+    already scopes the queryset to ``email__iexact=request.user.email``.
+    """
+
+    organization_name = serializers.CharField(source="organization.name")
+    organization_slug = serializers.CharField(source="organization.slug")
+    invited_by_email = serializers.SerializerMethodField()
+
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_invited_by_email(self, obj: Invitation) -> str | None:
+        return obj.invited_by.email if obj.invited_by else None
+
+    class Meta:
+        model = Invitation
+        fields = [
+            "token",
+            "role",
+            "organization_name",
+            "organization_slug",
+            "invited_by_email",
+            "expires_at",
+            "created_at",
+        ]
+
+
 class OrganizationResponseSerializer(serializers.ModelSerializer):
     organization_type_display = serializers.SerializerMethodField()
 

@@ -13,7 +13,9 @@ const DEV_CSP = [
   "default-src 'none'",
   "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://accounts.google.com",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data:",
+  // blob: allows file-picker avatar previews; http://localhost:8000 allows
+  // Django-served media files fetched directly by the browser in dev.
+  "img-src 'self' data: blob: http://localhost:8000",
   "font-src 'self'",
   [
     "connect-src 'self'",

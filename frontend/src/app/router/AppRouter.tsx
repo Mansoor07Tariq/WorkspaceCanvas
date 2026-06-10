@@ -1,6 +1,7 @@
 import { lazy, Suspense } from "react";
 import { BrowserRouter, Navigate, Outlet, Route, Routes, useNavigate } from "react-router-dom";
 import { ProtectedRoute } from "@/routes/ProtectedRoute";
+import { WorkspaceRequiredRoute } from "@/routes/WorkspaceRequiredRoute";
 import { GuestOnlyRoute } from "@/app/router/GuestOnlyRoute";
 import { PageLoading } from "@/components/feedback/PageLoading";
 import { ErrorBoundary } from "@/components/feedback/ErrorBoundary";
@@ -154,14 +155,21 @@ export function AppRouter() {
                 </ProtectedRoute>
               }
             >
+              {/* Always available: dashboard (hosts the no-workspace state),
+                  MFA setup, and Offices (hosts the org-creation flow). */}
               <Route path={ROUTES.app} element={<DashboardPage />} />
               <Route path={ROUTES.mfaSetup} element={<MfaSetupPage />} />
               <Route path={ROUTES.offices} element={<AppOfficesPage />} />
-              <Route path={ROUTES.officeDetail} element={<OfficeDetailPage />} />
-              <Route path={ROUTES.floorLayout} element={<FloorLayoutPage />} />
-              <Route path={ROUTES.bookings} element={<DeskBookingPage />} />
-              <Route path={ROUTES.myBookings} element={<MyBookingsPage />} />
-              <Route path={ROUTES.people} element={<PeoplePage />} />
+
+              {/* Workspace-dependent: redirect to /app when there is no active
+                  organization membership (PR 057, Error 4). */}
+              <Route element={<WorkspaceRequiredRoute />}>
+                <Route path={ROUTES.officeDetail} element={<OfficeDetailPage />} />
+                <Route path={ROUTES.floorLayout} element={<FloorLayoutPage />} />
+                <Route path={ROUTES.bookings} element={<DeskBookingPage />} />
+                <Route path={ROUTES.myBookings} element={<MyBookingsPage />} />
+                <Route path={ROUTES.people} element={<PeoplePage />} />
+              </Route>
             </Route>
 
             {/* ── Public routes ────────────────────────────────────────── */}

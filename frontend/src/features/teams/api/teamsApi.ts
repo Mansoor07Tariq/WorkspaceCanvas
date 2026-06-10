@@ -3,6 +3,7 @@ import type {
   CreateInvitationPayload,
   Invitation,
   InvitationPublic,
+  PendingInvitation,
   TeamMember,
 } from "../types/teams.types";
 
@@ -37,6 +38,11 @@ export function resendInvitation(orgId: number, invitationId: number): Promise<I
 
 export function getInvitationByToken(token: string): Promise<InvitationPublic> {
   return api.get<InvitationPublic>(`/api/accounts/invitations/${token}/`);
+}
+
+/** Pending invitations addressed to the authenticated user (their own email). */
+export function listMyPendingInvitations(): Promise<PendingInvitation[]> {
+  return api.get<PendingInvitation[]>(`/api/accounts/invitations/pending/`);
 }
 
 export function acceptInvitation(token: string): Promise<TeamMember> {

@@ -122,7 +122,7 @@ WorkspaceCanvas/
   docs/
     001-project-setup.md
     002-postgres-config.md
-    ... (056 docs total; see Documentation table below)
+    ... (057 docs total; see Documentation table below)
     TECHNICAL_DEBT.md
 
   frontend/
@@ -212,6 +212,7 @@ Detailed notes for each feature and setup step are in the `docs/` folder:
 | [054-dashboard-accuracy-booking-canvas-cleanup.md](docs/054-dashboard-accuracy-booking-canvas-cleanup.md) | Org-wide dashboard summary endpoint (accurate multi-office counts/readiness); canvas node style selector + booking floor-selection integration test; availability legend layout fix; resolves TD-032/033/034/035 |
 | [055-architecture-cleanup-hook-caching-multi-org.md](docs/055-architecture-cleanup-hook-caching-multi-org.md) | `useCanvasInteractions` extraction; TTL request cache + invalidation; selected-organization provider/switcher with backend `?organization=` support and `get_office_for_user`; resolves TD-019/021/037 |
 | [056-final-mvp-browser-qa-codebase-safety.md](docs/056-final-mvp-browser-qa-codebase-safety.md) | Final MVP browser QA + full codebase safety/security/privacy/tenant-isolation/architecture review; booking-hook TTL caching + book/cancel invalidation (TD-044); per-office/selected-org UI role gate backed by `organization` on office/floor serializers (TD-045); MVP readiness verdict |
+| [057-google-onboarding-no-workspace-canvas-smoothness.md](docs/057-google-onboarding-no-workspace-canvas-smoothness.md) | Browser-QA fixes: Google name + avatar prefill on profile onboarding, full-screen completion transition, `WorkspaceRequiredRoute` no-workspace guard, optimistic canvas add/delete (no page jerk). Defers bookable/publish UX (TD-046) |
 | [TECHNICAL_DEBT.md](docs/TECHNICAL_DEBT.md) | Long-lived engineering debt register — open items, severity, recommended fixes |
 
 ## Demo Data (Seed Command)

@@ -51,8 +51,10 @@ export function SocialLoginButtons({
     }
     microsoft.onStart();
     try {
-      const result = await instance.loginPopup({ scopes: ["openid", "profile", "email"] });
-      microsoft.onToken(result.idToken);
+      const result = await instance.loginPopup({
+        scopes: ["openid", "profile", "email", "User.Read"],
+      });
+      microsoft.onToken(result.accessToken);
     } catch (err) {
       microsoft.onError(err);
     }
