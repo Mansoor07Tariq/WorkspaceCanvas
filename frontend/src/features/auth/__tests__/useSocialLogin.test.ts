@@ -114,12 +114,12 @@ describe("useSocialLogin", () => {
     const { result } = renderHook(() => useSocialLogin(), { wrapper });
 
     await act(async () => {
-      result.current.microsoft.onToken("ms-id-token");
+      result.current.microsoft.onToken("ms-access-token");
     });
 
     expect(mockSocialAuth).toHaveBeenCalledWith({
       provider: "microsoft",
-      id_token: "ms-id-token",
+      access_token: "ms-access-token",
     });
     expect(mockSetAccessToken).toHaveBeenCalledWith("tok-a");
     expect(mockGetCurrentUser).toHaveBeenCalledTimes(1);

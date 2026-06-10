@@ -2,6 +2,7 @@ import { Alert, Box, Button, Container, Grid, Typography } from "@mui/material";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/features/auth/context/AuthContext";
 import { ProfileOnboardingCarousel } from "@/features/profile";
+import { PendingInvitationsPrompt } from "@/features/invitations/components/PendingInvitationsPrompt";
 import { canManageWorkspaceContent } from "@/features/organizations/utils/membershipUtils";
 import { useSelectedOrganization } from "@/features/organizations/context/SelectedOrganizationProvider";
 import {
@@ -27,10 +28,17 @@ import { en } from "@/i18n/en";
 
 export function DashboardPage() {
   const { user } = useAuth();
-  return user && !user.is_profile_completed ? (
-    <ProfileOnboardingCarousel />
-  ) : (
-    <DashboardContent user={user} />
+  if (user && !user.is_profile_completed) {
+    return <ProfileOnboardingCarousel />;
+  }
+  // Once the profile is complete (after onboarding, or on a normal login), surface
+  // any pending invitation so the user can join the inviting org from here — even
+  // if the original /invite link state was lost across signup → verify → login.
+  return (
+    <>
+      <PendingInvitationsPrompt />
+      <DashboardContent user={user} />
+    </>
   );
 }
 

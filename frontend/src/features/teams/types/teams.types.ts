@@ -39,3 +39,14 @@ export interface InvitationPublic {
   organization_slug: string;
   is_expired: boolean;
 }
+
+/** A pending invitation addressed to the authenticated user (their own email). */
+export interface PendingInvitation {
+  token: string;
+  role: InvitationRole;
+  organization_name: string;
+  organization_slug: string;
+  invited_by_email: string | null;
+  expires_at: string | null;
+  created_at: string;
+}

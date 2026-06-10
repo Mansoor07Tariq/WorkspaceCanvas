@@ -60,8 +60,16 @@ export function FloorLayoutPage() {
   const [snapToGridEnabled, setSnapToGridEnabled] = useState(false);
   const [gridSize, setGridSize] = useState(DEFAULT_GRID_SIZE);
 
-  const { objects, loading, error, refresh, updateObjectLocally, setSaving, savingObjectIds } =
-    useLayoutObjects(isNaN(officeId) ? 0 : officeId, isNaN(floorId) ? 0 : floorId);
+  const {
+    objects,
+    loading,
+    error,
+    updateObjectLocally,
+    addObjectLocally,
+    removeObjectLocally,
+    setSaving,
+    savingObjectIds,
+  } = useLayoutObjects(isNaN(officeId) ? 0 : officeId, isNaN(floorId) ? 0 : floorId);
 
   const { desks, refresh: refreshDesks } = useDesks(
     isNaN(officeId) ? 0 : officeId,
@@ -87,7 +95,12 @@ export function FloorLayoutPage() {
   const { fields, setField, fieldErrors, submission, handleCreate } = useLayoutObjectForm({
     officeId: isNaN(officeId) ? 0 : officeId,
     floorId: isNaN(floorId) ? 0 : floorId,
-    onCreated: () => refresh(),
+    // PR 057 (Error 5): add the created object to local state and select it,
+    // instead of refresh() which flips page loading and remounts the canvas.
+    onCreated: (obj) => {
+      addObjectLocally(obj);
+      setSelectedObjectId(obj.id);
+    },
   });
 
   // TD-019: canvas interaction logic lives in a dedicated, unit-tested hook.
@@ -196,7 +209,10 @@ export function FloorLayoutPage() {
     );
   }
 
-  if (loading) {
+  // PR 057 (Error 5): only show the full-page loader on the INITIAL load (no
+  // objects yet). A later revalidation keeps the canvas mounted so add/delete
+  // never swaps the whole page out (the visible "jerk").
+  if (loading && objects.length === 0) {
     return (
       <Box sx={{ minHeight: "100%", display: "flex", flexDirection: "column" }}>
         {header}
@@ -310,9 +326,11 @@ export function FloorLayoutPage() {
                 objects={objects}
                 selectedObjectId={selectedObjectId}
                 onSelectObject={setSelectedObjectId}
-                onDeleted={() => {
-                  setSelectedObjectId(null);
-                  refresh();
+                onDeleted={(id) => {
+                  // PR 057 (Error 5): remove locally instead of refresh() so the
+                  // canvas stays mounted (no page-level loading flip / jerk).
+                  removeObjectLocally(id);
+                  setSelectedObjectId((current) => (current === id ? null : current));
                 }}
                 canManageLayout={canManageLayout}
                 bookableObjectIds={bookableObjectIds}

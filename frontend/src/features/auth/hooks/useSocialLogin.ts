@@ -82,7 +82,7 @@ export function useSocialLogin(): SocialLoginState {
       setLoadingProvider("microsoft");
       setGeneralError(undefined);
     },
-    onToken: (idToken) => void submitSocialToken("microsoft", { id_token: idToken }),
+    onToken: (accessToken) => void submitSocialToken("microsoft", { access_token: accessToken }),
     onError: (error) => {
       setLoadingProvider(undefined);
       setGeneralError(

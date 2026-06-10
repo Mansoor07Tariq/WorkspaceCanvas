@@ -40,7 +40,11 @@ This document is a long-lived register of known engineering debt, product risk, 
 
 ## Current Open Debt
 
-_No open debt items. TD-044 and TD-045 were resolved in PR 056; the final MVP browser QA + codebase safety review opened no new debt. See `docs/056-final-mvp-browser-qa-codebase-safety.md`._
+| ID | Severity | Category | Area | Summary | Impact | Recommended Fix | Suggested PR | Status |
+|----|----------|----------|------|---------|--------|-----------------|--------------|--------|
+| TD-046 | Minor | Product-limitation | Bookings/Canvas | The "make a desk bookable / publish" UX is rough: a layout object becomes bookable only by linking a Desk resource in the Floor Layout inspector; there is no first-class "publish floor / publish desk" affordance, draft-vs-published state, or guided bookable-desk workflow | Admins can find it non-obvious how to turn a drawn desk into a bookable one; no draft/publish lifecycle for floors/desks | Design a dedicated publish/draft model + UX (floor publish state, clearer "make bookable" flow, copy). **Intentionally deferred out of PR 057** (found during browser QA) | PR 058+ | open |
+
+_All other debt is resolved. TD-044/TD-045 resolved in PR 056; TD-046 is the only open item — the deferred bookable/publish UX surfaced during PR 057 browser QA. See `docs/057-google-onboarding-no-workspace-canvas-smoothness.md`._
 
 ---
 
@@ -136,4 +140,6 @@ Use this before every PR merge:
 
 ---
 
-*Last updated: 2026-06-02 — PR 056 final MVP browser QA + codebase safety review. Resolved TD-044 (booking-hook TTL caching + book/cancel invalidation across `useDeskBookings`/`useMyBookings`) and TD-045 (per-office/selected-org UI role gate on Floor Layout / Office Detail, backed by `organization` on the office/floor serializers). Full codebase security/privacy/tenant-isolation/architecture review found no new debt — the register is now empty of open items. Full backend (765) and frontend (1162) suites green; lint/format/tsc/build clean; `npm audit` 0 high; no migration drift; `seed_demo_workspace` verified. See `docs/056-final-mvp-browser-qa-codebase-safety.md`.*
+*Last updated: 2026-06-03 — PR 057 Google onboarding / no-workspace / canvas smoothness fixes. Fixed 5 browser-QA issues (Google name + avatar prefill, profile-completion transition overlay, no-workspace route guard, canvas add/delete jerk) — all frontend (the backend already stored the Google name and downloaded the avatar). Opened TD-046 (deferred bookable/publish UX). Frontend suite 1173 green; tsc/lint/format/build clean; `npm audit` 0 high. No backend changes. See `docs/057-google-onboarding-no-workspace-canvas-smoothness.md`.*
+
+*Previously: 2026-06-02 — PR 056 final MVP browser QA + codebase safety review. Resolved TD-044 (booking-hook TTL caching + book/cancel invalidation across `useDeskBookings`/`useMyBookings`) and TD-045 (per-office/selected-org UI role gate on Floor Layout / Office Detail, backed by `organization` on the office/floor serializers). Full codebase security/privacy/tenant-isolation/architecture review found no new debt — the register is now empty of open items. Full backend (765) and frontend (1162) suites green; lint/format/tsc/build clean; `npm audit` 0 high; no migration drift; `seed_demo_workspace` verified. See `docs/056-final-mvp-browser-qa-codebase-safety.md`.*

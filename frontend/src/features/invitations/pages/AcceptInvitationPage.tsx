@@ -12,8 +12,18 @@ import {
 } from "@mui/material";
 import { GroupAddOutlined } from "@mui/icons-material";
 import { useAuth } from "@/features/auth/context/AuthContext";
+import { useSelectedOrganization } from "@/features/organizations/context/SelectedOrganizationProvider";
 import { acceptInvitation, getInvitationByToken } from "@/features/teams/api/teamsApi";
 import type { InvitationPublic } from "@/features/teams/types/teams.types";
+import {
+  findActiveMembershipBySlug,
+  getAcceptErrorMessage,
+  invalidateOrgScopedCaches,
+} from "@/features/invitations/lib/acceptInvitationFlow";
+import {
+  clearPendingInviteToken,
+  storePendingInviteToken,
+} from "@/features/invitations/lib/pendingInviteToken";
 import { ROUTES } from "@/routes/paths";
 
 interface InfoState {
@@ -46,7 +56,8 @@ const ROLE_LABEL: Record<string, string> = {
 
 export function AcceptInvitationPage() {
   const { token } = useParams<{ token: string }>();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
+  const { setSelectedOrganizationId } = useSelectedOrganization();
   const navigate = useNavigate();
 
   const [infoState, dispatchInfo] = useReducer(infoReducer, {
@@ -58,9 +69,16 @@ export function AcceptInvitationPage() {
   const [accepting, setAccepting] = useState(false);
   const [acceptError, setAcceptError] = useState<string | null>(null);
   const [accepted, setAccepted] = useState(false);
+  // Slug of the org just joined; set once accept + refreshUser succeed. Drives
+  // the post-accept effect that selects the org and navigates to the dashboard.
+  const [joinedSlug, setJoinedSlug] = useState<string | null>(null);
 
   useEffect(() => {
     if (!token) return;
+    // Persist the token so the invite survives a signup → verify → login
+    // round-trip (which drops React Router location state); usePostAuthNavigation
+    // reads it to return the user here after authenticating.
+    storePendingInviteToken(token);
     dispatchInfo({ type: "start" });
     getInvitationByToken(token)
       .then((data) => dispatchInfo({ type: "success", payload: data }))
@@ -72,18 +90,37 @@ export function AcceptInvitationPage() {
       );
   }, [token]);
 
+  // Once the authenticated user has been refreshed and the new membership is
+  // visible, select the invited organization (so a multi-org user lands inside
+  // it, not their previously-selected org) and navigate to the dashboard. We
+  // match by slug because the accept response carries no organization id. The
+  // navigate fires regardless so the user is never stranded on this page.
+  useEffect(() => {
+    if (!joinedSlug || !user) return;
+    const joined = findActiveMembershipBySlug(user, joinedSlug);
+    if (joined) setSelectedOrganizationId(joined.organization_id);
+    const timer = setTimeout(() => navigate(ROUTES.app), 1500);
+    return () => clearTimeout(timer);
+  }, [joinedSlug, user, setSelectedOrganizationId, navigate]);
+
   async function handleAccept() {
-    if (!token) return;
+    const invite = infoState.invitation;
+    if (!token || !invite) return;
     setAccepting(true);
     setAcceptError(null);
     try {
       await acceptInvitation(token);
+      // Drop org-scoped caches, then refresh the user so the new membership
+      // becomes visible to SelectedOrganizationProvider (otherwise the dashboard
+      // shows the "no workspace" state even though the membership now exists).
+      invalidateOrgScopedCaches();
+      await refreshUser();
+      // Token consumed — drop the persisted fallback so it can't re-trigger.
+      clearPendingInviteToken();
       setAccepted(true);
-      setTimeout(() => navigate(ROUTES.app), 1500);
+      setJoinedSlug(invite.organization_slug);
     } catch (err: unknown) {
-      const msg =
-        err instanceof Error ? err.message : "Could not accept invitation. Please try again.";
-      setAcceptError(msg);
+      setAcceptError(getAcceptErrorMessage(err));
     } finally {
       setAccepting(false);
     }

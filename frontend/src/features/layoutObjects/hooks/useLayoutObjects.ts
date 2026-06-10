@@ -16,6 +16,8 @@ type Action =
   | { type: "fetch_success"; payload: LayoutObject[] }
   | { type: "fetch_error"; payload: string }
   | { type: "patch_object"; id: number; patch: Partial<LayoutObject> }
+  | { type: "add_object"; payload: LayoutObject }
+  | { type: "remove_object"; id: number }
   | { type: "set_saving"; id: number; saving: boolean };
 
 function reducer(state: State, action: Action): State {
@@ -36,6 +38,12 @@ function reducer(state: State, action: Action): State {
         ...state,
         objects: state.objects.map((o) => (o.id === action.id ? { ...o, ...action.patch } : o)),
       };
+    case "add_object":
+      // Idempotent: never duplicate if the object is already present.
+      if (state.objects.some((o) => o.id === action.payload.id)) return state;
+      return { ...state, objects: [...state.objects, action.payload] };
+    case "remove_object":
+      return { ...state, objects: state.objects.filter((o) => o.id !== action.id) };
     case "set_saving": {
       const next = new Set(state.savingObjectIds);
       if (action.saving) next.add(action.id);
@@ -69,6 +77,18 @@ export function useLayoutObjects(officeId: number, floorId: number) {
 
   function updateObjectLocally(id: number, patch: Partial<LayoutObject>) {
     dispatch({ type: "patch_object", id, patch });
+  }
+
+  // PR 057 (Error 5): apply create/delete to local state instead of calling
+  // refresh(), which flips page-level `loading` and remounts the lazy canvas
+  // (the visible "jerk"). The API layer already invalidates the request cache,
+  // so a later navigation still revalidates from the server.
+  function addObjectLocally(obj: LayoutObject) {
+    dispatch({ type: "add_object", payload: obj });
+  }
+
+  function removeObjectLocally(id: number) {
+    dispatch({ type: "remove_object", id });
   }
 
   function setSaving(id: number, saving: boolean) {
@@ -109,5 +129,12 @@ export function useLayoutObjects(officeId: number, floorId: number) {
     };
   }, [officeId, floorId, tick]);
 
-  return { ...state, refresh, updateObjectLocally, setSaving };
+  return {
+    ...state,
+    refresh,
+    updateObjectLocally,
+    addObjectLocally,
+    removeObjectLocally,
+    setSaving,
+  };
 }

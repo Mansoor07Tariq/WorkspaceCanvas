@@ -7,6 +7,7 @@ import {
   resendInvitation,
   getInvitationByToken,
   acceptInvitation,
+  listMyPendingInvitations,
 } from "../api/teamsApi";
 
 vi.mock("@/lib/api/apiClient", () => ({
@@ -75,5 +76,11 @@ describe("teamsApi", () => {
     mockPost.mockResolvedValueOnce({});
     await acceptInvitation("abc-token");
     expect(mockPost).toHaveBeenCalledWith("/api/accounts/invitations/abc-token/accept/", {});
+  });
+
+  it("listMyPendingInvitations calls correct URL", async () => {
+    mockGet.mockResolvedValueOnce([]);
+    await listMyPendingInvitations();
+    expect(mockGet).toHaveBeenCalledWith("/api/accounts/invitations/pending/");
   });
 });

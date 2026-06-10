@@ -275,62 +275,55 @@ describe("ProfileOnboardingCarousel — avatar step", () => {
     });
   });
 
-  it("skip on avatar step shows done screen after successful submission", async () => {
+  it("skip on avatar step shows the setting-up transition overlay after submission", async () => {
     const user = userEvent.setup();
     mockUpdateProfile.mockResolvedValueOnce(updatedUser);
     await navigateToAvatar(user);
     await user.click(screen.getByRole("button", { name: en.app.profile.carousel.skip }));
     await waitFor(() => {
-      expect(screen.getByText(en.app.profile.carousel.stepDoneTitle)).toBeInTheDocument();
+      expect(screen.getByText(en.app.profile.carousel.completingTitle)).toBeInTheDocument();
     });
   });
 
-  it("shows done screen after clicking Complete profile on avatar step", async () => {
+  it("shows the transition overlay after clicking Complete profile on avatar step", async () => {
     const user = userEvent.setup();
     mockUpdateProfile.mockResolvedValueOnce(updatedUser);
     await navigateToAvatar(user);
     await user.click(screen.getByRole("button", { name: en.app.profile.carousel.finish }));
     await waitFor(() => {
-      expect(screen.getByText(en.app.profile.carousel.stepDoneTitle)).toBeInTheDocument();
+      expect(screen.getByText(en.app.profile.carousel.completingTitle)).toBeInTheDocument();
     });
   });
 });
 
-describe("ProfileOnboardingCarousel — done step", () => {
+describe("ProfileOnboardingCarousel — completion transition (PR 057 Error 3)", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("done screen shows personalized greeting with first name", async () => {
+  it("shows a full-screen status overlay with the setting-up message after finish", async () => {
     const user = userEvent.setup();
     mockUpdateProfile.mockResolvedValueOnce(updatedUser);
     await navigateToAvatar(user);
     await user.click(screen.getByRole("button", { name: en.app.profile.carousel.finish }));
     await waitFor(() => {
-      expect(
-        screen.getByText(new RegExp(en.app.profile.carousel.stepDoneGreeting))
-      ).toBeInTheDocument();
+      // The overlay is a role="status" labelled with the setting-up message.
+      const overlay = screen.getByRole("status", {
+        name: en.app.profile.carousel.completingTitle,
+      });
+      expect(overlay).toBeInTheDocument();
     });
   });
 
-  it("done screen shows user email in summary card", async () => {
+  it("does not flip the auth user immediately — the hand-off is delayed by the overlay", async () => {
     const user = userEvent.setup();
     mockUpdateProfile.mockResolvedValueOnce(updatedUser);
     await navigateToAvatar(user);
     await user.click(screen.getByRole("button", { name: en.app.profile.carousel.finish }));
+    // Overlay is up...
     await waitFor(() => {
-      expect(screen.getAllByText(MOCK_USER.email).length).toBeGreaterThan(0);
+      expect(screen.getByText(en.app.profile.carousel.completingTitle)).toBeInTheDocument();
     });
-  });
-
-  it("done screen hides completion progress bar", async () => {
-    const user = userEvent.setup();
-    mockUpdateProfile.mockResolvedValueOnce(updatedUser);
-    await navigateToAvatar(user);
-    await user.click(screen.getByRole("button", { name: en.app.profile.carousel.finish }));
-    await waitFor(() => {
-      expect(screen.getByText(en.app.profile.carousel.stepDoneTitle)).toBeInTheDocument();
-    });
-    // Progress bar hidden on done step
-    expect(screen.queryByText(en.app.profile.carousel.profileCompletion)).not.toBeInTheDocument();
+    // ...but the user has NOT been flipped yet (would swap away the carousel).
+    expect(mockSetAuthenticatedUser).not.toHaveBeenCalled();
   });
 });
 
@@ -349,14 +342,18 @@ describe("ProfileOnboardingCarousel — finish submission", () => {
     });
   });
 
-  it("calls setAuthenticatedUser with the returned user", async () => {
+  it("calls setAuthenticatedUser with the returned user once the transition completes", async () => {
     const user = userEvent.setup();
     mockUpdateProfile.mockResolvedValueOnce(updatedUser);
     await navigateToAvatar(user);
     await user.click(screen.getByRole("button", { name: en.app.profile.carousel.finish }));
-    await waitFor(() => {
-      expect(mockSetAuthenticatedUser).toHaveBeenCalledWith(updatedUser);
-    });
+    // The hand-off is delayed by the transition overlay (~2.2s); wait past it.
+    await waitFor(
+      () => {
+        expect(mockSetAuthenticatedUser).toHaveBeenCalledWith(updatedUser);
+      },
+      { timeout: 4000 }
+    );
   });
 
   it("shows an API error alert on failure", async () => {

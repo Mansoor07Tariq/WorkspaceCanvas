@@ -133,14 +133,17 @@ describe("SocialLoginButtons", () => {
   it("calls onStart and then onToken on popup success", async () => {
     const user = userEvent.setup();
     const microsoft = makeProvider({ onStart: vi.fn(), onToken: vi.fn() });
-    mockLoginPopup.mockResolvedValueOnce({ idToken: "ms-id-token" });
+    mockLoginPopup.mockResolvedValueOnce({
+      idToken: "ms-id-token",
+      accessToken: "ms-access-token",
+    });
 
     renderButtons({ microsoft });
     await user.click(screen.getByRole("button", { name: en.auth.social.continueWithMicrosoft }));
 
     await vi.waitFor(() => {
       expect(microsoft.onStart).toHaveBeenCalledTimes(1);
-      expect(microsoft.onToken).toHaveBeenCalledWith("ms-id-token");
+      expect(microsoft.onToken).toHaveBeenCalledWith("ms-access-token");
     });
   });
 

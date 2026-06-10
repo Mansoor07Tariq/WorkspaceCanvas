@@ -3,6 +3,7 @@ import uuid
 from datetime import timedelta
 
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
@@ -27,6 +28,7 @@ from .serializers import (
     InvitationSerializer,
     MembershipSerializer,
     OrganizationResponseSerializer,
+    PendingInvitationSerializer,
 )
 
 INVITATION_TTL = timedelta(days=7)
@@ -296,6 +298,46 @@ class InvitationDetailView(APIView):
         except Invitation.DoesNotExist:
             raise NotFound("Invitation not found.")
         serializer = InvitationPublicSerializer(invitation)
+        return Response(serializer.data)
+
+
+class MyPendingInvitationsView(APIView):
+    """List the authenticated user's actionable pending invitations.
+
+    Scoped to the caller's own email (case-insensitive), so a user can only ever
+    see invitations addressed to them. Used by the dashboard to auto-surface an
+    accept prompt after sign-in / onboarding, covering the case where the
+    original /invite link state was lost across the signup → verify → login
+    round-trip. Only invitations that could actually be accepted are returned:
+    pending, not expired, organization active, and not for an org the user is
+    already an active member of.
+    """
+
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [_InvitePublicReadThrottle]
+
+    @extend_schema(
+        responses={200: PendingInvitationSerializer(many=True)},
+        summary="List the authenticated user's pending invitations",
+    )
+    def get(self, request: Request) -> Response:
+        now = timezone.now()
+        active_org_ids = Membership.objects.filter(
+            user=request.user, status=Membership.Status.ACTIVE
+        ).values_list("organization_id", flat=True)
+
+        invitations = (
+            Invitation.objects.select_related("organization")
+            .filter(
+                email__iexact=request.user.email,
+                status=Invitation.Status.PENDING,
+                organization__status=Organization.Status.ACTIVE,
+            )
+            .filter(Q(expires_at__isnull=True) | Q(expires_at__gte=now))
+            .exclude(organization_id__in=active_org_ids)
+            .order_by("-created_at")
+        )
+        serializer = PendingInvitationSerializer(invitations, many=True)
         return Response(serializer.data)
 
 

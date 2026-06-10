@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(echo \"RUFF EXIT:$?\")",
+      "Bash(.venv/bin/pytest users/tests/test_social_auth.py -v)",
+      "Bash(echo \"SOCIAL EXIT:$?\")",
+      "Bash(/home/mansoortariq/Projects/WorkspaceCanvas/backend/.venv/bin/python -m pytest users/tests/test_social_auth.py -v)",
+      "Bash(/home/mansoortariq/Projects/WorkspaceCanvas/backend/.venv/bin/python -m pytest users/tests/test_social_auth.py::test_google_service_valid_token_returns_identity -v)",
+      "Bash(POSTGRES_HOST=localhost /home/mansoortariq/Projects/WorkspaceCanvas/backend/.venv/bin/python -m pytest users/tests/test_social_auth.py -v)",
+      "Bash(POSTGRES_HOST=localhost /home/mansoortariq/Projects/WorkspaceCanvas/backend/.venv/bin/python -m pytest users/tests/ -v --tb=short)",
+      "Bash(echo \"USERS EXIT:$?\")",
+      "Bash(echo \"PRETTIER EXIT:$?\")",
+      "Bash(echo \"FULL EXIT:$?\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8000/media/users/avatars/social_avatar_12.jpg)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173/media/users/avatars/social_avatar_12.jpg)",
+      "Bash(sed -n '30,60p' features/teams/__tests__/PeoplePage.test.tsx)",
+      "Bash(sed -n '515,570p' i18n/en.ts)",
+      "Bash(sed -n '255,285p' accounts/tests/test_invitation_resend.py)",
+      "Bash(sed -n '120,150p' accounts/tests/test_invitation_throttle.py)",
+      "Bash(python -m pytest accounts/tests/test_invitations.py::test_accept_matching_user_creates_membership -q)",
+      "Bash(python -m pytest accounts/tests/test_pending_invitations.py -q)",
+      "Bash(grep -nA3 \"test\\\\|pytest\" Makefile)",
+      "Bash(POSTGRES_HOST=localhost python -m pytest accounts/tests/test_pending_invitations.py -q)",
+      "Bash(POSTGRES_HOST=localhost python -m pytest accounts/tests/test_invitations.py accounts/tests/test_invitation_throttle.py -q)",
+      "Bash(POSTGRES_HOST=localhost python -m pytest accounts/ -q)"
+    ]
+  }
+}
