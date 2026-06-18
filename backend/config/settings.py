@@ -206,9 +206,11 @@ REST_FRAMEWORK = {
         "invite_read": os.environ.get("THROTTLE_INVITE_READ", "120/hour"),
         "office_create": os.environ.get("THROTTLE_OFFICE_CREATE", "30/hour"),
         "floor_create": os.environ.get("THROTTLE_FLOOR_CREATE", "60/hour"),
-        "layout_object_write": os.environ.get(
-            "THROTTLE_LAYOUT_OBJECT_WRITE", "120/hour"
-        ),
+        # Canvas object create/move/resize. Disabled by default: a single editing
+        # session legitimately fires many writes (each drag/keyboard nudge/resize
+        # is a PATCH), so a fixed hourly cap locks admins out mid-edit. Set
+        # THROTTLE_LAYOUT_OBJECT_WRITE (e.g. "600/hour") to re-enable in prod.
+        "layout_object_write": os.environ.get("THROTTLE_LAYOUT_OBJECT_WRITE") or None,
         "desk_write": os.environ.get("THROTTLE_DESK_WRITE", "120/hour"),
         "desk_booking_write": os.environ.get("THROTTLE_DESK_BOOKING_WRITE", "60/hour"),
         "desk_booking_read": os.environ.get("THROTTLE_DESK_BOOKING_READ", "120/hour"),

@@ -35,3 +35,5 @@ frontend/.env
 # OS
 .DS_Store
 Thumbs.db
+# Windows "mark of the web" alternate-data-stream files (created on WSL/NTFS)
+*:Zone.Identifier

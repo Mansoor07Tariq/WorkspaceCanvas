@@ -17,6 +17,42 @@ export const CANVAS_GRID_SIZES = [10, 20, 40] as const;
 /** Default grid size when the editor first opens. */
 export const DEFAULT_GRID_SIZE = 20;
 
+// ─── Floor boundary ────────────────────────────────────────────────────────
+
+/**
+ * Inset (px) of the office boundary/walls from the raw stage edges. The grey
+ * margin outside the boundary stays visible so the white interior reads as a
+ * real room rather than the whole board.
+ */
+export const FLOOR_BOUNDARY_INSET = 48;
+
+/**
+ * Thickness (px) of the office boundary walls. The wall segments extend outward
+ * from the boundary, so the containment region stays the inner wall face.
+ * Shared by the canvas renderer and the door/window wall-placement geometry.
+ */
+export const BOUNDARY_WALL_THICKNESS = 12;
+
+export interface FloorBoundary {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * The default rectangular office boundary, derived from the logical stage size
+ * with a symmetric inset. This is system-owned canvas UI (PR 061): it is NOT a
+ * backend layout object and is never persisted. With the current stage
+ * (1000 × 640) and a 48 px inset this resolves to { 48, 48, 904, 544 }.
+ */
+export const DEFAULT_FLOOR_BOUNDARY: FloorBoundary = {
+  x: FLOOR_BOUNDARY_INSET,
+  y: FLOOR_BOUNDARY_INSET,
+  width: CANVAS_WIDTH - FLOOR_BOUNDARY_INSET * 2,
+  height: CANVAS_HEIGHT - FLOOR_BOUNDARY_INSET * 2,
+};
+
 // ─── Formatting ──────────────────────────────────────────────────────────────
 
 /**
@@ -182,6 +218,49 @@ export function clampObjectTransform(
   return { x: cx, y: cy, width: clampedWidth, height: clampedHeight };
 }
 
+// ─── Boundary (room) clamping ──────────────────────────────────────────────────
+
+/**
+ * Clamp an object's top-left position so its bounding box stays fully inside the
+ * office boundary (room), not just the raw stage.
+ *
+ * Uses the unrotated bounding box. When the object is wider/taller than the
+ * boundary it is anchored at the boundary's top-left so it stays visible and the
+ * math never produces an inverted range (max < min) that would crash.
+ */
+export function clampObjectToBoundary(
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  boundary: FloorBoundary = DEFAULT_FLOOR_BOUNDARY
+): { x: number; y: number } {
+  const maxX = boundary.x + Math.max(0, boundary.width - width);
+  const maxY = boundary.y + Math.max(0, boundary.height - height);
+  return {
+    x: clamp(x, boundary.x, maxX),
+    y: clamp(y, boundary.y, maxY),
+  };
+}
+
+/**
+ * Clamp object dimensions to the boundary, then clamp position. An object larger
+ * than the room is shrunk to fit and pinned to the boundary's top-left. Returns
+ * updated x, y, width, and height in world coordinates.
+ */
+export function clampObjectTransformToBoundary(
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  boundary: FloorBoundary = DEFAULT_FLOOR_BOUNDARY
+): { x: number; y: number; width: number; height: number } {
+  const clampedWidth = Math.min(width, boundary.width);
+  const clampedHeight = Math.min(height, boundary.height);
+  const { x: cx, y: cy } = clampObjectToBoundary(x, y, clampedWidth, clampedHeight, boundary);
+  return { x: cx, y: cy, width: clampedWidth, height: clampedHeight };
+}
+
 // ─── Grid snapping ────────────────────────────────────────────────────────────
 
 /**
@@ -196,6 +275,21 @@ export function snapToGrid(value: number, gridSize: number): number {
   if (!Number.isFinite(value)) return 0;
   if (!Number.isFinite(gridSize) || gridSize <= 0) return value;
   return Math.round(value / gridSize) * gridSize;
+}
+
+/**
+ * Default rotation increment — objects always snap to a multiple of this (deg).
+ */
+export const ROTATION_SNAP_STEP = 10;
+
+/**
+ * Snap a rotation (degrees) to the nearest multiple of `step` (default 10) and
+ * normalise to [0, 360). e.g. 86 → 90, 82 → 80, -1 → 0, 356 → 0.
+ */
+export function snapRotation(deg: number, step: number = ROTATION_SNAP_STEP): number {
+  if (!Number.isFinite(deg) || step <= 0) return 0;
+  const snapped = Math.round(deg / step) * step;
+  return ((snapped % 360) + 360) % 360;
 }
 
 /**

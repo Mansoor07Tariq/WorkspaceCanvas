@@ -6,8 +6,15 @@ import type {
   LayoutObjectType,
 } from "../types/layoutObject.types";
 import { VALID_OBJECT_TYPES, getDefaultSizeForObjectType } from "./layoutObjectLibrary";
+import { DEFAULT_FLOOR_BOUNDARY } from "./coordinateHelpers";
 
 const c = en.app.layoutObjects;
+
+// New objects default to the top-left corner of the office boundary (PR 061) so
+// they appear inside the room rather than at the raw stage origin (0,0), which
+// now sits in the grey margin outside the walls.
+const DEFAULT_X = String(DEFAULT_FLOOR_BOUNDARY.x);
+const DEFAULT_Y = String(DEFAULT_FLOOR_BOUNDARY.y);
 
 export function validateObjectType(type: string): string | undefined {
   if (!type) return c.objectTypeRequired;
@@ -86,8 +93,8 @@ export function makeDefaultFields(type: LayoutObjectType | "" = ""): LayoutObjec
     return {
       object_type: "",
       label: "",
-      x: "0",
-      y: "0",
+      x: DEFAULT_X,
+      y: DEFAULT_Y,
       width: "80",
       height: "50",
       rotation: "0",

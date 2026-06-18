@@ -11,9 +11,13 @@ import {
   clamp,
   clampObjectPosition,
   clampObjectTransform,
+  clampObjectToBoundary,
+  clampObjectTransformToBoundary,
+  DEFAULT_FLOOR_BOUNDARY,
   snapToGrid,
   snapObjectToGrid,
   snapSizeToGrid,
+  snapRotation,
 } from "../utils/coordinateHelpers";
 import type { LayoutObjectType } from "../types/layoutObject.types";
 
@@ -442,6 +446,79 @@ describe("snap then clamp ordering", () => {
       expect(x).toBeLessThanOrEqual(W - objW);
       expect(y).toBeLessThanOrEqual(H - objH);
     }
+  });
+});
+
+// ─── Boundary clamping (PR 061) ──────────────────────────────────────────────
+
+describe("DEFAULT_FLOOR_BOUNDARY", () => {
+  it("is inset symmetrically from the stage (48,48,904,544)", () => {
+    expect(DEFAULT_FLOOR_BOUNDARY).toEqual({ x: 48, y: 48, width: 904, height: 544 });
+  });
+});
+
+describe("clampObjectToBoundary", () => {
+  const B = DEFAULT_FLOOR_BOUNDARY;
+
+  it("leaves an in-bounds object unchanged", () => {
+    expect(clampObjectToBoundary(100, 100, 80, 50)).toEqual({ x: 100, y: 100 });
+  });
+
+  it("clamps negative coords to the boundary top-left", () => {
+    expect(clampObjectToBoundary(-50, -50, 80, 50)).toEqual({ x: B.x, y: B.y });
+  });
+
+  it("clamps the right/bottom edges to stay inside the boundary", () => {
+    // maxX = 48 + (904-80) = 872, maxY = 48 + (544-50) = 542
+    expect(clampObjectToBoundary(5000, 5000, 80, 50)).toEqual({ x: 872, y: 542 });
+  });
+
+  it("anchors an object larger than the boundary at the top-left (no crash)", () => {
+    expect(clampObjectToBoundary(10, 10, 2000, 2000)).toEqual({ x: B.x, y: B.y });
+  });
+
+  it("accepts a custom boundary", () => {
+    const custom = { x: 0, y: 0, width: 100, height: 100 };
+    expect(clampObjectToBoundary(200, 200, 20, 20, custom)).toEqual({ x: 80, y: 80 });
+  });
+});
+
+describe("clampObjectTransformToBoundary", () => {
+  it("shrinks an oversized object to the boundary and pins it to top-left", () => {
+    const r = clampObjectTransformToBoundary(10, 10, 2000, 2000);
+    expect(r).toEqual({
+      x: DEFAULT_FLOOR_BOUNDARY.x,
+      y: DEFAULT_FLOOR_BOUNDARY.y,
+      width: DEFAULT_FLOOR_BOUNDARY.width,
+      height: DEFAULT_FLOOR_BOUNDARY.height,
+    });
+  });
+
+  it("clamps position after resizing within the boundary", () => {
+    const r = clampObjectTransformToBoundary(5000, 5000, 100, 100);
+    expect(r.width).toBe(100);
+    expect(r.height).toBe(100);
+    expect(r.x).toBe(48 + (904 - 100));
+    expect(r.y).toBe(48 + (544 - 100));
+  });
+});
+
+describe("snapRotation", () => {
+  it("snaps to the nearest multiple of 10", () => {
+    expect(snapRotation(86)).toBe(90);
+    expect(snapRotation(82)).toBe(80);
+    expect(snapRotation(45)).toBe(50); // round half up
+    expect(snapRotation(0)).toBe(0);
+  });
+
+  it("normalises negatives and ≥360 into [0,360)", () => {
+    expect(snapRotation(-1.03)).toBe(0);
+    expect(snapRotation(-95)).toBe(270); // -90 → 270
+    expect(snapRotation(356)).toBe(0); // 360 → 0
+  });
+
+  it("returns 0 for non-finite input", () => {
+    expect(snapRotation(NaN)).toBe(0);
   });
 });
 

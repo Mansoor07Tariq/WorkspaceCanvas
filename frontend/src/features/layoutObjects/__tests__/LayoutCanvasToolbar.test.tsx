@@ -13,6 +13,8 @@ const defaultProps = {
   gridSize: 20,
   onGridSizeChange: vi.fn(),
   canManageLayout: true,
+  enhanced: false,
+  onEnhancedChange: vi.fn(),
 };
 
 function getShowGridSwitch() {
@@ -162,5 +164,40 @@ describe("LayoutCanvasToolbar", () => {
   it("member view still shows the Show Grid toggle", () => {
     render(<LayoutCanvasToolbar {...defaultProps} canManageLayout={false} />);
     expect(getShowGridSwitch()).toBeInTheDocument();
+  });
+
+  // ─── Enhance toggle ───────────────────────────────────────────────────────
+
+  it("shows the Enhance button when not enhanced", () => {
+    render(<LayoutCanvasToolbar {...defaultProps} enhanced={false} />);
+    expect(screen.getByRole("button", { name: /enhance/i })).toBeInTheDocument();
+  });
+
+  it("shows the Revert button when enhanced", () => {
+    render(<LayoutCanvasToolbar {...defaultProps} enhanced={true} />);
+    expect(screen.getByRole("button", { name: /revert/i })).toBeInTheDocument();
+  });
+
+  it("calls onEnhancedChange(true) when Enhance is clicked", () => {
+    const onEnhancedChange = vi.fn();
+    render(
+      <LayoutCanvasToolbar {...defaultProps} enhanced={false} onEnhancedChange={onEnhancedChange} />
+    );
+    fireEvent.click(screen.getByRole("button", { name: /enhance/i }));
+    expect(onEnhancedChange).toHaveBeenCalledWith(true);
+  });
+
+  it("calls onEnhancedChange(false) when Revert is clicked", () => {
+    const onEnhancedChange = vi.fn();
+    render(
+      <LayoutCanvasToolbar {...defaultProps} enhanced={true} onEnhancedChange={onEnhancedChange} />
+    );
+    fireEvent.click(screen.getByRole("button", { name: /revert/i }));
+    expect(onEnhancedChange).toHaveBeenCalledWith(false);
+  });
+
+  it("Enhance toggle is available to members too", () => {
+    render(<LayoutCanvasToolbar {...defaultProps} canManageLayout={false} enhanced={false} />);
+    expect(screen.getByRole("button", { name: /enhance/i })).toBeInTheDocument();
   });
 });

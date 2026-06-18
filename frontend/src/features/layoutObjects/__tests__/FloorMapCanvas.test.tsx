@@ -20,8 +20,40 @@ vi.mock("react-konva", () => ({
       </div>
     );
   },
-  Layer: ({ children }: { children?: React.ReactNode }) => <div>{children}</div>,
-  Rect: () => null,
+  Layer: ({ children, listening }: { children?: React.ReactNode; listening?: boolean }) => (
+    <div data-testid="konva-layer" data-listening={String(listening ?? true)}>
+      {children}
+    </div>
+  ),
+  Rect: ({
+    fill,
+    stroke,
+    onClick,
+    "data-testid": testId,
+  }: {
+    fill?: string;
+    stroke?: string;
+    onClick?: (e: {
+      target: { getStage: () => { getRelativePointerPosition: () => { x: number; y: number } } };
+    }) => void;
+    "data-testid"?: string;
+  }) => (
+    <div
+      data-testid={testId ?? "konva-rect"}
+      data-fill={fill}
+      data-stroke={stroke}
+      onClick={
+        onClick
+          ? () =>
+              onClick({
+                target: {
+                  getStage: () => ({ getRelativePointerPosition: () => ({ x: 500, y: 50 }) }),
+                },
+              })
+          : undefined
+      }
+    />
+  ),
   Circle: () => null,
   Line: ({ points }: { points?: number[] }) => (
     <div data-testid="grid-line" data-points={JSON.stringify(points)} />
@@ -408,6 +440,226 @@ describe("FloorMapCanvas", () => {
     );
     fireEvent.click(screen.getByTestId("canvas-object-group"));
     expect(onAvailabilityObjectSelect).not.toHaveBeenCalled();
+  });
+
+  // ─── Boundary tests (PR 061) ──────────────────────────────────────────────
+
+  it("renders a white interior rect and four solid wall segments for the boundary", () => {
+    render(<FloorMapCanvas objects={[]} selectedObjectId={null} onSelectObject={vi.fn()} />);
+    const rects = screen.getAllByTestId("konva-rect");
+    // White interior
+    expect(rects.some((r) => r.getAttribute("data-fill") === "#FFFFFF")).toBe(true);
+    // Walls match the "wall" object: grey fill + darker stroke, four segments
+    const walls = rects.filter(
+      (r) =>
+        r.getAttribute("data-fill") === "#D1D5DB" && r.getAttribute("data-stroke") === "#4B5563"
+    );
+    expect(walls.length).toBe(4);
+  });
+
+  it("draws the boundary in a non-listening layer (does not capture clicks)", () => {
+    render(<FloorMapCanvas objects={[]} selectedObjectId={null} onSelectObject={vi.fn()} />);
+    const layers = screen.getAllByTestId("konva-layer");
+    // The first layer (background/boundary) must be non-listening.
+    expect(layers[0].getAttribute("data-listening")).toBe("false");
+  });
+
+  it("renders the boundary in booking mode too", () => {
+    render(
+      <FloorMapCanvas
+        objects={[]}
+        selectedObjectId={null}
+        onSelectObject={vi.fn()}
+        mode="booking"
+      />
+    );
+    const rects = screen.getAllByTestId("konva-rect");
+    expect(rects.some((r) => r.getAttribute("data-fill") === "#FFFFFF")).toBe(true);
+  });
+
+  it("renders the boundary without hiding object clicks (boundary + object both present)", () => {
+    const onSelectObject = vi.fn();
+    render(
+      <FloorMapCanvas
+        objects={[makeObj({ id: 3 })]}
+        selectedObjectId={null}
+        onSelectObject={onSelectObject}
+      />
+    );
+    // boundary present
+    expect(screen.getAllByTestId("konva-rect").length).toBeGreaterThan(0);
+    // object still clickable
+    fireEvent.click(screen.getByTestId(/canvas-object-group/));
+    expect(onSelectObject).toHaveBeenCalledWith(3);
+  });
+
+  // ─── Zoom controls (PR 061) ───────────────────────────────────────────────
+
+  it("renders zoom controls in editor mode", () => {
+    render(
+      <FloorMapCanvas
+        objects={[]}
+        selectedObjectId={null}
+        onSelectObject={vi.fn()}
+        canManageLayout
+      />
+    );
+    expect(screen.getByTestId("canvas-zoom-controls")).toBeInTheDocument();
+    expect(screen.getByText("100%")).toBeInTheDocument();
+  });
+
+  it("renders zoom controls in read-only (member) mode", () => {
+    render(
+      <FloorMapCanvas
+        objects={[]}
+        selectedObjectId={null}
+        onSelectObject={vi.fn()}
+        canManageLayout={false}
+      />
+    );
+    expect(screen.getByTestId("canvas-zoom-controls")).toBeInTheDocument();
+  });
+
+  it("renders zoom controls in booking mode", () => {
+    render(
+      <FloorMapCanvas
+        objects={[]}
+        selectedObjectId={null}
+        onSelectObject={vi.fn()}
+        mode="booking"
+      />
+    );
+    expect(screen.getByTestId("canvas-zoom-controls")).toBeInTheDocument();
+  });
+
+  it("zoom-in control raises the displayed percentage", () => {
+    render(
+      <FloorMapCanvas
+        objects={[]}
+        selectedObjectId={null}
+        onSelectObject={vi.fn()}
+        canManageLayout
+      />
+    );
+    expect(screen.getByText("100%")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /zoom in/i }));
+    expect(screen.queryByText("100%")).not.toBeInTheDocument();
+    expect(screen.getByText("115%")).toBeInTheDocument();
+  });
+
+  it("reset control restores 100% after zooming", () => {
+    render(
+      <FloorMapCanvas
+        objects={[]}
+        selectedObjectId={null}
+        onSelectObject={vi.fn()}
+        canManageLayout
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: /zoom in/i }));
+    fireEvent.click(screen.getByRole("button", { name: /fit to office/i }));
+    expect(screen.getByText("100%")).toBeInTheDocument();
+  });
+
+  // ─── Door/window wall placement (PR 061) ──────────────────────────────────
+
+  it("enters wall-placement mode (capture overlay) when a door is the pending type", () => {
+    render(
+      <FloorMapCanvas
+        objects={[]}
+        selectedObjectId={null}
+        onSelectObject={vi.fn()}
+        canManageLayout
+        pendingPlacementType="door"
+        onPlaceObject={vi.fn()}
+      />
+    );
+    expect(screen.getByTestId("wall-placement-capture")).toBeInTheDocument();
+  });
+
+  it("does not enter placement mode for a non-wall type", () => {
+    render(
+      <FloorMapCanvas
+        objects={[]}
+        selectedObjectId={null}
+        onSelectObject={vi.fn()}
+        canManageLayout
+        pendingPlacementType="desk"
+        onPlaceObject={vi.fn()}
+      />
+    );
+    expect(screen.queryByTestId("wall-placement-capture")).not.toBeInTheDocument();
+  });
+
+  it("does not enter placement mode without manage permission", () => {
+    render(
+      <FloorMapCanvas
+        objects={[]}
+        selectedObjectId={null}
+        onSelectObject={vi.fn()}
+        canManageLayout={false}
+        pendingPlacementType="door"
+        onPlaceObject={vi.fn()}
+      />
+    );
+    expect(screen.queryByTestId("wall-placement-capture")).not.toBeInTheDocument();
+  });
+
+  it("does not enter placement mode in booking mode", () => {
+    render(
+      <FloorMapCanvas
+        objects={[]}
+        selectedObjectId={null}
+        onSelectObject={vi.fn()}
+        mode="booking"
+        pendingPlacementType="door"
+        onPlaceObject={vi.fn()}
+      />
+    );
+    expect(screen.queryByTestId("wall-placement-capture")).not.toBeInTheDocument();
+  });
+
+  it("clicking a wall places a door at the snapped position", () => {
+    const onPlaceObject = vi.fn();
+    render(
+      <FloorMapCanvas
+        objects={[]}
+        selectedObjectId={null}
+        onSelectObject={vi.fn()}
+        canManageLayout
+        pendingPlacementType="door"
+        onPlaceObject={onPlaceObject}
+      />
+    );
+    // Mock pointer is (500, 50) → snaps to the top wall centre (500, 42) and
+    // matches the wall thickness (12): door 40×12 → top-left (480, 36), rot 0.
+    fireEvent.click(screen.getByTestId("wall-placement-capture"));
+    expect(onPlaceObject).toHaveBeenCalledWith("door", 480, 36, 40, 12, 0);
+  });
+
+  it("does not place a door on top of an existing one (no overlap)", () => {
+    const onPlaceObject = vi.fn();
+    // Existing door occupying the top-wall centre (where the mock pointer snaps).
+    const existing = makeObj({
+      id: 99,
+      object_type: "door",
+      x: "480.00",
+      y: "36.00",
+      width: "40.00",
+      height: "12.00",
+    });
+    render(
+      <FloorMapCanvas
+        objects={[existing]}
+        selectedObjectId={null}
+        onSelectObject={vi.fn()}
+        canManageLayout
+        pendingPlacementType="door"
+        onPlaceObject={onPlaceObject}
+      />
+    );
+    fireEvent.click(screen.getByTestId("wall-placement-capture"));
+    expect(onPlaceObject).not.toHaveBeenCalled();
   });
 
   it("editor mode: drag still works with canManageLayout=true (regression)", () => {

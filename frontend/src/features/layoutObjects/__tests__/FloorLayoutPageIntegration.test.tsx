@@ -89,7 +89,7 @@ vi.mock("@/features/layoutObjects/components/FloorMapCanvas", () => ({
             drag-far
           </button>
           <button
-            onClick={() => onObjectTransformEnd?.(obj.id, 50, 60, 120, 70, 45)}
+            onClick={() => onObjectTransformEnd?.(obj.id, 50, 60, 120, 70, 40)}
             data-testid={`transform-${obj.id}`}
           >
             transform
@@ -246,7 +246,7 @@ describe("FloorLayoutPage drag/transform integration", () => {
           y: "60.00",
           width: "120.00",
           height: "70.00",
-          rotation: "45.00",
+          rotation: "40.00",
         })
       )
     );
@@ -427,7 +427,7 @@ describe("FloorLayoutPage boundary clamping", () => {
     mockUpdateLayoutObject.mockResolvedValue(MOCK_OBJ);
   });
 
-  it("drag with negative coords clamps to x=0, y=0", async () => {
+  it("drag with negative coords clamps to the boundary top-left (48, 48)", async () => {
     renderPage();
     await waitFor(() => screen.getByTestId("drag-neg-42"));
     screen.getByTestId("drag-neg-42").click();
@@ -437,13 +437,14 @@ describe("FloorLayoutPage boundary clamping", () => {
         1,
         3,
         42,
-        expect.objectContaining({ x: "0.00", y: "0.00" })
+        expect.objectContaining({ x: "48.00", y: "48.00" })
       )
     );
   });
 
-  it("drag far beyond canvas clamps to max valid position", async () => {
-    // MOCK_OBJ: width=80, height=50 → maxX = 1000-80 = 920, maxY = 640-50 = 590
+  it("drag far beyond canvas clamps to max valid position inside the boundary", async () => {
+    // MOCK_OBJ: width=80, height=50; boundary { 48, 48, 904, 544 }
+    // → maxX = 48 + (904-80) = 872, maxY = 48 + (544-50) = 542
     renderPage();
     await waitFor(() => screen.getByTestId("drag-far-42"));
     screen.getByTestId("drag-far-42").click();
@@ -453,12 +454,14 @@ describe("FloorLayoutPage boundary clamping", () => {
         1,
         3,
         42,
-        expect.objectContaining({ x: "920.00", y: "590.00" })
+        expect.objectContaining({ x: "872.00", y: "542.00" })
       )
     );
   });
 
-  it("ArrowLeft at x=0 stays at x=0", async () => {
+  it("ArrowLeft on an out-of-bounds object clamps it back into the boundary", async () => {
+    // Existing object at the old stage origin (0,0) is shown as-is (not migrated);
+    // moving it clamps back inside the room to (48, 48).
     mockListLayoutObjects.mockResolvedValue([{ ...MOCK_OBJ, x: "0.00", y: "0.00" }]);
     renderPage();
     await waitFor(() => screen.getByTestId("select-42"));
@@ -472,12 +475,12 @@ describe("FloorLayoutPage boundary clamping", () => {
         1,
         3,
         42,
-        expect.objectContaining({ x: "0.00", y: "0.00" })
+        expect.objectContaining({ x: "48.00", y: "48.00" })
       )
     );
   });
 
-  it("ArrowUp at y=0 stays at y=0", async () => {
+  it("ArrowUp on an out-of-bounds object clamps the y axis into the boundary", async () => {
     mockListLayoutObjects.mockResolvedValue([{ ...MOCK_OBJ, x: "100.00", y: "0.00" }]);
     renderPage();
     await waitFor(() => screen.getByTestId("select-42"));
@@ -491,7 +494,7 @@ describe("FloorLayoutPage boundary clamping", () => {
         1,
         3,
         42,
-        expect.objectContaining({ x: "100.00", y: "0.00" })
+        expect.objectContaining({ x: "100.00", y: "48.00" })
       )
     );
   });
@@ -503,8 +506,8 @@ describe("FloorLayoutPage boundary clamping", () => {
     await waitFor(() => screen.getByTestId("drag-neg-42"));
     screen.getByTestId("drag-neg-42").click();
 
-    // Optimistic: x becomes "0.00" (clamped)
-    await waitFor(() => expect(screen.getByTestId("obj-x-42").textContent).toBe("0.00"));
+    // Optimistic: x becomes "48.00" (clamped to boundary)
+    await waitFor(() => expect(screen.getByTestId("obj-x-42").textContent).toBe("48.00"));
     // Rollback: reverts to original "100.00"
     await waitFor(() => expect(screen.getByTestId("obj-x-42").textContent).toBe("100.00"));
     await waitFor(() =>
@@ -581,13 +584,13 @@ describe("FloorLayoutPage snap-to-grid", () => {
   });
 
   it("snap enabled: transform saves snapped width/height and position, no scaleX/scaleY", async () => {
-    // transform button fires onObjectTransformEnd(42, 50, 60, 120, 70, 45)
+    // transform button fires onObjectTransformEnd(42, 50, 60, 120, 70, 40)
     // With gridSize=20:
     //   snapSizeToGrid(120, 70, 20): snapToGrid(120,20)=120, snapToGrid(70,20)=Math.round(3.5)*20=80
     //   snapToGrid(50, 20) = Math.round(2.5)*20 = 60
     //   snapToGrid(60, 20) = 60
     //   clampObjectTransform(60, 60, 120, 80, 1000, 640) → {x:60, y:60, w:120, h:80}
-    // PATCH: x:"60.00", y:"60.00", width:"120.00", height:"80.00", rotation:"45.00"
+    // PATCH: x:"60.00", y:"60.00", width:"120.00", height:"80.00", rotation:"40.00"
     renderPage();
     await waitFor(() => screen.getByTestId("transform-42"));
 
@@ -605,7 +608,7 @@ describe("FloorLayoutPage snap-to-grid", () => {
         y: "60.00",
         width: "120.00",
         height: "80.00",
-        rotation: "45.00",
+        rotation: "40.00",
       });
       // scaleX / scaleY must never be in the payload
       expect("scaleX" in payload).toBe(false);
