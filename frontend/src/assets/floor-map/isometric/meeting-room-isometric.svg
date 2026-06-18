@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="140" height="120" viewBox="0 0 140 120" role="img" aria-label="Meeting room">
+  <!-- Project-owned placeholder isometric meeting room. Replaceable by final designer art. -->
+  <!-- back walls -->
+  <polygon points="22,72 70,46 70,22 22,48" fill="#DDD6FE" stroke="#7C3AED" stroke-width="2" stroke-linejoin="round"/>
+  <polygon points="70,46 118,72 118,48 70,22" fill="#C4B5FD" stroke="#7C3AED" stroke-width="2" stroke-linejoin="round"/>
+  <!-- floor -->
+  <polygon points="22,72 70,46 118,72 70,98" fill="#EDE9FE" stroke="#7C3AED" stroke-width="2" stroke-linejoin="round"/>
+  <!-- table -->
+  <polygon points="50,72 70,61 90,72 70,83" fill="#A78BFA" stroke="#6D28D9" stroke-width="2" stroke-linejoin="round"/>
+  <!-- chairs -->
+  <circle cx="44" cy="68" r="4.5" fill="#6D28D9"/>
+  <circle cx="96" cy="68" r="4.5" fill="#6D28D9"/>
+  <circle cx="70" cy="56" r="4.5" fill="#6D28D9"/>
+  <circle cx="70" cy="88" r="4.5" fill="#6D28D9"/>
+</svg>

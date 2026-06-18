@@ -460,6 +460,21 @@ export const en = {
       toolbarShowGrid: "Show grid",
       toolbarSnapToGrid: "Snap to grid",
       toolbarGridSize: "Grid size:",
+      toolbarEnhance: "Enhance",
+      toolbarRevert: "Revert",
+      toolbarEnhanceTooltip: "Replace boxes with detailed assets",
+      toolbarRevertTooltip: "Switch back to simple boxes",
+
+      // Canvas zoom / pan controls (PR 061)
+      zoomControlsLabel: "Zoom controls",
+      zoomIn: "Zoom in",
+      zoomOut: "Zoom out",
+      zoomReset: "Fit to office",
+      zoomPercentLabel: "Current zoom",
+
+      // Door / window wall placement (PR 061)
+      wallPlacementHint:
+        "Hover a wall to preview, then click to place. Doors and windows snap onto office walls.",
 
       // Drag / transform persistence
       moveError: "Could not save layout changes. Please try again.",

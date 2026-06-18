@@ -1,11 +1,14 @@
 import {
   Box,
+  Button,
   FormControlLabel,
   Switch,
   ToggleButton,
   ToggleButtonGroup,
+  Tooltip,
   Typography,
 } from "@mui/material";
+import { AutoFixHighOutlined } from "@mui/icons-material";
 import { en } from "@/i18n/en";
 import { CANVAS_GRID_SIZES } from "../utils/coordinateHelpers";
 
@@ -19,6 +22,8 @@ interface Props {
   gridSize: number;
   onGridSizeChange: (v: number) => void;
   canManageLayout: boolean;
+  enhanced: boolean;
+  onEnhancedChange: (v: boolean) => void;
 }
 
 export function LayoutCanvasToolbar({
@@ -29,6 +34,8 @@ export function LayoutCanvasToolbar({
   gridSize,
   onGridSizeChange,
   canManageLayout,
+  enhanced,
+  onEnhancedChange,
 }: Props) {
   return (
     <Box
@@ -102,6 +109,21 @@ export function LayoutCanvasToolbar({
           </Box>
         </>
       )}
+
+      {/* Enhance toggle — swaps simple boxes for detailed assets. Available to
+          everyone; it is a purely visual, client-side toggle. */}
+      <Tooltip describeChild title={enhanced ? c.toolbarRevertTooltip : c.toolbarEnhanceTooltip}>
+        <Button
+          size="small"
+          variant={enhanced ? "contained" : "outlined"}
+          startIcon={<AutoFixHighOutlined />}
+          onClick={() => onEnhancedChange(!enhanced)}
+          aria-pressed={enhanced}
+          sx={{ ml: "auto", py: 0.25 }}
+        >
+          {enhanced ? c.toolbarRevert : c.toolbarEnhance}
+        </Button>
+      </Tooltip>
     </Box>
   );
 }

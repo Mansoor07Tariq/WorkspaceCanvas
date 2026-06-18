@@ -1,0 +1,161 @@
+<svg width="640" height="640" viewBox="0 0 640 640" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Improved top-view office desk with chair">
+  <defs>
+    <linearGradient id="deskWood" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#F7D9A4"></stop>
+      <stop offset="45%" stop-color="#E6BC79"></stop>
+      <stop offset="100%" stop-color="#C8914E"></stop>
+    </linearGradient>
+
+    <linearGradient id="deskEdge" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#B67936"></stop>
+      <stop offset="100%" stop-color="#8E5725"></stop>
+    </linearGradient>
+
+    <linearGradient id="chairDark" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#4B4E54"></stop>
+      <stop offset="100%" stop-color="#17191D"></stop>
+    </linearGradient>
+
+    <linearGradient id="chairSeat" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#343841"></stop>
+      <stop offset="100%" stop-color="#181A1F"></stop>
+    </linearGradient>
+
+    <linearGradient id="monitorTop" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#2C3036"></stop>
+      <stop offset="100%" stop-color="#0D0F12"></stop>
+    </linearGradient>
+
+    <linearGradient id="metal" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#D9DEE2"></stop>
+      <stop offset="100%" stop-color="#80878E"></stop>
+    </linearGradient>
+
+    <filter id="assetShadow" x="-18%" y="-18%" width="136%" height="136%">
+      <feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#000000" flood-opacity="0.18"></feDropShadow>
+    </filter>
+
+    <filter id="smallShadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#000000" flood-opacity="0.16"></feDropShadow>
+    </filter>
+
+    <style>
+      .edge{stroke:#202124;stroke-width:4;stroke-linejoin:round;stroke-linecap:round}
+      .mid{stroke:#343434;stroke-width:3;stroke-linejoin:round;stroke-linecap:round}
+      .thin{stroke:#52565B;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+      .woodLine{stroke:#B88042;stroke-width:2;opacity:.32}
+      .key{fill:#7E858D;opacity:.82}
+    </style>
+  </defs>
+
+  <g id="workspacecanvas-top-view-desk-no-table-legs" filter="url(#assetShadow)">
+    <!-- chair behind desk, true top-view style -->
+    <g id="chair">
+      <!-- five-star chair base, visible behind desk -->
+      <line x1="320" y1="200" x2="320" y2="118" stroke="#17191D" stroke-width="10" stroke-linecap="round"></line>
+      <line x1="320" y1="200" x2="252" y2="154" stroke="#17191D" stroke-width="10" stroke-linecap="round"></line>
+      <line x1="320" y1="200" x2="388" y2="154" stroke="#17191D" stroke-width="10" stroke-linecap="round"></line>
+      <line x1="320" y1="200" x2="263" y2="233" stroke="#17191D" stroke-width="10" stroke-linecap="round"></line>
+      <line x1="320" y1="200" x2="377" y2="233" stroke="#17191D" stroke-width="10" stroke-linecap="round"></line>
+      <circle cx="320" cy="200" r="16" fill="#16181C" class="thin"></circle>
+      <circle cx="320" cy="108" r="10" fill="#15171A"></circle>
+      <circle cx="242" cy="148" r="10" fill="#15171A"></circle>
+      <circle cx="398" cy="148" r="10" fill="#15171A"></circle>
+      <circle cx="252" cy="240" r="10" fill="#15171A"></circle>
+      <circle cx="388" cy="240" r="10" fill="#15171A"></circle>
+
+      <!-- backrest -->
+      <rect x="228" y="58" width="184" height="86" rx="34" fill="url(#chairDark)" class="edge"></rect>
+      <rect x="251" y="77" width="138" height="48" rx="23" fill="#292D34" opacity="0.78"></rect>
+
+      <!-- seat cushion -->
+      <rect x="238" y="130" width="164" height="122" rx="34" fill="url(#chairSeat)" class="edge"></rect>
+      <rect x="264" y="153" width="112" height="76" rx="28" fill="#3A3E46" opacity="0.5"></rect>
+
+      <!-- arms -->
+      <rect x="201" y="145" width="38" height="86" rx="18" fill="#22252B" class="edge"></rect>
+      <rect x="401" y="145" width="38" height="86" rx="18" fill="#22252B" class="edge"></rect>
+      <rect x="211" y="162" width="18" height="52" rx="9" fill="#333740" opacity=".75"></rect>
+      <rect x="411" y="162" width="18" height="52" rx="9" fill="#333740" opacity=".75"></rect>
+    </g>
+<!-- desk top -->
+    <g id="desk">
+      <rect x="102" y="220" width="436" height="238" rx="22" fill="url(#deskWood)" class="edge"></rect>
+      <rect x="102" y="430" width="436" height="28" rx="10" fill="url(#deskEdge)" opacity=".28"></rect>
+      <rect x="118" y="236" width="404" height="206" rx="15" fill="#F2CC91" opacity=".16"></rect>
+
+      <!-- better wood grain -->
+      <path d="M130 258 C190 247 250 268 310 256 C365 245 430 260 508 250" fill="none" class="woodLine" data-index="0"></path>
+      <path d="M130 296 C210 284 270 304 332 291 C390 280 438 300 508 288" fill="none" class="woodLine" data-index="1"></path>
+      <path d="M130 335 C200 323 266 342 334 330 C404 318 450 338 508 326" fill="none" class="woodLine" data-index="2"></path>
+      <path d="M130 374 C198 363 260 383 329 370 C390 358 448 377 508 366" fill="none" class="woodLine" data-index="3"></path>
+      <path d="M130 412 C210 400 260 420 332 407 C398 395 450 416 508 404" fill="none" class="woodLine" data-index="4"></path>
+      <line x1="197" y1="232" x2="197" y2="446" class="woodLine"></line>
+      <line x1="320" y1="232" x2="320" y2="446" class="woodLine"></line>
+      <line x1="443" y1="232" x2="443" y2="446" class="woodLine"></line>
+    </g>
+
+    <!-- top-view monitor: not a front-facing screen, but a flat monitor footprint on the desk -->
+    <g id="top-view-monitor" filter="url(#smallShadow)">
+      <!-- monitor panel seen from above -->
+      <rect x="231" y="250" width="178" height="42" rx="8" fill="url(#monitorTop)" class="edge"></rect>
+      <rect x="246" y="262" width="148" height="12" rx="6" fill="#3C4148" opacity=".58"></rect>
+      <!-- rear thickness / bevel -->
+      <rect x="231" y="248" width="178" height="10" rx="6" fill="#454A51" opacity=".65"></rect>
+      <!-- stand neck -->
+      <rect x="307" y="292" width="26" height="34" rx="6" fill="url(#metal)" class="mid"></rect>
+      <!-- base footprint -->
+      <rect x="266" y="322" width="108" height="28" rx="11" fill="url(#metal)" class="mid"></rect>
+      <rect x="284" y="330" width="72" height="8" rx="4" fill="#ADB4BA" opacity=".55"></rect>
+    </g>
+
+    <!-- keyboard -->
+    <g id="keyboard" filter="url(#smallShadow)">
+      <rect x="226" y="371" width="188" height="40" rx="8" fill="#2F343A" class="edge"></rect>
+      <g class="key">
+        <rect x="240" y="382" width="13" height="5" rx="1"></rect>
+        <rect x="258" y="382" width="13" height="5" rx="1"></rect>
+        <rect x="276" y="382" width="13" height="5" rx="1"></rect>
+        <rect x="294" y="382" width="13" height="5" rx="1"></rect>
+        <rect x="312" y="382" width="13" height="5" rx="1"></rect>
+        <rect x="330" y="382" width="13" height="5" rx="1"></rect>
+        <rect x="348" y="382" width="13" height="5" rx="1"></rect>
+        <rect x="366" y="382" width="13" height="5" rx="1"></rect>
+        <rect x="384" y="382" width="13" height="5" rx="1"></rect>
+        <rect x="242" y="393" width="24" height="5" rx="1"></rect>
+        <rect x="271" y="393" width="13" height="5" rx="1"></rect>
+        <rect x="289" y="393" width="13" height="5" rx="1"></rect>
+        <rect x="307" y="393" width="58" height="5" rx="1"></rect>
+        <rect x="370" y="393" width="22" height="5" rx="1"></rect>
+      </g>
+    </g>
+
+    <!-- mouse -->
+    <g id="mouse" filter="url(#smallShadow)">
+      <ellipse cx="447" cy="375" rx="23" ry="31" fill="#30343A" class="edge"></ellipse>
+      <path d="M447 346 C447 356 447 363 447 371" class="thin" data-index="5"></path>
+      <ellipse cx="447" cy="365" rx="7" ry="12" fill="#1A1C20" opacity=".42"></ellipse>
+    </g>
+
+    <!-- notepad / phone -->
+    <g id="notepad" filter="url(#smallShadow)">
+      <rect x="155" y="252" width="68" height="48" rx="7" fill="#E9EEF2" class="mid"></rect>
+      <line x1="168" y1="266" x2="209" y2="266" stroke="#9AA3AA" stroke-width="2" stroke-linecap="round"></line>
+      <line x1="168" y1="278" x2="204" y2="278" stroke="#9AA3AA" stroke-width="2" stroke-linecap="round"></line>
+      <line x1="168" y1="290" x2="196" y2="290" stroke="#9AA3AA" stroke-width="2" stroke-linecap="round"></line>
+    </g>
+
+    <!-- plant -->
+    <g id="plant" filter="url(#smallShadow)">
+      <circle cx="186" cy="362" r="31" fill="#D9D1C4" class="edge"></circle>
+      <circle cx="186" cy="362" r="20" fill="#604428"></circle>
+      <ellipse cx="186" cy="331" rx="13" ry="26" fill="#6EAF45" stroke="#3F7C2B" stroke-width="2"></ellipse>
+      <ellipse cx="164" cy="345" rx="12" ry="24" fill="#78BE4C" stroke="#3F7C2B" stroke-width="2" transform="rotate(-43 164 345)"></ellipse>
+      <ellipse cx="209" cy="345" rx="12" ry="24" fill="#78BE4C" stroke="#3F7C2B" stroke-width="2" transform="rotate(43 209 345)"></ellipse>
+      <ellipse cx="169" cy="374" rx="12" ry="22" fill="#6CAE43" stroke="#3F7C2B" stroke-width="2" transform="rotate(41 169 374)"></ellipse>
+      <ellipse cx="204" cy="374" rx="12" ry="22" fill="#6CAE43" stroke="#3F7C2B" stroke-width="2" transform="rotate(-41 204 374)"></ellipse>
+      <ellipse cx="186" cy="362" rx="13" ry="22" fill="#86C95E" stroke="#3F7C2B" stroke-width="2" transform="rotate(90 186 362)"></ellipse>
+      <circle cx="186" cy="362" r="6" fill="#A0D974"></circle>
+    </g>
+  </g>
+</svg>

@@ -142,7 +142,23 @@ describe("useCanvasInteractions — drag/move", () => {
     expect(mockUpdate).toHaveBeenCalledWith(1, 3, 42, { x: "200.00", y: "300.00" });
   });
 
-  it("clamps negative drag coords to 0,0", async () => {
+  it("aligns a dropped object flush to an adjacent neighbour", async () => {
+    mockUpdate.mockResolvedValue(OBJ);
+    // Neighbour A at (100,100) 80×50; dragged object B (id 43) dropped just past
+    // A's right edge / slightly below its top → snaps to (180,100).
+    const A = { ...OBJ, id: 1, x: "100.00", y: "100.00", width: "80.00", height: "50.00" };
+    const B = { ...OBJ, id: 43, width: "80.00", height: "50.00" };
+    const params = makeParams({ objects: [A, B], selectedObjectId: 43 });
+    const { result } = renderHook(() => useCanvasInteractions(params));
+
+    await act(async () => {
+      result.current.handleObjectDragEnd(43, 183, 104);
+    });
+
+    expect(mockUpdate).toHaveBeenCalledWith(1, 3, 43, { x: "180.00", y: "100.00" });
+  });
+
+  it("clamps negative drag coords to the boundary top-left (48,48)", async () => {
     mockUpdate.mockResolvedValue(OBJ);
     const params = makeParams();
     const { result } = renderHook(() => useCanvasInteractions(params));
@@ -151,7 +167,204 @@ describe("useCanvasInteractions — drag/move", () => {
       result.current.handleObjectDragEnd(42, -50, -50);
     });
 
-    expect(mockUpdate).toHaveBeenCalledWith(1, 3, 42, { x: "0.00", y: "0.00" });
+    expect(mockUpdate).toHaveBeenCalledWith(1, 3, 42, { x: "48.00", y: "48.00" });
+  });
+});
+
+describe("useCanvasInteractions — overlap & walls", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("pushes a dropped object out of an overlapping neighbour instead of reverting", async () => {
+    mockUpdate.mockResolvedValue(OBJ);
+    const A = { ...OBJ, id: 1, x: "100.00", y: "100.00", width: "80.00", height: "50.00" };
+    const B = { ...OBJ, id: 43, width: "80.00", height: "50.00" };
+    const params = makeParams({ objects: [A, B], selectedObjectId: 43 });
+    const { result } = renderHook(() => useCanvasInteractions(params));
+
+    // Dropped overlapping A from the right → pushed flush to A's right edge (180);
+    // the 10px top offset is within the connect threshold so tops also align (100).
+    await act(async () => {
+      result.current.handleObjectDragEnd(43, 150, 110);
+    });
+
+    expect(mockUpdate).toHaveBeenCalledWith(1, 3, 43, { x: "180.00", y: "100.00" });
+  });
+
+  it("reverts to the pickup spot (no PATCH) when a drop overlaps two objects", async () => {
+    const A = { ...OBJ, id: 1, x: "100.00", y: "100.00", width: "80.00", height: "50.00" };
+    const C = { ...OBJ, id: 2, x: "200.00", y: "100.00", width: "80.00", height: "50.00" };
+    // B (id 43) starts at its OBJ default (100,150).
+    const B = { ...OBJ, id: 43, width: "80.00", height: "50.00" };
+    const params = makeParams({ objects: [A, C, B], selectedObjectId: 43 });
+    const { result } = renderHook(() => useCanvasInteractions(params));
+
+    let ret: { x: number; y: number } | undefined;
+    await act(async () => {
+      ret = result.current.handleObjectDragEnd(43, 150, 100); // overlaps A and C
+    });
+
+    expect(mockUpdate).not.toHaveBeenCalled();
+    expect(ret).toEqual({ x: 100, y: 150 }); // back to pickup position
+  });
+
+  it("moves a wall together with the doors/windows mounted on it", async () => {
+    mockUpdate.mockResolvedValue(OBJ);
+    const wall = {
+      ...OBJ,
+      id: 1,
+      object_type: "wall" as const,
+      x: "200.00",
+      y: "400.00",
+      width: "100.00",
+      height: "10.00",
+    };
+    const door = {
+      ...OBJ,
+      id: 2,
+      object_type: "door" as const,
+      x: "240.00",
+      y: "400.00",
+      width: "20.00",
+      height: "10.00",
+    };
+    const params = makeParams({ objects: [wall, door], selectedObjectId: 1 });
+    const { result } = renderHook(() => useCanvasInteractions(params));
+
+    // Drag the wall up by 100 → the mounted door translates by the same delta.
+    await act(async () => {
+      result.current.handleObjectDragEnd(1, 200, 300);
+    });
+
+    expect(mockUpdate).toHaveBeenCalledWith(1, 3, 1, { x: "200.00", y: "300.00" });
+    expect(mockUpdate).toHaveBeenCalledWith(1, 3, 2, { x: "240.00", y: "300.00" });
+  });
+
+  it("resizes the mounted doors/windows together with the wall", async () => {
+    mockUpdate.mockResolvedValue(OBJ);
+    const wall = {
+      ...OBJ,
+      id: 1,
+      object_type: "wall" as const,
+      x: "200.00",
+      y: "400.00",
+      width: "100.00",
+      height: "10.00",
+      rotation: "0.00",
+    };
+    const door = {
+      ...OBJ,
+      id: 2,
+      object_type: "door" as const,
+      x: "240.00",
+      y: "400.00",
+      width: "20.00",
+      height: "10.00",
+      rotation: "0.00",
+    };
+    const params = makeParams({ objects: [wall, door], selectedObjectId: 1 });
+    const { result } = renderHook(() => useCanvasInteractions(params));
+
+    // Double the wall length (100 → 200) → the door scales to width 40 with it.
+    await act(async () => {
+      result.current.handleObjectTransform(1, 200, 400, 200, 10, 0);
+    });
+
+    expect(mockUpdate).toHaveBeenCalledWith(1, 3, 1, {
+      x: "200.00",
+      y: "400.00",
+      width: "200.00",
+      height: "10.00",
+      rotation: "0.00",
+    });
+    expect(mockUpdate).toHaveBeenCalledWith(1, 3, 2, {
+      x: "280.00",
+      y: "400.00",
+      width: "40.00",
+      height: "10.00",
+      rotation: "0.00",
+    });
+  });
+});
+
+describe("useCanvasInteractions — wall-mounted (door/window)", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  // Door on the top boundary wall: centre (500, 42), 40×12 → top-left (480, 36).
+  const DOOR: LayoutObject = {
+    ...OBJ,
+    id: 7,
+    object_type: "door",
+    object_type_display: "Door",
+    x: "480.00",
+    y: "36.00",
+    width: "40.00",
+    height: "12.00",
+  };
+
+  it("drag slides the door along the wall and is NOT boundary-clamped", async () => {
+    mockUpdate.mockResolvedValue(DOOR);
+    const params = makeParams({ objects: [DOOR], selectedObjectId: 7 });
+    const { result } = renderHook(() => useCanvasInteractions(params));
+
+    // Drag 100px right + 200px down → stays on the wall (y back to 36).
+    await act(async () => {
+      result.current.handleObjectDragEnd(7, 580, 236);
+    });
+
+    // y stays 36 (outside the 48px room boundary) → proves no boundary clamp.
+    expect(mockUpdate).toHaveBeenCalledWith(1, 3, 7, { x: "580.00", y: "36.00" });
+  });
+
+  it("resizes a door's length along the wall (thickness and rotation stay locked)", async () => {
+    mockUpdate.mockResolvedValue(DOOR);
+    const wall = {
+      ...OBJ,
+      id: 1,
+      object_type: "wall" as const,
+      x: "200.00",
+      y: "400.00",
+      width: "100.00",
+      height: "10.00",
+      rotation: "0.00",
+    };
+    const door = {
+      ...OBJ,
+      id: 2,
+      object_type: "door" as const,
+      x: "240.00",
+      y: "400.00",
+      width: "20.00",
+      height: "10.00",
+      rotation: "0.00",
+    };
+    const params = makeParams({ objects: [wall, door], selectedObjectId: 2 });
+    const { result } = renderHook(() => useCanvasInteractions(params));
+
+    // Transformer grows the door from 20 → 40 (left edge fixed at 240).
+    await act(async () => {
+      result.current.handleObjectTransform(2, 240, 400, 40, 10, 0);
+    });
+
+    expect(mockUpdate).toHaveBeenCalledWith(1, 3, 2, {
+      x: "240.00",
+      y: "400.00",
+      width: "40.00",
+      height: "10.00",
+      rotation: "0.00",
+    });
+  });
+
+  it("keyboard ArrowDown does not push the door off its wall", async () => {
+    mockUpdate.mockResolvedValue(DOOR);
+    const params = makeParams({ objects: [DOOR], selectedObjectId: 7 });
+    const { result } = renderHook(() => useCanvasInteractions(params));
+
+    await act(async () => {
+      result.current.handleCanvasKeyDown(arrowEvent("ArrowDown"));
+    });
+
+    // Perpendicular move is ignored — the door stays at y=36 on the wall line.
+    expect(mockUpdate).toHaveBeenCalledWith(1, 3, 7, { x: "480.00", y: "36.00" });
   });
 });
 
@@ -164,7 +377,7 @@ describe("useCanvasInteractions — transform", () => {
     const { result } = renderHook(() => useCanvasInteractions(params));
 
     await act(async () => {
-      result.current.handleObjectTransform(42, 50, 60, 120, 70, 45);
+      result.current.handleObjectTransform(42, 50, 60, 120, 70, 40);
     });
 
     expect(mockUpdate).toHaveBeenCalledWith(1, 3, 42, {
@@ -172,8 +385,21 @@ describe("useCanvasInteractions — transform", () => {
       y: "60.00",
       width: "120.00",
       height: "70.00",
-      rotation: "45.00",
+      rotation: "40.00",
     });
+  });
+
+  it("snaps the rotation to the nearest multiple of 10 (86 → 90)", async () => {
+    mockUpdate.mockResolvedValue(OBJ);
+    const params = makeParams();
+    const { result } = renderHook(() => useCanvasInteractions(params));
+
+    await act(async () => {
+      result.current.handleObjectTransform(42, 50, 60, 120, 70, 86);
+    });
+
+    const payload = mockUpdate.mock.calls[0][3] as Record<string, unknown>;
+    expect(payload.rotation).toBe("90.00");
   });
 
   it("failed transform rolls back all five fields", async () => {
@@ -201,7 +427,7 @@ describe("useCanvasInteractions — transform", () => {
     const { result } = renderHook(() => useCanvasInteractions(params));
 
     await act(async () => {
-      result.current.handleObjectTransform(42, 50, 60, 120, 70, 45);
+      result.current.handleObjectTransform(42, 50, 60, 120, 70, 40);
     });
 
     const payload = mockUpdate.mock.calls[0][3] as Record<string, unknown>;
@@ -210,7 +436,7 @@ describe("useCanvasInteractions — transform", () => {
       y: "60.00",
       width: "120.00",
       height: "80.00",
-      rotation: "45.00",
+      rotation: "40.00",
     });
     expect("scaleX" in payload).toBe(false);
     expect("scaleY" in payload).toBe(false);
@@ -255,6 +481,25 @@ describe("useCanvasInteractions — keyboard", () => {
 
     // x: 100 + 20 = 120 (on grid); y stays 150 (not snapped to 160)
     expect(mockUpdate).toHaveBeenCalledWith(1, 3, 42, { x: "120.00", y: "150.00" });
+  });
+
+  it("blocks a keyboard move that would overlap another object", async () => {
+    // Neighbour A occupies [180,260]; selected OBJ is at [100,180] (touching).
+    const A = { ...OBJ, id: 2, x: "180.00", y: "150.00", width: "80.00", height: "50.00" };
+    const params = makeParams({ objects: [A, OBJ], selectedObjectId: 42 });
+    const { result } = renderHook(() => useCanvasInteractions(params));
+
+    // ArrowRight → x 101 → right edge 181 overlaps A → blocked.
+    await act(async () => {
+      result.current.handleCanvasKeyDown(arrowEvent("ArrowRight"));
+    });
+    expect(mockUpdate).not.toHaveBeenCalled();
+
+    // ArrowLeft → x 99 → moves away, no overlap → allowed.
+    await act(async () => {
+      result.current.handleCanvasKeyDown(arrowEvent("ArrowLeft"));
+    });
+    expect(mockUpdate).toHaveBeenCalledWith(1, 3, 42, { x: "99.00", y: "150.00" });
   });
 
   it("e.repeat is ignored — no PATCH", async () => {

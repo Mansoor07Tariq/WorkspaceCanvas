@@ -13,6 +13,10 @@ interface Props {
   isSelected: boolean;
   onSelect: () => void;
   draggable?: boolean;
+  /** Konva drag-bound constraint (used to keep doors/windows sliding on a wall). */
+  dragBoundFunc?: (this: Konva.Node, pos: { x: number; y: number }) => { x: number; y: number };
+  /** Live drag handler (used to snap to neighbours and show alignment guides). */
+  onDragMove?: (e: Konva.KonvaEventObject<DragEvent>) => void;
   onDragEnd?: (objectId: number, newX: number, newY: number) => void;
   onTransformEnd?: (
     objectId: number,
@@ -33,6 +37,8 @@ interface Props {
   onAvailabilitySelect?: () => void;
   /** True when the canvas is in booking mode (read-only, availability overlay). */
   isBookingMode?: boolean;
+  /** True when the Enhance toggle is on: render isometric assets instead of boxes. */
+  enhanced?: boolean;
 }
 
 const LABEL_FONT_SIZE = 11;
@@ -49,6 +55,8 @@ export const LayoutObjectCanvasNode = forwardRef<Konva.Group, Props>(
       isSelected,
       onSelect,
       draggable = false,
+      dragBoundFunc,
+      onDragMove,
       onDragEnd,
       onTransformEnd,
       isSaving = false,
@@ -57,6 +65,7 @@ export const LayoutObjectCanvasNode = forwardRef<Konva.Group, Props>(
       isAvailabilitySelected = false,
       onAvailabilitySelect,
       isBookingMode = false,
+      enhanced = false,
     },
     ref
   ) {
@@ -70,9 +79,9 @@ export const LayoutObjectCanvasNode = forwardRef<Konva.Group, Props>(
     const displayLabel = obj.label || config.shortCode;
 
     // The inner visual is delegated to a per-type renderer (renderer registry).
-    // Today every type resolves to the default renderer, preserving output; this
-    // is the seam future enhanced renderers (PR 061) plug into.
-    const Renderer = getLayoutObjectRenderer(obj.object_type);
+    // Default is a simple shape; with the Enhance toggle on, types that have a
+    // pre-built isometric asset swap to it (others stay on the default shape).
+    const Renderer = getLayoutObjectRenderer(obj.object_type, enhanced);
 
     // Style decision is delegated to a pure, unit-tested selector (TD-032):
     // availability palette in booking mode, render config + selection in editor.
@@ -155,9 +164,11 @@ export const LayoutObjectCanvasNode = forwardRef<Konva.Group, Props>(
         y={cy}
         rotation={rotation}
         draggable={draggable}
+        dragBoundFunc={dragBoundFunc}
         onClick={handleClick}
         onTap={handleClick}
         onDragStart={draggable ? onSelect : undefined}
+        onDragMove={draggable ? onDragMove : undefined}
         onDragEnd={draggable ? handleDragEnd : undefined}
         onTransformEnd={handleTransformEnd}
         onMouseEnter={handleMouseEnter}

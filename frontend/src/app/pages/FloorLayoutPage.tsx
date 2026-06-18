@@ -14,7 +14,14 @@ import { useSelectedOrganization } from "@/features/organizations/context/Select
 import { useLayoutObjects } from "@/features/layoutObjects/hooks/useLayoutObjects";
 import { useLayoutObjectForm } from "@/features/layoutObjects/hooks/useLayoutObjectForm";
 import { useCanvasInteractions } from "@/features/layoutObjects/hooks/useCanvasInteractions";
-import { DEFAULT_GRID_SIZE, CANVAS_HEIGHT } from "@/features/layoutObjects/utils/coordinateHelpers";
+import {
+  DEFAULT_GRID_SIZE,
+  CANVAS_HEIGHT,
+  formatCoordinate,
+} from "@/features/layoutObjects/utils/coordinateHelpers";
+import { isWallMountedType } from "@/features/layoutObjects/utils/wallPlacement";
+import { createLayoutObject } from "@/features/layoutObjects/api/layoutObjectApi";
+import { getApiErrorMessage } from "@/lib/api/getApiErrorMessage";
 import { LayoutObjectLibrary } from "@/features/layoutObjects/components/LayoutObjectLibrary";
 import { LayoutObjectCreateForm } from "@/features/layoutObjects/components/LayoutObjectCreateForm";
 import { LayoutObjectInspector } from "@/features/layoutObjects/components/LayoutObjectInspector";
@@ -59,6 +66,8 @@ export function FloorLayoutPage() {
   const [showGrid, setShowGrid] = useState(true);
   const [snapToGridEnabled, setSnapToGridEnabled] = useState(false);
   const [gridSize, setGridSize] = useState(DEFAULT_GRID_SIZE);
+  // When on, the canvas swaps simple boxes for detailed isometric assets.
+  const [enhanced, setEnhanced] = useState(false);
 
   const {
     objects,
@@ -123,6 +132,41 @@ export function FloorLayoutPage() {
     updateObjectLocally,
     setSaving,
   });
+
+  // PR 061: place a door/window onto a wall by clicking the canvas. Bypasses the
+  // manual create form — coordinates come from the hover-snapped placement.
+  const handlePlaceObject = async (
+    type: LayoutObjectType,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    rotation: number
+  ) => {
+    setLayoutSaveError(undefined);
+    try {
+      const created = await createLayoutObject(officeId, floorId, {
+        object_type: type,
+        label: "",
+        x: formatCoordinate(x),
+        y: formatCoordinate(y),
+        width: formatCoordinate(width),
+        height: formatCoordinate(height),
+        rotation: formatCoordinate(rotation),
+        is_bookable: false,
+      });
+      addObjectLocally(created);
+      // One click places one door/window: clear the canvas selection and the
+      // library selection so placement mode turns off (no chaining placements
+      // on every subsequent click).
+      setSelectedObjectId(null);
+      setField("object_type", "");
+    } catch (err) {
+      setLayoutSaveError(getApiErrorMessage(err));
+    }
+  };
+
+  const isPlacingWallType = isWallMountedType(fields.object_type);
 
   // All hooks complete — now safe to do early returns.
   if (isNaN(officeId) || isNaN(floorId)) {
@@ -260,14 +304,20 @@ export function FloorLayoutPage() {
                     selectedType={fields.object_type}
                     onSelect={(type: LayoutObjectType) => setField("object_type", type)}
                   />
-                  <LayoutObjectCreateForm
-                    fields={fields}
-                    fieldErrors={fieldErrors}
-                    submissionLoading={submission.loading}
-                    submissionError={submission.generalError}
-                    onFieldChange={setField}
-                    onSubmit={handleCreate}
-                  />
+                  {isPlacingWallType ? (
+                    <Alert severity="info" icon={false}>
+                      {c.wallPlacementHint}
+                    </Alert>
+                  ) : (
+                    <LayoutObjectCreateForm
+                      fields={fields}
+                      fieldErrors={fieldErrors}
+                      submissionLoading={submission.loading}
+                      submissionError={submission.generalError}
+                      onFieldChange={setField}
+                      onSubmit={handleCreate}
+                    />
+                  )}
                 </>
               )}
             </Stack>
@@ -283,6 +333,8 @@ export function FloorLayoutPage() {
               gridSize={gridSize}
               onGridSizeChange={setGridSize}
               canManageLayout={canManageLayout}
+              enhanced={enhanced}
+              onEnhancedChange={setEnhanced}
             />
             <Suspense fallback={canvasFallback}>
               <FloorMapCanvas
@@ -297,6 +349,9 @@ export function FloorLayoutPage() {
                 showGrid={showGrid}
                 gridSize={gridSize}
                 bookableObjectIds={bookableObjectIds}
+                enhanced={enhanced}
+                pendingPlacementType={fields.object_type}
+                onPlaceObject={handlePlaceObject}
               />
             </Suspense>
           </Grid>
