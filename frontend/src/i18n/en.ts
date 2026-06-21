@@ -464,6 +464,9 @@ export const en = {
       toolbarRevert: "Revert",
       toolbarEnhanceTooltip: "Replace boxes with detailed assets",
       toolbarRevertTooltip: "Switch back to simple boxes",
+      toolbarRoomSize: "Room size:",
+      toolbarRoomWidth: "Width",
+      toolbarRoomHeight: "Height",
 
       // Canvas zoom / pan controls (PR 061)
       zoomControlsLabel: "Zoom controls",

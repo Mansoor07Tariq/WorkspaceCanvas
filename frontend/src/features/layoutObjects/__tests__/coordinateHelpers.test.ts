@@ -14,6 +14,12 @@ import {
   clampObjectToBoundary,
   clampObjectTransformToBoundary,
   DEFAULT_FLOOR_BOUNDARY,
+  clampBoundarySize,
+  makeFloorBoundary,
+  snapCutoutToBoundary,
+  MIN_FLOOR_BOUNDARY,
+  MAX_FLOOR_BOUNDARY,
+  FLOOR_BOUNDARY_INSET,
   snapToGrid,
   snapObjectToGrid,
   snapSizeToGrid,
@@ -297,6 +303,78 @@ describe("clampObjectTransform", () => {
 });
 
 // ─── snapToGrid ───────────────────────────────────────────────────────────────
+
+describe("clampBoundarySize", () => {
+  it("passes through in-range sizes (rounded)", () => {
+    expect(clampBoundarySize(900.4, 600.6)).toEqual({ width: 900, height: 601 });
+  });
+
+  it("clamps below the minimum up to MIN_FLOOR_BOUNDARY", () => {
+    expect(clampBoundarySize(10, 50)).toEqual({
+      width: MIN_FLOOR_BOUNDARY,
+      height: MIN_FLOOR_BOUNDARY,
+    });
+  });
+
+  it("clamps above the maximum down to MAX_FLOOR_BOUNDARY", () => {
+    expect(clampBoundarySize(99999, 99999)).toEqual({
+      width: MAX_FLOOR_BOUNDARY,
+      height: MAX_FLOOR_BOUNDARY,
+    });
+  });
+});
+
+describe("makeFloorBoundary", () => {
+  it("keeps the fixed inset origin and applies clamped size", () => {
+    expect(makeFloorBoundary(1200, 800)).toEqual({
+      x: FLOOR_BOUNDARY_INSET,
+      y: FLOOR_BOUNDARY_INSET,
+      width: 1200,
+      height: 800,
+    });
+  });
+
+  it("clamps out-of-range dimensions", () => {
+    const b = makeFloorBoundary(10, 999999);
+    expect(b.width).toBe(MIN_FLOOR_BOUNDARY);
+    expect(b.height).toBe(MAX_FLOOR_BOUNDARY);
+  });
+
+  it("default boundary equals makeFloorBoundary of its own dims", () => {
+    expect(makeFloorBoundary(DEFAULT_FLOOR_BOUNDARY.width, DEFAULT_FLOOR_BOUNDARY.height)).toEqual(
+      DEFAULT_FLOOR_BOUNDARY
+    );
+  });
+});
+
+describe("snapCutoutToBoundary", () => {
+  const B = DEFAULT_FLOOR_BOUNDARY; // { 48, 48, 904, 544 }
+
+  it("snaps flush to the nearest wall when dropped in the middle", () => {
+    // Closest edge is the bottom (db smallest) → snap to the bottom wall.
+    const r = snapCutoutToBoundary(400, 300, 120, 100, B);
+    expect(r.y).toBe(48 + 544 - 100); // flush to bottom, x kept
+    expect(r.x).toBe(400);
+  });
+
+  it("snaps to a single wall and slides freely along it", () => {
+    // Near the left wall (12px) but mid-height → left flush, y unchanged.
+    const r = snapCutoutToBoundary(60, 200, 120, 100, B);
+    expect(r.x).toBe(48);
+    expect(r.y).toBe(200);
+  });
+
+  it("snaps both edges at a corner (L-shape)", () => {
+    const r = snapCutoutToBoundary(55, 60, 120, 100, B);
+    expect(r).toEqual({ x: 48, y: 48 });
+  });
+
+  it("keeps the cutout inside the room", () => {
+    const r = snapCutoutToBoundary(5000, 5000, 120, 100, B);
+    expect(r.x).toBe(48 + 904 - 120);
+    expect(r.y).toBe(48 + 544 - 100);
+  });
+});
 
 describe("snapToGrid", () => {
   it("snaps 13 to 20 with grid size 20", () => {

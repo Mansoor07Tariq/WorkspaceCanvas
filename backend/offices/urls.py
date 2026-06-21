@@ -6,6 +6,7 @@ from .views import (
     DeskBookingListCreateView,
     DeskDetailView,
     DeskListCreateView,
+    FloorDetailView,
     FloorListCreateView,
     LayoutObjectDetailView,
     LayoutObjectListCreateView,
@@ -20,6 +21,11 @@ urlpatterns = [
         "<int:office_id>/floors/",
         FloorListCreateView.as_view(),
         name="floor-list-create",
+    ),
+    path(
+        "<int:office_id>/floors/<int:floor_id>/",
+        FloorDetailView.as_view(),
+        name="floor-detail",
     ),
     path(
         "<int:office_id>/floors/<int:floor_id>/layout-objects/",

@@ -10,6 +10,7 @@ vi.mock("../api/layoutObjectApi", () => ({
 import { updateLayoutObject } from "../api/layoutObjectApi";
 import { useCanvasInteractions } from "../hooks/useCanvasInteractions";
 import type { UseCanvasInteractionsParams } from "../hooks/useCanvasInteractions";
+import { DEFAULT_FLOOR_BOUNDARY, makeFloorBoundary } from "../utils/coordinateHelpers";
 
 const mockUpdate = vi.mocked(updateLayoutObject);
 
@@ -306,13 +307,14 @@ describe("useCanvasInteractions — wall-mounted (door/window)", () => {
     const params = makeParams({ objects: [DOOR], selectedObjectId: 7 });
     const { result } = renderHook(() => useCanvasInteractions(params));
 
-    // Drag 100px right + 200px down → stays on the wall (y back to 36).
+    // Drag 100px right + 200px down → stays on the wall (re-centred to the wall
+    // centreline y=33 for an 18px wall).
     await act(async () => {
       result.current.handleObjectDragEnd(7, 580, 236);
     });
 
-    // y stays 36 (outside the 48px room boundary) → proves no boundary clamp.
-    expect(mockUpdate).toHaveBeenCalledWith(1, 3, 7, { x: "580.00", y: "36.00" });
+    // y stays on the wall line (outside the 48px room) → proves no boundary clamp.
+    expect(mockUpdate).toHaveBeenCalledWith(1, 3, 7, { x: "580.00", y: "33.00" });
   });
 
   it("resizes a door's length along the wall (thickness and rotation stay locked)", async () => {
@@ -363,8 +365,8 @@ describe("useCanvasInteractions — wall-mounted (door/window)", () => {
       result.current.handleCanvasKeyDown(arrowEvent("ArrowDown"));
     });
 
-    // Perpendicular move is ignored — the door stays at y=36 on the wall line.
-    expect(mockUpdate).toHaveBeenCalledWith(1, 3, 7, { x: "480.00", y: "36.00" });
+    // Perpendicular move is ignored — the door stays on the wall line (y=33).
+    expect(mockUpdate).toHaveBeenCalledWith(1, 3, 7, { x: "480.00", y: "33.00" });
   });
 });
 
@@ -544,5 +546,79 @@ describe("useCanvasInteractions — keyboard", () => {
     });
 
     expect(mockUpdate).not.toHaveBeenCalled();
+  });
+
+  // ─── applyBoundaryResize (directional resize) ─────────────────────────────
+
+  describe("applyBoundaryResize", () => {
+    it("shifts furniture by the origin delta when a top/left handle moved", async () => {
+      mockUpdate.mockResolvedValue(OBJ);
+      const params = makeParams(); // single desk at (100,150)
+      const { result } = renderHook(() => useCanvasInteractions(params));
+
+      await act(async () => {
+        result.current.applyBoundaryResize(
+          DEFAULT_FLOOR_BOUNDARY,
+          makeFloorBoundary(904, 644), // taller room
+          0,
+          100 // origin moved → furniture shifts down by 100
+        );
+      });
+
+      expect(mockUpdate).toHaveBeenCalledWith(
+        1,
+        3,
+        42,
+        expect.objectContaining({ x: "100.00", y: "250.00" })
+      );
+    });
+
+    it("does not shift furniture when the shift is zero (bottom/right grow)", async () => {
+      mockUpdate.mockResolvedValue(OBJ);
+      const params = makeParams();
+      const { result } = renderHook(() => useCanvasInteractions(params));
+
+      await act(async () => {
+        result.current.applyBoundaryResize(
+          DEFAULT_FLOOR_BOUNDARY,
+          makeFloorBoundary(1200, 544),
+          0,
+          0
+        );
+      });
+
+      // No boundary-wall openings and zero shift → nothing moves.
+      expect(mockUpdate).not.toHaveBeenCalled();
+    });
+
+    it("carries a boundary-wall opening onto the resized wall", async () => {
+      mockUpdate.mockResolvedValue(OBJ);
+      // A door flush on the bottom boundary wall (centre y≈598), centred at x=300.
+      const bottomDoor: LayoutObject = {
+        ...OBJ,
+        id: 7,
+        object_type: "door",
+        x: "280.00",
+        y: "593.00",
+        width: "40.00",
+        height: "10.00",
+      };
+      const params = makeParams({ objects: [bottomDoor], selectedObjectId: 7 });
+      const { result } = renderHook(() => useCanvasInteractions(params));
+
+      await act(async () => {
+        result.current.applyBoundaryResize(
+          DEFAULT_FLOOR_BOUNDARY,
+          makeFloorBoundary(1200, 544), // widen → bottom wall lengthens
+          0,
+          0
+        );
+      });
+
+      // The door is re-placed on the new (longer) bottom wall, not left behind.
+      // Re-centred on the bottom wall centreline (601 for an 18px wall) → y=596.
+      expect(mockUpdate).toHaveBeenCalledTimes(1);
+      expect(mockUpdate).toHaveBeenCalledWith(1, 3, 7, expect.objectContaining({ y: "596.00" }));
+    });
   });
 });

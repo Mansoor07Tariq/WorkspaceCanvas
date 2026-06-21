@@ -3,6 +3,8 @@ import {
   isWallMountedType,
   getMountDimensions,
   getBoundaryWalls,
+  getCarvedBoundaryWalls,
+  alignOpeningToWall,
   getUserWalls,
   getSnapWalls,
   snapToWall,
@@ -15,8 +17,9 @@ import {
   attachedOpenings,
   transformOpeningWithWall,
   resizeOpeningOnWall,
+  carryBoundaryOpeningsOnResize,
 } from "../utils/wallPlacement";
-import { DEFAULT_FLOOR_BOUNDARY } from "../utils/coordinateHelpers";
+import { DEFAULT_FLOOR_BOUNDARY, makeFloorBoundary } from "../utils/coordinateHelpers";
 import type { LayoutObject } from "../types/layoutObject.types";
 
 const B = DEFAULT_FLOOR_BOUNDARY; // { 48, 48, 904, 544 }
@@ -63,17 +66,48 @@ describe("getBoundaryWalls", () => {
     const walls = getBoundaryWalls();
     expect(walls).toHaveLength(4);
     const [top, bottom, left, right] = walls;
-    // Wall thickness is 12 → centres sit 6px outside the boundary edge.
+    // Wall thickness is 18 → centres sit 9px outside the boundary edge.
     expect(top).toMatchObject({
       centerX: 500,
-      centerY: 42,
+      centerY: 39,
       angleDeg: 0,
       length: 904,
-      thickness: 12,
+      thickness: 18,
     });
-    expect(bottom).toMatchObject({ centerX: 500, centerY: 598, angleDeg: 0 });
-    expect(left).toMatchObject({ centerX: 42, centerY: 320, angleDeg: 90, length: 544 });
-    expect(right).toMatchObject({ centerX: 958, centerY: 320, angleDeg: 90 });
+    expect(bottom).toMatchObject({ centerX: 500, centerY: 601, angleDeg: 0 });
+    expect(left).toMatchObject({ centerX: 39, centerY: 320, angleDeg: 90, length: 544 });
+    expect(right).toMatchObject({ centerX: 961, centerY: 320, angleDeg: 90 });
+  });
+});
+
+describe("getCarvedBoundaryWalls / carve-aware getSnapWalls", () => {
+  const cutout: LayoutObject = wall({
+    id: 9,
+    object_type: "cutout",
+    x: "48.00",
+    y: "48.00",
+    width: "200.00",
+    height: "150.00",
+  });
+  const cutoutRect = { x: 48, y: 48, width: 200, height: 150 };
+
+  it("returns the rerouted carved walls (L-shape → 6) at the wall thickness", () => {
+    const walls = getCarvedBoundaryWalls(B, [cutoutRect]);
+    expect(walls).toHaveLength(6);
+    expect(walls.every((w) => w.thickness === 18)).toBe(true);
+  });
+
+  it("lets a door snap to a cutout's inner wall when cutouts are supplied", () => {
+    // Inner bottom edge of the top-left cutout is a horizontal wall near y≈189.
+    const walls = getSnapWalls([cutout], B, [cutoutRect]);
+    const p = snapToWall(150, 189, walls, 40);
+    expect(p).not.toBeNull();
+    expect(p!.angleDeg).toBe(0);
+    expect(p!.thickness).toBe(18);
+  });
+
+  it("uses the plain rectangle walls when no cutouts are supplied", () => {
+    expect(getSnapWalls([cutout], B)).toHaveLength(4);
   });
 });
 
@@ -102,8 +136,8 @@ describe("snapToWall", () => {
     expect(p).not.toBeNull();
     expect(p!.angleDeg).toBe(0);
     expect(p!.centerX).toBeCloseTo(500);
-    expect(p!.centerY).toBeCloseTo(42);
-    expect(p!.thickness).toBe(12);
+    expect(p!.centerY).toBeCloseTo(39);
+    expect(p!.thickness).toBe(18);
   });
 
   it("clamps the opening so it stays within the wall ends", () => {
@@ -116,9 +150,9 @@ describe("snapToWall", () => {
   it("snaps to a vertical wall with 90° rotation", () => {
     const p = snapToWall(48, 320, walls, 40);
     expect(p!.angleDeg).toBe(90);
-    expect(p!.centerX).toBeCloseTo(42); // left wall visual centre
+    expect(p!.centerX).toBeCloseTo(39); // left wall visual centre
     expect(p!.centerY).toBeCloseTo(320);
-    expect(p!.thickness).toBe(12);
+    expect(p!.thickness).toBe(18);
   });
 
   it("returns null when the pointer is not near any wall", () => {
@@ -206,12 +240,37 @@ describe("clampAlongWithinGap", () => {
   });
 });
 
+describe("alignOpeningToWall", () => {
+  const walls = getBoundaryWalls(); // top wall centreline y=39, thickness 18
+
+  it("re-centres an old thin door onto the wall at the wall thickness", () => {
+    // A door stored at the old 12px thickness (centre y=42), on the top wall.
+    const d = door({ id: 1, x: "480.00", y: "36.00", height: "12.00" });
+    const aligned = alignOpeningToWall(d, walls);
+    expect(aligned.height).toBe("18.00"); // matches the wall now
+    expect(aligned.y).toBe("30.00"); // centred on the wall centreline (39)
+    expect(aligned.width).toBe("40.00"); // length unchanged
+    expect(aligned.rotation).toBe("0.00");
+  });
+
+  it("leaves non-openings unchanged", () => {
+    const deskObj = wall({ id: 2, object_type: "desk" });
+    expect(alignOpeningToWall(deskObj, walls)).toBe(deskObj);
+  });
+
+  it("leaves an opening not on any wall unchanged", () => {
+    const free = door({ id: 3, x: "480.00", y: "300.00" }); // mid-room
+    expect(alignOpeningToWall(free, walls)).toBe(free);
+  });
+});
+
 describe("constrainWallObjectMove", () => {
   it("slides a door along its wall and ignores the off-wall (perpendicular) drag", () => {
     const d = door({ id: 1 });
-    // Drag 100px right and 200px down → stays on the wall (y back to 36), x slides.
+    // Drag 100px right and 200px down → stays on the wall (re-centred to the wall
+    // centreline y=33 for an 18px wall), x slides.
     const r = constrainWallObjectMove(d, 580, 236, [d]);
-    expect(r).toEqual({ x: 580, y: 36 });
+    expect(r).toEqual({ x: 580, y: 33 });
   });
 
   it("does not let a door slide over another door on the same wall", () => {
@@ -221,7 +280,7 @@ describe("constrainWallObjectMove", () => {
     const r = constrainWallObjectMove(b, 480, 36, [a, b]);
     // B half-length 20, A occupies [-20,20] → B centre clamped to along 40 → x=520.
     expect(r!.x).toBe(520);
-    expect(r!.y).toBe(36);
+    expect(r!.y).toBe(33);
   });
 
   it("returns null for an object not on any wall", () => {
@@ -276,5 +335,79 @@ describe("resizeOpeningOnWall", () => {
     // Try to grow right past the neighbour at along [20,40]; right edge stops at 20.
     const r = resizeOpeningOnWall(d, host, { x: 260, y: 405 }, 60, [d, n]);
     expect(r).toEqual({ x: 230, y: 400, width: 40, height: 10, rotation: 0 });
+  });
+});
+
+describe("carryBoundaryOpeningsOnResize", () => {
+  // A door flush on the BOTTOM boundary wall (centre y = 598), centred at x=300.
+  const bottomDoor = (): LayoutObject =>
+    wall({
+      id: 10,
+      object_type: "door",
+      x: "280.00", // centre 300
+      y: "593.00", // centre 598 (bottom wall centreline)
+      width: "40.00",
+      height: "10.00",
+      rotation: "0.00",
+    });
+
+  // A door flush on the RIGHT boundary wall (centre x = 958), centred at y=320.
+  const rightDoor = (): LayoutObject =>
+    wall({
+      id: 11,
+      object_type: "door",
+      x: "938.00", // centre 958 (right wall centreline)
+      y: "315.00", // centre 320
+      width: "40.00",
+      height: "10.00",
+      rotation: "90.00",
+    });
+
+  it("scales a bottom-wall opening's position when the room widens", () => {
+    const next = makeFloorBoundary(1200, 544); // width 904 → 1200
+    const updates = carryBoundaryOpeningsOnResize(B, next, [bottomDoor()]);
+    expect(updates).toHaveLength(1);
+    // along was -200; scale 1200/904; new bottom centre x = 648 + (-200*scale).
+    const scale = 1200 / 904;
+    const expectedCx = 648 + -200 * scale;
+    expect(updates[0].id).toBe(10);
+    expect(updates[0].x).toBeCloseTo(expectedCx - 20, 1);
+    // Re-centred on the bottom wall centreline (601 for an 18px wall) → y=596.
+    expect(updates[0].y).toBeCloseTo(596, 1);
+  });
+
+  it("translates a right-wall opening outward when the room widens", () => {
+    const next = makeFloorBoundary(1200, 544);
+    const updates = carryBoundaryOpeningsOnResize(B, next, [rightDoor()]);
+    expect(updates).toHaveLength(1);
+    // Right wall centreline moves with the width (48+1200+9 = 1257). Door follows.
+    expect(updates[0].id).toBe(11);
+    expect(updates[0].x).toBeCloseTo(1257 - 20, 1);
+    expect(updates[0].y).toBeCloseTo(315, 1);
+  });
+
+  it("ignores non-opening objects and openings not on a boundary wall", () => {
+    const innerWall = wall({ id: 12, object_type: "wall" });
+    const deskCenter = wall({ id: 13, object_type: "desk", x: "500", y: "300" });
+    const next = makeFloorBoundary(1200, 800);
+    expect(carryBoundaryOpeningsOnResize(B, next, [innerWall, deskCenter])).toEqual([]);
+  });
+
+  it("keeps the opening fully on a shrunken wall", () => {
+    // Door near the right end of the bottom wall, then shrink width hard.
+    const farDoor = wall({
+      id: 14,
+      object_type: "door",
+      x: "900.00", // centre 920, along ~ +420 on the 904 wall
+      y: "593.00",
+      width: "40.00",
+      height: "10.00",
+    });
+    const next = makeFloorBoundary(240, 544); // smallest room
+    const updates = carryBoundaryOpeningsOnResize(B, next, [farDoor]);
+    expect(updates).toHaveLength(1);
+    // New bottom wall spans x in [48, 288]; the 40-wide door must stay inside.
+    expect(updates[0].x).toBeGreaterThanOrEqual(48);
+    expect(updates[0].x + 40).toBeLessThanOrEqual(288 + 0.01);
   });
 });

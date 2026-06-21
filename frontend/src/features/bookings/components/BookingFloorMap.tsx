@@ -8,6 +8,7 @@ import {
 } from "../utils/bookingAvailability";
 import type { DeskAvailabilityItem } from "../utils/bookingAvailability";
 import type { LayoutObject } from "@/features/layoutObjects/types/layoutObject.types";
+import type { FloorBoundary } from "@/features/layoutObjects/utils/coordinateHelpers";
 
 // Konva is large — keep the same lazy-load strategy as FloorLayoutPage
 const FloorMapCanvas = lazy(() =>
@@ -21,6 +22,8 @@ interface Props {
   layoutObjects: LayoutObject[];
   selectedDeskId: number | null;
   onDeskSelect: (deskId: number) => void;
+  /** The floor's saved room boundary, so booking renders at the real size. */
+  boundary?: FloorBoundary;
 }
 
 function CanvasLoadingFallback() {
@@ -42,7 +45,13 @@ function CanvasLoadingFallback() {
   );
 }
 
-export function BookingFloorMap({ items, layoutObjects, selectedDeskId, onDeskSelect }: Props) {
+export function BookingFloorMap({
+  items,
+  layoutObjects,
+  selectedDeskId,
+  onDeskSelect,
+  boundary,
+}: Props) {
   const availabilityByLayoutObjectId = useMemo(
     () => buildAvailabilityByLayoutObjectId(items),
     [items]
@@ -82,6 +91,7 @@ export function BookingFloorMap({ items, layoutObjects, selectedDeskId, onDeskSe
           selectedAvailabilityLayoutObjectId={selectedAvailabilityLayoutObjectId}
           onAvailabilityObjectSelect={handleAvailabilityObjectSelect}
           showGrid={false}
+          boundary={boundary}
         />
       </Suspense>
     </Box>

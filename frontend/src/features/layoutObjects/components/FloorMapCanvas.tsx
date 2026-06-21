@@ -10,6 +10,10 @@ import {
   MIN_OBJECT_SIZE,
   DEFAULT_FLOOR_BOUNDARY,
   BOUNDARY_WALL_THICKNESS,
+  FLOOR_BOUNDARY_INSET,
+  MIN_FLOOR_BOUNDARY,
+  clampBoundarySize,
+  type FloorBoundary,
 } from "../utils/coordinateHelpers";
 import { wheelZoomFactor } from "../utils/canvasViewport";
 import {
@@ -17,6 +21,7 @@ import {
   snapToWall,
   getMountDimensions,
   isWallMountedType,
+  alignOpeningToWall,
   nearestWall,
   projectAlong,
   pointOnWall,
@@ -26,6 +31,11 @@ import {
   type WallPlacement,
 } from "../utils/wallPlacement";
 import { computeNeighborSnap, type SnapGuide } from "../utils/objectSnapping";
+import {
+  getCutoutRects,
+  computeFloorCarveRects,
+  computeFloorWallSegments,
+} from "../utils/floorShape";
 import { getLayoutObjectRenderConfig } from "../utils/layoutObjectRenderConfig";
 import { useCanvasViewport } from "../hooks/useCanvasViewport";
 import { LayoutObjectCanvasNode } from "./LayoutObjectCanvasNode";
@@ -49,36 +59,39 @@ const WALL_STROKE_WIDTH = 2;
 const WALL_THICKNESS = BOUNDARY_WALL_THICKNESS;
 
 const GUIDE_COLOR = "#EC4899"; // pink-500 alignment guides
+const BOUNDARY_HANDLE_COLOR = "#2563EB"; // blue-600 room-resize handles
+const ROOM_WALL_COLOR = "#6B7280"; // gray-500 — thin walls drawn around rooms in enhance
+const ROOM_WALL_THICKNESS = 5;
 
 // Objects rotate in 10° increments — snap the transformer's rotation handle to
 // every multiple of 10 (tolerance 5 covers the whole range, so it always snaps).
 const ROTATION_SNAPS = Array.from({ length: 36 }, (_, i) => i * 10);
 
-const B = DEFAULT_FLOOR_BOUNDARY;
-
 // Four wall segments framing the interior, each extending outward by
 // WALL_THICKNESS. Top/bottom span the full width (incl. corners) so the corners
-// read as solid wall. Drawn after the grid so they sit cleanly above it.
-const WALL_SEGMENTS = [
-  // top
-  {
-    x: B.x - WALL_THICKNESS,
-    y: B.y - WALL_THICKNESS,
-    width: B.width + WALL_THICKNESS * 2,
-    height: WALL_THICKNESS,
-  },
-  // bottom
-  {
-    x: B.x - WALL_THICKNESS,
-    y: B.y + B.height,
-    width: B.width + WALL_THICKNESS * 2,
-    height: WALL_THICKNESS,
-  },
-  // left
-  { x: B.x - WALL_THICKNESS, y: B.y, width: WALL_THICKNESS, height: B.height },
-  // right
-  { x: B.x + B.width, y: B.y, width: WALL_THICKNESS, height: B.height },
-];
+// read as solid wall. Computed from the (editable) boundary so they track resize.
+function buildWallSegments(b: FloorBoundary) {
+  return [
+    // top
+    {
+      x: b.x - WALL_THICKNESS,
+      y: b.y - WALL_THICKNESS,
+      width: b.width + WALL_THICKNESS * 2,
+      height: WALL_THICKNESS,
+    },
+    // bottom
+    {
+      x: b.x - WALL_THICKNESS,
+      y: b.y + b.height,
+      width: b.width + WALL_THICKNESS * 2,
+      height: WALL_THICKNESS,
+    },
+    // left
+    { x: b.x - WALL_THICKNESS, y: b.y, width: WALL_THICKNESS, height: b.height },
+    // right
+    { x: b.x + b.width, y: b.y, width: WALL_THICKNESS, height: b.height },
+  ];
+}
 
 const c = en.app.layoutObjects;
 
@@ -108,6 +121,17 @@ interface Props {
   bookableObjectIds?: ReadonlySet<number>;
   /** When true, objects render with isometric assets instead of simple boxes. */
   enhanced?: boolean;
+
+  // ── Editable floor boundary ────────────────────────────────────────────────
+  /** The room rectangle. Defaults to the fixed boundary when not provided. */
+  boundary?: FloorBoundary;
+  /**
+   * Called when the user resizes the room via the drag handles (managers only,
+   * editor mode). Receives the new inner width/height and the shift to apply to
+   * furniture so the room can re-anchor to the fixed inset (non-zero only when a
+   * top/left/corner handle moved the origin). Clamping/persistence is the caller's.
+   */
+  onBoundaryResize?: (width: number, height: number, shiftX: number, shiftY: number) => void;
 
   // ── Booking mode ─────────────────────────────────────────────────────────
   /** When "booking", editing is disabled and availability overlays are shown. */
@@ -150,6 +174,8 @@ export function FloorMapCanvas({
   gridSize = DEFAULT_GRID_SIZE,
   bookableObjectIds,
   enhanced = false,
+  boundary = DEFAULT_FLOOR_BOUNDARY,
+  onBoundaryResize,
   mode = "editor",
   availabilityByLayoutObjectId,
   selectedAvailabilityLayoutObjectId,
@@ -160,6 +186,129 @@ export function FloorMapCanvas({
   const isBookingMode = mode === "booking";
   const transformerRef = useRef<Konva.Transformer>(null);
   const nodeRefs = useRef<Map<number, Konva.Group>>(new Map());
+
+  // ── Editable boundary geometry (derived from the boundary prop) ───────────
+  const B = boundary;
+  // Cutouts carve the office shape in the "real office" views — the enhanced
+  // editor view and the booking map — by removing the cut area from the white
+  // floor and rerouting the walls around it. In the plain editor the boundary
+  // stays rectangular and cutouts show as editable X boxes.
+  const carveShape = enhanced || isBookingMode;
+  const cutoutRects = useMemo(() => getCutoutRects(objects), [objects]);
+  const carvedCutouts = useMemo(
+    () => (carveShape ? computeFloorCarveRects(B, cutoutRects) : []),
+    [carveShape, B, cutoutRects]
+  );
+  const wallSegments = useMemo(
+    () =>
+      carvedCutouts.length > 0
+        ? computeFloorWallSegments(B, cutoutRects, WALL_THICKNESS)
+        : buildWallSegments(B),
+    [B, carvedCutouts, cutoutRects]
+  );
+  // Snap walls for aligning doors/windows to their host wall on render (so every
+  // opening is flush and the same thickness as its wall). Carve-aware in the
+  // enhanced/booking views so openings on cutout walls line up too.
+  const snapWalls = useMemo(
+    () => getSnapWalls(objects, B, carveShape ? cutoutRects : []),
+    [objects, B, carveShape, cutoutRects]
+  );
+  // Thin walls drawn around rooms/zones in the enhanced/booking view (visual only
+  // — gone on revert). Each room edge is a wall segment; edges on a boundary wall
+  // are skipped, and colinear edges from adjacent rooms are MERGED so two rooms
+  // beside each other share a single wall (no doubling at the shared border).
+  const roomFrames = useMemo(() => {
+    if (!carveShape) return [];
+    const t = ROOM_WALL_THICKNESS;
+    const tol = WALL_THICKNESS / 2 + 4; // "on the boundary wall" tolerance
+    const bL = B.x;
+    const bR = B.x + B.width;
+    const bT = B.y;
+    const bB = B.y + B.height;
+    // Raw edges as centre-line segments: v = vertical (line is x), h = horizontal.
+    const raw: Array<{ o: "v" | "h"; line: number; lo: number; hi: number }> = [];
+
+    for (const obj of objects) {
+      if (getLayoutObjectRenderConfig(obj.object_type).category !== "Rooms & Zones") continue;
+      const w = parseFloat(obj.width);
+      const h = parseFloat(obj.height);
+      const x = parseFloat(obj.x);
+      const y = parseFloat(obj.y);
+      const rot = parseFloat(obj.rotation) || 0;
+      if (![w, h, x, y].every(Number.isFinite)) continue;
+      // Rotated rooms are rare — skip the per-edge cleanup (would need OBB math).
+      if (rot !== 0) continue;
+
+      if (Math.abs(y - bT) > tol) raw.push({ o: "h", line: y, lo: x, hi: x + w });
+      if (Math.abs(y + h - bB) > tol) raw.push({ o: "h", line: y + h, lo: x, hi: x + w });
+      if (Math.abs(x - bL) > tol) raw.push({ o: "v", line: x, lo: y, hi: y + h });
+      if (Math.abs(x + w - bR) > tol) raw.push({ o: "v", line: x + w, lo: y, hi: y + h });
+    }
+
+    // Merge segments on the same line (rounded) with overlapping/touching spans —
+    // this collapses the two walls at a shared border between adjacent rooms.
+    const groups = new Map<string, Array<{ lo: number; hi: number }>>();
+    for (const s of raw) {
+      const key = `${s.o}:${Math.round(s.line)}`;
+      const arr = groups.get(key) ?? [];
+      arr.push({ lo: s.lo, hi: s.hi });
+      groups.set(key, arr);
+    }
+    const segs: Array<{ key: string; x: number; y: number; width: number; height: number }> = [];
+    let i = 0;
+    for (const [key, arr] of groups) {
+      const [o, lineStr] = key.split(":");
+      const line = Number(lineStr);
+      arr.sort((a, b) => a.lo - b.lo);
+      let cur = { ...arr[0] };
+      const flush = () => {
+        if (o === "v") {
+          segs.push({
+            key: `r${i++}`,
+            x: line - t / 2,
+            y: cur.lo,
+            width: t,
+            height: cur.hi - cur.lo,
+          });
+        } else {
+          segs.push({
+            key: `r${i++}`,
+            x: cur.lo,
+            y: line - t / 2,
+            width: cur.hi - cur.lo,
+            height: t,
+          });
+        }
+      };
+      for (let k = 1; k < arr.length; k++) {
+        if (arr[k].lo <= cur.hi + 0.5) cur.hi = Math.max(cur.hi, arr[k].hi);
+        else {
+          flush();
+          cur = { ...arr[k] };
+        }
+      }
+      flush();
+    }
+    return segs;
+  }, [carveShape, objects, B]);
+  // Stage grows with the room so the walls always stay inside the board: the
+  // inset margin is preserved on every side. Default boundary → 1000 × 640.
+  const stageWidth = B.width + FLOOR_BOUNDARY_INSET * 2;
+  const stageHeight = B.height + FLOOR_BOUNDARY_INSET * 2;
+
+  // Room-resize handles appear when the user selects the room by clicking a wall
+  // (mirrors object selection). Attached to an invisible Rect matching the room;
+  // the Transformer draws the handles.
+  const roomResizeRef = useRef<Konva.Rect>(null);
+  const boundaryTransformerRef = useRef<Konva.Transformer>(null);
+  const [boundarySelected, setBoundarySelected] = useState(false);
+  const canSelectBoundary = canManageLayout && !isBookingMode && !!onBoundaryResize;
+  const canResizeBoundary = canSelectBoundary && boundarySelected;
+
+  // Selecting an object deselects the room (only one thing is "active" at a time).
+  useEffect(() => {
+    if (selectedObjectId !== null) setBoundarySelected(false);
+  }, [selectedObjectId]);
 
   // ── Door/window wall-placement mode ───────────────────────────────────────
   const placementType =
@@ -217,7 +366,7 @@ export function FloorMapCanvas({
     // placement correct under any pan/zoom.
     const pointer = stage?.getRelativePointerPosition?.();
     if (!pointer) return null;
-    const walls = getSnapWalls(objects);
+    const walls = getSnapWalls(objects, B, carveShape ? cutoutRects : []);
     const placement = snapToWall(pointer.x, pointer.y, walls, mount.length);
     if (!placement) return null;
     // Disallow placing on top of an existing door/window on the same wall.
@@ -234,7 +383,7 @@ export function FloorMapCanvas({
   // object is not on a wall. Captures the object's pre-drag state; obj.x/y do not
   // change until dragend, so the closure stays valid for the whole drag.
   function wallDragBoundFor(obj: LayoutObject) {
-    const walls = getSnapWalls(objects);
+    const walls = getSnapWalls(objects, B, carveShape ? cutoutRects : []);
     const w = parseFloat(obj.width);
     const h = parseFloat(obj.height);
     const cx = parseFloat(obj.x) + w / 2;
@@ -319,11 +468,63 @@ export function FloorMapCanvas({
     tr.getLayer()?.batchDraw();
   }, [selectedObjectId, canManageLayout, isBookingMode, selectedIsWallMounted]);
 
+  // Attach the room-resize Transformer to the invisible room target when active.
+  useEffect(() => {
+    const tr = boundaryTransformerRef.current;
+    if (!tr) return;
+    const node = canResizeBoundary ? roomResizeRef.current : null;
+    tr.nodes(node ? [node] : []);
+    tr.getLayer()?.batchDraw();
+  }, [canResizeBoundary, B.width, B.height]);
+
+  // Commit a room resize. The Transformer may move the top-left (when the user
+  // drags a top/left/corner handle), so we read the full moved box, keep the edge
+  // that stayed put as the anchor, and report both the new size and how far the
+  // origin moved. The parent re-anchors the room to the fixed inset and shifts the
+  // furniture by that delta, so the room visually grows from the dragged edge.
+  function handleBoundaryTransformEnd() {
+    const node = roomResizeRef.current;
+    if (!node || !onBoundaryResize) return;
+    const rawX = node.x();
+    const rawY = node.y();
+    const rawW = B.width * node.scaleX();
+    const rawH = B.height * node.scaleY();
+    node.scaleX(1);
+    node.scaleY(1);
+    node.position({ x: B.x, y: B.y });
+
+    const { width, height } = clampBoundarySize(rawW, rawH);
+    // Which edge stayed fixed? (corner drags move two edges; the opposite corner
+    // is the anchor.) Re-anchor to the fixed edge so clamping keeps it in place.
+    const rightStayed = Math.abs(rawX + rawW - (B.x + B.width)) < 1;
+    const bottomStayed = Math.abs(rawY + rawH - (B.y + B.height)) < 1;
+    const newX = rightStayed ? B.x + B.width - width : B.x;
+    const newY = bottomStayed ? B.y + B.height - height : B.y;
+    // Shift applied to furniture so the room can re-anchor at the inset.
+    onBoundaryResize(width, height, B.x - newX, B.y - newY);
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function handleStageClick(e: any) {
     if (e.target === e.target.getStage()) {
       onSelectObject(null);
+      setBoundarySelected(false);
     }
+  }
+
+  // Clicking a boundary wall selects the room (shows the resize handles), the same
+  // way clicking an object selects it. Clears any object selection.
+  function handleBoundaryClick() {
+    if (!canSelectBoundary) return;
+    onSelectObject(null);
+    setBoundarySelected(true);
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function setWallCursor(e: any, cursor: string) {
+    if (!canSelectBoundary) return;
+    const stage = e.target?.getStage?.();
+    if (stage) stage.container().style.cursor = cursor;
   }
 
   // Wheel / trackpad zoom, anchored to the cursor (PR 061).
@@ -349,24 +550,25 @@ export function FloorMapCanvas({
 
   // Memoize grid lines so they only rebuild when showGrid or gridSize changes
   const gridLines = useMemo(() => {
-    if (!showGrid) return [];
+    // Enhanced view is a clean presentation — no grid.
+    if (!showGrid || enhanced) return [];
     const lines = [];
-    for (let x = gridSize; x < CANVAS_WIDTH; x += gridSize) {
+    for (let x = gridSize; x < stageWidth; x += gridSize) {
       lines.push(
         <Line
           key={`v${x}`}
-          points={[x, 0, x, CANVAS_HEIGHT]}
+          points={[x, 0, x, stageHeight]}
           stroke={GRID_COLOR}
           strokeWidth={0.5}
           listening={false}
         />
       );
     }
-    for (let y = gridSize; y < CANVAS_HEIGHT; y += gridSize) {
+    for (let y = gridSize; y < stageHeight; y += gridSize) {
       lines.push(
         <Line
           key={`h${y}`}
-          points={[0, y, CANVAS_WIDTH, y]}
+          points={[0, y, stageWidth, y]}
           stroke={GRID_COLOR}
           strokeWidth={0.5}
           listening={false}
@@ -374,7 +576,7 @@ export function FloorMapCanvas({
       );
     }
     return lines;
-  }, [showGrid, gridSize]);
+  }, [showGrid, enhanced, gridSize, stageWidth, stageHeight]);
 
   return (
     <Box
@@ -401,8 +603,8 @@ export function FloorMapCanvas({
           anchored to the visible canvas frame, not the scrolled stage. */}
       <Box sx={{ overflow: "auto", borderRadius: 1 }}>
         <Stage
-          width={CANVAS_WIDTH}
-          height={CANVAS_HEIGHT}
+          width={stageWidth}
+          height={stageHeight}
           scaleX={viewport.scale}
           scaleY={viewport.scale}
           x={viewport.x}
@@ -416,14 +618,28 @@ export function FloorMapCanvas({
         >
           <Layer listening={false}>
             {/* Grey margin outside the room */}
-            <Rect width={CANVAS_WIDTH} height={CANVAS_HEIGHT} fill={CANVAS_BG} />
+            <Rect width={stageWidth} height={stageHeight} fill={CANVAS_BG} />
             {/* White interior of the office */}
             <Rect x={B.x} y={B.y} width={B.width} height={B.height} fill={ROOM_FILL} />
+            {/* Enhanced view: carve cutouts out of the floor by painting them back
+                to the outside colour, so the office reads as a non-rectangular shape. */}
+            {carvedCutouts.map((r, i) => (
+              <Rect
+                key={`cutout-${i}`}
+                x={r.x}
+                y={r.y}
+                width={r.width}
+                height={r.height}
+                fill={CANVAS_BG}
+              />
+            ))}
             {gridLines}
-            {/* Office walls — solid grey segments framing the interior, styled to
-                match the "wall" layout object. Drawn after the grid so they sit
-                cleanly above it. */}
-            {WALL_SEGMENTS.map((w, i) => (
+          </Layer>
+          {/* Office walls — solid grey segments framing the interior, styled to
+              match the "wall" layout object. In their own listening layer so a
+              click selects the room (showing the resize handles). */}
+          <Layer listening={canSelectBoundary}>
+            {wallSegments.map((w, i) => (
               <Rect
                 key={`wall-${i}`}
                 x={w.x}
@@ -436,11 +652,22 @@ export function FloorMapCanvas({
                 shadowColor="#000000"
                 shadowOpacity={0.12}
                 shadowBlur={6}
+                onClick={handleBoundaryClick}
+                onTap={handleBoundaryClick}
+                onMouseEnter={(e) => setWallCursor(e, "pointer")}
+                onMouseLeave={(e) => setWallCursor(e, "default")}
+                data-testid="boundary-wall"
               />
             ))}
           </Layer>
           <Layer>
             {objects.map((obj) => {
+              // Where the floor is carved (enhanced / booking), a cutout is shown
+              // by the carved shape + rerouted walls, so its X box is not drawn.
+              if (carveShape && obj.object_type === "cutout") return null;
+              // Render doors/windows flush on their wall at the wall's thickness,
+              // so existing openings match the (now thicker) walls too.
+              const displayObj = alignOpeningToWall(obj, snapWalls);
               const availabilityStatus = availabilityByLayoutObjectId?.get(obj.id);
               const isAvailabilitySelected = selectedAvailabilityLayoutObjectId === obj.id;
               return (
@@ -450,13 +677,13 @@ export function FloorMapCanvas({
                     if (node) nodeRefs.current.set(obj.id, node);
                     else nodeRefs.current.delete(obj.id);
                   }}
-                  obj={obj}
+                  obj={displayObj}
                   isSelected={!isBookingMode && obj.id === selectedObjectId}
                   onSelect={() => onSelectObject(obj.id)}
                   draggable={canManageLayout && !isBookingMode}
                   dragBoundFunc={
                     canManageLayout && !isBookingMode && isWallMountedType(obj.object_type)
-                      ? wallDragBoundFor(obj)
+                      ? wallDragBoundFor(displayObj)
                       : undefined
                   }
                   onDragMove={
@@ -497,6 +724,57 @@ export function FloorMapCanvas({
               />
             )}
           </Layer>
+
+          {/* Thin walls around rooms/zones — enhanced/booking view only, so they
+              frame each room as an enclosed space. Gone on revert. */}
+          {roomFrames.length > 0 && (
+            <Layer listening={false}>
+              {roomFrames.map((s) => (
+                <Rect
+                  key={`room-wall-${s.key}`}
+                  x={s.x}
+                  y={s.y}
+                  width={s.width}
+                  height={s.height}
+                  fill={ROOM_WALL_COLOR}
+                  data-testid="room-wall"
+                />
+              ))}
+            </Layer>
+          )}
+
+          {/* Room-resize handles: an invisible Rect tracks the room and the
+              Transformer draws drag handles on its right/bottom/corner. Top-left
+              is pinned (no left/top anchors) so the room grows down/right from
+              the fixed inset. Shown only when nothing else is selected. */}
+          {canResizeBoundary && (
+            <Layer>
+              <Rect
+                ref={roomResizeRef}
+                x={B.x}
+                y={B.y}
+                width={B.width}
+                height={B.height}
+                listening={false}
+                data-testid="boundary-resize-target"
+              />
+              <Transformer
+                ref={boundaryTransformerRef}
+                rotateEnabled={false}
+                keepRatio={false}
+                anchorStroke={BOUNDARY_HANDLE_COLOR}
+                anchorFill="#FFFFFF"
+                borderStroke={BOUNDARY_HANDLE_COLOR}
+                borderDash={[6, 4]}
+                onTransformEnd={handleBoundaryTransformEnd}
+                boundBoxFunc={(oldBox, newBox) =>
+                  newBox.width < MIN_FLOOR_BOUNDARY || newBox.height < MIN_FLOOR_BOUNDARY
+                    ? oldBox
+                    : newBox
+                }
+              />
+            </Layer>
+          )}
 
           {/* Live alignment guides while dragging a normal object (PR 061). */}
           {dragGuides.length > 0 && (

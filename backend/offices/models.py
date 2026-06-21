@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models import Q
 from django.utils.text import slugify
@@ -64,6 +65,21 @@ class Floor(models.Model):
     name = models.CharField(max_length=255)
     slug = models.SlugField(max_length=255)
     level_number = models.IntegerField(default=0)
+    # Editable rectangular floor boundary (inner room dimensions, in canvas px).
+    # The wall inset is a fixed frontend constant; only width/height are stored.
+    # Defaults match the original fixed boundary so existing floors are unchanged.
+    boundary_width = models.DecimalField(
+        max_digits=7,
+        decimal_places=2,
+        default=904,
+        validators=[MinValueValidator(240), MaxValueValidator(4000)],
+    )
+    boundary_height = models.DecimalField(
+        max_digits=7,
+        decimal_places=2,
+        default=544,
+        validators=[MinValueValidator(240), MaxValueValidator(4000)],
+    )
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -133,6 +149,9 @@ class FloorLayoutObject(models.Model):
         WINDOW = "window", "Window"
         COLUMN = "column", "Column"
         PARTITION = "partition", "Partition"
+        # Boundary cutout: carves a non-rectangular floor shape (rendered in the
+        # enhanced view); must sit against the floor boundary.
+        CUTOUT = "cutout", "Cutout"
 
         # Facilities
         TOILET = "toilet", "Toilet"

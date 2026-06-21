@@ -3,6 +3,7 @@ import {
   Button,
   FormControlLabel,
   Switch,
+  TextField,
   ToggleButton,
   ToggleButtonGroup,
   Tooltip,
@@ -10,7 +11,11 @@ import {
 } from "@mui/material";
 import { AutoFixHighOutlined } from "@mui/icons-material";
 import { en } from "@/i18n/en";
-import { CANVAS_GRID_SIZES } from "../utils/coordinateHelpers";
+import {
+  CANVAS_GRID_SIZES,
+  MIN_FLOOR_BOUNDARY,
+  MAX_FLOOR_BOUNDARY,
+} from "../utils/coordinateHelpers";
 
 const c = en.app.layoutObjects;
 
@@ -24,6 +29,11 @@ interface Props {
   canManageLayout: boolean;
   enhanced: boolean;
   onEnhancedChange: (v: boolean) => void;
+  /** Current room width/height (px). Omit to hide the room-size controls. */
+  boundaryWidth?: number;
+  boundaryHeight?: number;
+  onBoundaryWidthChange?: (v: number) => void;
+  onBoundaryHeightChange?: (v: number) => void;
 }
 
 export function LayoutCanvasToolbar({
@@ -36,7 +46,45 @@ export function LayoutCanvasToolbar({
   canManageLayout,
   enhanced,
   onEnhancedChange,
+  boundaryWidth,
+  boundaryHeight,
+  onBoundaryWidthChange,
+  onBoundaryHeightChange,
 }: Props) {
+  const showRoomSize =
+    canManageLayout &&
+    boundaryWidth !== undefined &&
+    boundaryHeight !== undefined &&
+    !!onBoundaryWidthChange &&
+    !!onBoundaryHeightChange;
+
+  const roomSizeField = (
+    label: string,
+    value: number,
+    onChange: (v: number) => void,
+    testId: string
+  ) => (
+    <TextField
+      label={label}
+      type="number"
+      size="small"
+      value={Math.round(value)}
+      onChange={(e) => {
+        const next = parseInt(e.target.value, 10);
+        if (!Number.isNaN(next)) onChange(next);
+      }}
+      slotProps={{
+        htmlInput: {
+          min: MIN_FLOOR_BOUNDARY,
+          max: MAX_FLOOR_BOUNDARY,
+          step: 10,
+          "aria-label": label,
+          "data-testid": testId,
+        },
+      }}
+      sx={{ width: 92, "& input": { py: 0.5, fontSize: "0.75rem" } }}
+    />
+  );
   return (
     <Box
       data-testid="canvas-toolbar"
@@ -108,6 +156,25 @@ export function LayoutCanvasToolbar({
             </ToggleButtonGroup>
           </Box>
         </>
+      )}
+
+      {/* Room size — editors only. Drives the same boundary the drag handles do. */}
+      {showRoomSize && (
+        <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+          <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: "nowrap" }}>
+            {c.toolbarRoomSize}
+          </Typography>
+          {roomSizeField(c.toolbarRoomWidth, boundaryWidth, onBoundaryWidthChange, "room-width")}
+          <Typography variant="caption" color="text.disabled">
+            ×
+          </Typography>
+          {roomSizeField(
+            c.toolbarRoomHeight,
+            boundaryHeight,
+            onBoundaryHeightChange,
+            "room-height"
+          )}
+        </Box>
       )}
 
       {/* Enhance toggle — swaps simple boxes for detailed assets. Available to

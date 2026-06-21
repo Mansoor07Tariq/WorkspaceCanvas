@@ -24,6 +24,7 @@ export type LayoutObjectType =
   | "window"
   | "column"
   | "partition"
+  | "cutout"
   | "toilet"
   | "sink"
   | "kitchen_sink"

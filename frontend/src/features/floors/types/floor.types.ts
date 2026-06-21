@@ -6,6 +6,10 @@ export interface Floor {
   name: string;
   slug: string;
   level_number: number;
+  /** Editable inner room width (canvas px). DRF DecimalField → string. */
+  boundary_width: string;
+  /** Editable inner room height (canvas px). DRF DecimalField → string. */
+  boundary_height: string;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -14,6 +18,11 @@ export interface Floor {
 export interface CreateFloorPayload {
   name: string;
   level_number: number;
+}
+
+export interface UpdateFloorPayload {
+  boundary_width?: number;
+  boundary_height?: number;
 }
 
 export type FloorCreationStep = "details" | "review";

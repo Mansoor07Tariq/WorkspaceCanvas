@@ -22,6 +22,7 @@ import { useOffices } from "@/features/offices/hooks/useOffices";
 import { useFloors } from "@/features/floors/hooks/useFloors";
 import { useDesks } from "@/features/desks/hooks/useDesks";
 import { useLayoutObjects } from "@/features/layoutObjects/hooks/useLayoutObjects";
+import { makeFloorBoundary } from "@/features/layoutObjects/utils/coordinateHelpers";
 import { useDeskBookings } from "@/features/bookings/hooks/useDeskBookings";
 import { createDeskBooking, cancelDeskBooking } from "@/features/bookings/api/bookingApi";
 import { useBookingAvailability } from "@/features/bookings/hooks/useBookingAvailability";
@@ -99,6 +100,17 @@ export function DeskBookingPage() {
   const { floors, loading: floorsLoading, error: floorsError } = useFloors(floorOfficeId);
 
   const deskFloorId = typeof selectedFloorId === "number" ? selectedFloorId : 0;
+  // Render the booking map at the floor's saved room size (read-only here).
+  const selectedFloor = floors.find((f) => f.id === deskFloorId);
+  const selectedFloorBoundary =
+    selectedFloor &&
+    Number.isFinite(Number(selectedFloor.boundary_width)) &&
+    Number.isFinite(Number(selectedFloor.boundary_height))
+      ? makeFloorBoundary(
+          Number(selectedFloor.boundary_width),
+          Number(selectedFloor.boundary_height)
+        )
+      : undefined;
   const { desks, loading: desksLoading, error: desksError } = useDesks(floorOfficeId, deskFloorId);
   const {
     objects: layoutObjects,
@@ -364,6 +376,7 @@ export function DeskBookingPage() {
                     layoutObjects={layoutObjects}
                     selectedDeskId={selectedDeskId}
                     onDeskSelect={handleSelectDesk}
+                    boundary={selectedFloorBoundary}
                   />
                 </Box>
               )}

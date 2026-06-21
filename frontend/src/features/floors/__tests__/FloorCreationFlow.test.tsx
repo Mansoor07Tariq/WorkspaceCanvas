@@ -25,6 +25,8 @@ const mockFloor = {
   is_active: true,
   created_at: "",
   updated_at: "",
+  boundary_width: "904",
+  boundary_height: "544",
 };
 
 const defaultProps = {

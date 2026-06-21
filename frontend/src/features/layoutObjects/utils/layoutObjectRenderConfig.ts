@@ -156,6 +156,20 @@ const CONFIGS: Record<LayoutObjectType, RenderConfig> = {
   },
   column: structure("COL"),
   partition: structure("PRT", true),
+  // Cutout marks an area to carve out of the office (non-rectangular floors). It
+  // looks like a desk-sized box with an X in the editor; in the enhanced view the
+  // area is removed from the floor and the walls reroute around it.
+  cutout: {
+    category: "Structure",
+    fill: "#FEE2E2", // red-100 — reads as "removed area"
+    stroke: "#DC2626", // red-600
+    strokeWidth: 1.5,
+    dashPattern: [6, 4],
+    opacity: 1,
+    cornerRadius: 2,
+    shape: "rect",
+    shortCode: "CUT",
+  },
 
   // Facilities
   toilet: facility("WC"),

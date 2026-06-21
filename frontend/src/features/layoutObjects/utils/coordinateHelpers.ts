@@ -31,7 +31,7 @@ export const FLOOR_BOUNDARY_INSET = 48;
  * from the boundary, so the containment region stays the inner wall face.
  * Shared by the canvas renderer and the door/window wall-placement geometry.
  */
-export const BOUNDARY_WALL_THICKNESS = 12;
+export const BOUNDARY_WALL_THICKNESS = 18;
 
 export interface FloorBoundary {
   x: number;
@@ -52,6 +52,84 @@ export const DEFAULT_FLOOR_BOUNDARY: FloorBoundary = {
   width: CANVAS_WIDTH - FLOOR_BOUNDARY_INSET * 2,
   height: CANVAS_HEIGHT - FLOOR_BOUNDARY_INSET * 2,
 };
+
+/**
+ * Min/max for the editable floor boundary (inner room dimensions, px). Mirrors
+ * the backend Floor model validators so the UI rejects the same out-of-range
+ * sizes the API would.
+ */
+export const MIN_FLOOR_BOUNDARY = 240;
+export const MAX_FLOOR_BOUNDARY = 4000;
+
+/** Clamp a requested boundary width/height into the allowed range (rounded). */
+export function clampBoundarySize(
+  width: number,
+  height: number
+): { width: number; height: number } {
+  return {
+    width: clamp(Math.round(width), MIN_FLOOR_BOUNDARY, MAX_FLOOR_BOUNDARY),
+    height: clamp(Math.round(height), MIN_FLOOR_BOUNDARY, MAX_FLOOR_BOUNDARY),
+  };
+}
+
+/** How close (px) a cutout edge must be to a wall to snap flush against it. */
+export const CUTOUT_SNAP_DISTANCE = 28;
+
+/**
+ * Snap a cutout box flush against the floor boundary. A cutout carves the office
+ * shape, so it must sit on at least one wall: each edge within the snap distance
+ * is pulled flush (so a corner snaps to two walls → an L-shape), and if it ends up
+ * touching no wall it is snapped to the single nearest one. Kept inside the room.
+ */
+export function snapCutoutToBoundary(
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  boundary: FloorBoundary = DEFAULT_FLOOR_BOUNDARY
+): { x: number; y: number } {
+  const bx2 = boundary.x + boundary.width;
+  const by2 = boundary.y + boundary.height;
+  const maxX = Math.max(boundary.x, bx2 - width);
+  const maxY = Math.max(boundary.y, by2 - height);
+  let nx = clamp(x, boundary.x, maxX);
+  let ny = clamp(y, boundary.y, maxY);
+
+  const T = CUTOUT_SNAP_DISTANCE;
+  if (nx - boundary.x <= T) nx = boundary.x;
+  else if (bx2 - (nx + width) <= T) nx = maxX;
+  if (ny - boundary.y <= T) ny = boundary.y;
+  else if (by2 - (ny + height) <= T) ny = maxY;
+
+  // Guarantee contact with a wall: snap to the single nearest edge if still free.
+  const dl = nx - boundary.x;
+  const dr = bx2 - (nx + width);
+  const dt = ny - boundary.y;
+  const db = by2 - (ny + height);
+  const minD = Math.min(dl, dr, dt, db);
+  if (minD > 0.5) {
+    if (minD === dl) nx = boundary.x;
+    else if (minD === dr) nx = maxX;
+    else if (minD === dt) ny = boundary.y;
+    else ny = maxY;
+  }
+  return { x: nx, y: ny };
+}
+
+/**
+ * Build a FloorBoundary from inner width/height, keeping the fixed wall inset as
+ * the top-left origin. The inset is constant; only width/height are editable and
+ * persisted (per floor), so the room always grows down/right from {inset, inset}.
+ */
+export function makeFloorBoundary(width: number, height: number): FloorBoundary {
+  const size = clampBoundarySize(width, height);
+  return {
+    x: FLOOR_BOUNDARY_INSET,
+    y: FLOOR_BOUNDARY_INSET,
+    width: size.width,
+    height: size.height,
+  };
+}
 
 // ─── Formatting ──────────────────────────────────────────────────────────────
 
