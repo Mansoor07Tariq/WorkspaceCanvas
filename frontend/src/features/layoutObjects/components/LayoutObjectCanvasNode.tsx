@@ -1,5 +1,5 @@
 import { forwardRef, useCallback } from "react";
-import { Group, Circle, Text } from "react-konva";
+import { Group, Circle, Line, Text } from "react-konva";
 import type Konva from "konva";
 import { getLayoutObjectRenderConfig } from "../utils/layoutObjectRenderConfig";
 import { getLayoutObjectNodeStyle } from "../utils/layoutObjectNodeStyle";
@@ -48,6 +48,8 @@ const LABEL_FILL = "#1F2937";
 const DESK_DOT_RADIUS = 5;
 const DESK_DOT_COLOR = "#16A34A"; // green-600
 
+const CUTOUT_X_COLOR = "#DC2626"; // red-600 — marks a "carve this area" box
+
 export const LayoutObjectCanvasNode = forwardRef<Konva.Group, Props>(
   function LayoutObjectCanvasNode(
     {
@@ -77,6 +79,12 @@ export const LayoutObjectCanvasNode = forwardRef<Konva.Group, Props>(
 
     const config = getLayoutObjectRenderConfig(obj.object_type);
     const displayLabel = obj.label || config.shortCode;
+    const isCutout = obj.object_type === "cutout";
+
+    // In enhanced (isometric) mode the artwork carries its own meaning, so the
+    // short-code labels (e.g. "DSK") become visual noise. Hide them for every
+    // type except meeting rooms, which still need a textual marker.
+    const showLabel = !enhanced || obj.object_type === "meeting_room";
 
     // The inner visual is delegated to a per-type renderer (renderer registry).
     // Default is a simple shape; with the Enhance toggle on, types that have a
@@ -92,6 +100,12 @@ export const LayoutObjectCanvasNode = forwardRef<Konva.Group, Props>(
       availabilityStatus,
       isAvailabilitySelected,
     });
+
+    // Enhance mode intentionally keeps object outlines visible for now: the
+    // stroke/dash doubles as a placement aid while the boundary/cutout work is
+    // still being tuned. Hiding outlines in Enhance (drop stroke/dash when
+    // `enhanced && !isSelected`) is deferred to the dedicated Enhance-visuals PR.
+    const renderStyle = shapeProps;
 
     // Group origin at center of bounding box — correct for rotation and drag
     const cx = x + w / 2;
@@ -177,29 +191,39 @@ export const LayoutObjectCanvasNode = forwardRef<Konva.Group, Props>(
         <Renderer
           object={obj}
           config={config}
-          style={shapeProps}
+          style={renderStyle}
           width={w}
           height={h}
           isSelected={isSelected}
           isSaving={isSaving}
           isBookingMode={isBookingMode}
         />
-        <Text
-          x={-w / 2}
-          y={-h / 2}
-          width={w}
-          height={h}
-          text={displayLabel}
-          fontSize={LABEL_FONT_SIZE}
-          fontFamily="sans-serif"
-          fill={LABEL_FILL}
-          align="center"
-          verticalAlign="middle"
-          padding={LABEL_PADDING}
-          ellipsis
-          wrap="none"
-          listening={false}
-        />
+        {isCutout && (
+          <Line
+            points={[-w / 2, -h / 2, w / 2, h / 2, 0, 0, -w / 2, h / 2, w / 2, -h / 2]}
+            stroke={CUTOUT_X_COLOR}
+            strokeWidth={1.5}
+            listening={false}
+          />
+        )}
+        {showLabel && (
+          <Text
+            x={-w / 2}
+            y={-h / 2}
+            width={w}
+            height={h}
+            text={displayLabel}
+            fontSize={LABEL_FONT_SIZE}
+            fontFamily="sans-serif"
+            fill={LABEL_FILL}
+            align="center"
+            verticalAlign="middle"
+            padding={LABEL_PADDING}
+            ellipsis
+            wrap="none"
+            listening={false}
+          />
+        )}
         {hasDesk && (
           <Circle
             x={w / 2 - DESK_DOT_RADIUS - 2}

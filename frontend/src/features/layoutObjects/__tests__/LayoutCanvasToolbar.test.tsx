@@ -200,4 +200,58 @@ describe("LayoutCanvasToolbar", () => {
     render(<LayoutCanvasToolbar {...defaultProps} canManageLayout={false} enhanced={false} />);
     expect(screen.getByRole("button", { name: /enhance/i })).toBeInTheDocument();
   });
+
+  // ─── Room size inputs ─────────────────────────────────────────────────────
+
+  const roomProps = {
+    boundaryWidth: 1200,
+    boundaryHeight: 800,
+    onBoundaryWidthChange: vi.fn(),
+    onBoundaryHeightChange: vi.fn(),
+  };
+
+  const getWidthInput = () => screen.getByRole("spinbutton", { name: /width/i });
+  const getHeightInput = () => screen.getByRole("spinbutton", { name: /height/i });
+
+  it("renders room width/height inputs for editors when provided", () => {
+    render(<LayoutCanvasToolbar {...defaultProps} {...roomProps} />);
+    expect(getWidthInput()).toHaveValue(1200);
+    expect(getHeightInput()).toHaveValue(800);
+  });
+
+  it("hides room size inputs for members", () => {
+    render(<LayoutCanvasToolbar {...defaultProps} {...roomProps} canManageLayout={false} />);
+    expect(screen.queryByRole("spinbutton", { name: /width/i })).not.toBeInTheDocument();
+  });
+
+  it("hides room size inputs when dimensions are not provided", () => {
+    render(<LayoutCanvasToolbar {...defaultProps} />);
+    expect(screen.queryByRole("spinbutton", { name: /width/i })).not.toBeInTheDocument();
+  });
+
+  it("calls onBoundaryWidthChange with the parsed value", () => {
+    const onBoundaryWidthChange = vi.fn();
+    render(
+      <LayoutCanvasToolbar
+        {...defaultProps}
+        {...roomProps}
+        onBoundaryWidthChange={onBoundaryWidthChange}
+      />
+    );
+    fireEvent.change(getWidthInput(), { target: { value: "1500" } });
+    expect(onBoundaryWidthChange).toHaveBeenCalledWith(1500);
+  });
+
+  it("ignores a non-numeric room size entry", () => {
+    const onBoundaryHeightChange = vi.fn();
+    render(
+      <LayoutCanvasToolbar
+        {...defaultProps}
+        {...roomProps}
+        onBoundaryHeightChange={onBoundaryHeightChange}
+      />
+    );
+    fireEvent.change(getHeightInput(), { target: { value: "" } });
+    expect(onBoundaryHeightChange).not.toHaveBeenCalled();
+  });
 });

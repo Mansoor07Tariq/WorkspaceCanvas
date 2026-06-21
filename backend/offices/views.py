@@ -42,6 +42,7 @@ from .serializers import (
     OfficeResponseSerializer,
     OrganizationSummarySerializer,
     UpdateDeskSerializer,
+    UpdateFloorSerializer,
     UpdateLayoutObjectSerializer,
 )
 from .services.booking_service import (
@@ -379,6 +380,42 @@ class FloorListCreateView(APIView):
             {"detail": _FLOOR_SLUG_ERROR},
             status=status.HTTP_409_CONFLICT,
         )
+
+
+class FloorDetailView(APIView):
+    """Update a single floor. Currently scoped to the editable boundary
+    dimensions; owners/admins only. Tenant isolation via get_office_for_user."""
+
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [_FloorPostScopedThrottle]
+
+    @extend_schema(
+        request=UpdateFloorSerializer,
+        responses={200: FloorResponseSerializer},
+        summary="Update a floor (boundary dimensions)",
+    )
+    def patch(self, request: Request, office_id: int, floor_id: int) -> Response:
+        if get_first_active_membership(request.user) is None:
+            return Response(
+                {"detail": _NO_MEMBERSHIP}, status=status.HTTP_403_FORBIDDEN
+            )
+        office, membership = get_office_for_user(request.user, office_id)
+        if office is None:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+        floor = get_floor_for_office(office, floor_id)
+        if floor is None:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+        if not user_can_manage_offices(membership):
+            return Response(
+                {"detail": _NO_MANAGE_OFFICES}, status=status.HTTP_403_FORBIDDEN
+            )
+        serializer = UpdateFloorSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        for field, value in serializer.validated_data.items():
+            setattr(floor, field, value)
+        floor.save()
+        return Response(FloorResponseSerializer(floor).data)
 
 
 _WRITE_METHODS = frozenset({"POST", "PATCH", "DELETE"})

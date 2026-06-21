@@ -83,6 +83,24 @@ class CreateFloorSerializer(serializers.Serializer):
         return stripped
 
 
+class UpdateFloorSerializer(serializers.Serializer):
+    """Partial update for a floor. Currently only the editable boundary
+    dimensions (inner room width/height, in canvas px). Bounds mirror the model
+    validators so invalid sizes are rejected as 400, not 500."""
+
+    boundary_width = serializers.DecimalField(
+        max_digits=7, decimal_places=2, min_value=240, max_value=4000, required=False
+    )
+    boundary_height = serializers.DecimalField(
+        max_digits=7, decimal_places=2, min_value=240, max_value=4000, required=False
+    )
+
+    def validate(self, attrs: dict) -> dict:
+        if not attrs:
+            raise serializers.ValidationError("No updatable fields provided.")
+        return attrs
+
+
 class FloorResponseSerializer(serializers.ModelSerializer):
     # TD-045: expose the owning organization so the frontend can resolve the
     # correct per-office membership/role for UI gating (backend still enforces
@@ -101,6 +119,8 @@ class FloorResponseSerializer(serializers.ModelSerializer):
             "name",
             "slug",
             "level_number",
+            "boundary_width",
+            "boundary_height",
             "is_active",
             "created_at",
             "updated_at",

@@ -1,4 +1,4 @@
-import { lazy, Suspense, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate, useLocation, Navigate } from "react-router-dom";
 import { Alert, Box, Button, Chip, Grid, Stack, Typography } from "@mui/material";
 import { ArrowBackOutlined } from "@mui/icons-material";
@@ -14,10 +14,16 @@ import { useSelectedOrganization } from "@/features/organizations/context/Select
 import { useLayoutObjects } from "@/features/layoutObjects/hooks/useLayoutObjects";
 import { useLayoutObjectForm } from "@/features/layoutObjects/hooks/useLayoutObjectForm";
 import { useCanvasInteractions } from "@/features/layoutObjects/hooks/useCanvasInteractions";
+import { useFloorBoundary } from "@/features/layoutObjects/hooks/useFloorBoundary";
+import { useFloors } from "@/features/floors/hooks/useFloors";
+import { computeEnhanceNormalization } from "@/features/layoutObjects/utils/enhanceNormalize";
+import { getCutoutRects } from "@/features/layoutObjects/utils/floorShape";
 import {
   DEFAULT_GRID_SIZE,
   CANVAS_HEIGHT,
   formatCoordinate,
+  makeFloorBoundary,
+  type FloorBoundary,
 } from "@/features/layoutObjects/utils/coordinateHelpers";
 import { isWallMountedType } from "@/features/layoutObjects/utils/wallPlacement";
 import { createLayoutObject } from "@/features/layoutObjects/api/layoutObjectApi";
@@ -101,6 +107,27 @@ export function FloorLayoutPage() {
     [desks]
   );
 
+  // ─── Editable, persisted floor boundary ───────────────────────────────────
+  // The boundary feeds both the canvas (walls/containment) and useCanvasInteractions
+  // (clamping). On resize-settle we reflow objects left outside a shrunken room;
+  // a ref breaks the cycle between the two hooks (reflow lives in the other one).
+  const { floors } = useFloors(isNaN(officeId) ? 0 : officeId);
+  const floor = floors.find((f) => f.id === floorId);
+  const reflowRef = useRef<((b: FloorBoundary) => void) | null>(null);
+  // Stable so it doesn't re-create the boundary hook's resize callback each render.
+  const handleResizeSettled = useCallback((b: FloorBoundary) => reflowRef.current?.(b), []);
+  const {
+    boundary,
+    resizeBoundary,
+    saveError: boundarySaveError,
+  } = useFloorBoundary({
+    officeId: isNaN(officeId) ? 0 : officeId,
+    floorId: isNaN(floorId) ? 0 : floorId,
+    floor,
+    canManage: canManageLayout,
+    onResizeSettled: handleResizeSettled,
+  });
+
   const { fields, setField, fieldErrors, submission, handleCreate } = useLayoutObjectForm({
     officeId: isNaN(officeId) ? 0 : officeId,
     floorId: isNaN(floorId) ? 0 : floorId,
@@ -117,6 +144,9 @@ export function FloorLayoutPage() {
     handleObjectDragEnd,
     handleObjectTransform,
     handleCanvasKeyDown,
+    reflowObjectsIntoBoundary,
+    applyBoundaryResize,
+    applyNormalization,
     layoutSaveError,
     setLayoutSaveError,
     savedObjectId,
@@ -131,7 +161,50 @@ export function FloorLayoutPage() {
     savingObjectIds,
     updateObjectLocally,
     setSaving,
+    boundary,
+    enhanced,
   });
+  // Keep the reflow ref current so a settled resize can pull objects back inside.
+  useEffect(() => {
+    reflowRef.current = reflowObjectsIntoBoundary;
+  }, [reflowObjectsIntoBoundary]);
+
+  // Resize the room: apply the change to the contents (carry boundary-wall
+  // openings onto the moved walls and shift the rest by the origin delta), then
+  // commit + persist the new dimensions. shiftX/shiftY default to 0 (numeric edits
+  // and bottom/right drags grow from the fixed top-left).
+  const handleBoundaryResize = useCallback(
+    (width: number, height: number, shiftX = 0, shiftY = 0) => {
+      applyBoundaryResize(boundary, makeFloorBoundary(width, height), shiftX, shiftY);
+      resizeBoundary(width, height);
+    },
+    [boundary, applyBoundaryResize, resizeBoundary]
+  );
+
+  // Auto-tidy when Enhance turns on (managers only): snap furniture flush to
+  // walls and connect/equalize clean desk rows, then persist. Runs once per
+  // enable; a ref holds the latest layout so the effect only fires on the toggle.
+  const tidyDataRef = useRef({ objects, boundary, canManageLayout, applyNormalization });
+  useEffect(() => {
+    tidyDataRef.current = { objects, boundary, canManageLayout, applyNormalization };
+  });
+  const didTidyRef = useRef(false);
+  useEffect(() => {
+    if (!enhanced) {
+      didTidyRef.current = false;
+      return;
+    }
+    if (didTidyRef.current) return;
+    const {
+      objects: objs,
+      boundary: b,
+      canManageLayout: canManage,
+      applyNormalization: apply,
+    } = tidyDataRef.current;
+    didTidyRef.current = true;
+    const patches = canManage ? computeEnhanceNormalization(objs, b, getCutoutRects(objs)) : [];
+    if (patches.length) void apply(patches);
+  }, [enhanced]);
 
   // PR 061: place a door/window onto a wall by clicking the canvas. Bypasses the
   // manual create form — coordinates come from the hover-snapped placement.
@@ -287,6 +360,12 @@ export function FloorLayoutPage() {
         </Alert>
       )}
 
+      {boundarySaveError && (
+        <Alert severity="error" sx={{ mx: { xs: 2, sm: 3 }, mb: 1 }}>
+          {boundarySaveError}
+        </Alert>
+      )}
+
       {canManageLayout && selectedObjectId !== null && (
         <Typography variant="caption" color="text.secondary" sx={{ mx: { xs: 2, sm: 3 }, mb: 0.5 }}>
           {snapToGridEnabled ? c.keyboardHintSnap : c.keyboardHint}
@@ -335,6 +414,10 @@ export function FloorLayoutPage() {
               canManageLayout={canManageLayout}
               enhanced={enhanced}
               onEnhancedChange={setEnhanced}
+              boundaryWidth={boundary.width}
+              boundaryHeight={boundary.height}
+              onBoundaryWidthChange={(w) => handleBoundaryResize(w, boundary.height)}
+              onBoundaryHeightChange={(h) => handleBoundaryResize(boundary.width, h)}
             />
             <Suspense fallback={canvasFallback}>
               <FloorMapCanvas
@@ -350,6 +433,8 @@ export function FloorLayoutPage() {
                 gridSize={gridSize}
                 bookableObjectIds={bookableObjectIds}
                 enhanced={enhanced}
+                boundary={boundary}
+                onBoundaryResize={canManageLayout ? handleBoundaryResize : undefined}
                 pendingPlacementType={fields.object_type}
                 onPlaceObject={handlePlaceObject}
               />

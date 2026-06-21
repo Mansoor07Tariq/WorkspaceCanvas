@@ -5,6 +5,7 @@ import {
   type FloorBoundary,
 } from "./coordinateHelpers";
 import { getDefaultSizeForObjectType } from "./layoutObjectLibrary";
+import { computeFloorWallSegments, type Rect } from "./floorShape";
 import type { LayoutObject, LayoutObjectType } from "../types/layoutObject.types";
 
 /**
@@ -94,6 +95,28 @@ export function getBoundaryWalls(boundary: FloorBoundary = DEFAULT_FLOOR_BOUNDAR
       angleDeg: 90,
     },
   ];
+}
+
+/**
+ * Boundary walls for a carved (non-rectangular) floor: convert the rerouted wall
+ * rectangles into centreline descriptors so doors/windows can snap to the walls
+ * created by cutouts, with their thickness matching those walls.
+ */
+export function getCarvedBoundaryWalls(
+  boundary: FloorBoundary,
+  cutouts: Rect[],
+  thickness: number = BOUNDARY_WALL_THICKNESS
+): SnapWall[] {
+  return computeFloorWallSegments(boundary, cutouts, thickness).map((r) => {
+    const horizontal = r.width >= r.height;
+    return {
+      centerX: r.x + r.width / 2,
+      centerY: r.y + r.height / 2,
+      length: horizontal ? r.width : r.height,
+      thickness: horizontal ? r.height : r.width,
+      angleDeg: horizontal ? 0 : 90,
+    };
+  });
 }
 
 /** Build a centreline descriptor from a single user `wall` object (or null). */
@@ -195,12 +218,20 @@ export function attachedOpenings(wall: LayoutObject, objects: LayoutObject[]): L
   return out;
 }
 
-/** All walls a door/window may snap to: boundary + user walls. */
+/**
+ * All walls a door/window may snap to: boundary + user walls. When `cutouts` are
+ * supplied (carved/enhanced view), the boundary walls are the rerouted carved
+ * walls instead of the plain rectangle, so openings can be placed on the new
+ * walls a cutout creates and pick up their thickness.
+ */
 export function getSnapWalls(
   objects: LayoutObject[],
-  boundary: FloorBoundary = DEFAULT_FLOOR_BOUNDARY
+  boundary: FloorBoundary = DEFAULT_FLOOR_BOUNDARY,
+  cutouts: Rect[] = []
 ): SnapWall[] {
-  return [...getBoundaryWalls(boundary), ...getUserWalls(objects)];
+  const boundaryWalls =
+    cutouts.length > 0 ? getCarvedBoundaryWalls(boundary, cutouts) : getBoundaryWalls(boundary);
+  return [...boundaryWalls, ...getUserWalls(objects)];
 }
 
 /**
@@ -428,6 +459,36 @@ export function resizeOpeningOnWall(
 }
 
 /**
+ * Return a door/window aligned to its host wall for RENDERING: centred on the
+ * wall centreline at its current along-position, with thickness set to the wall's
+ * thickness (and rotation to the wall's angle). Keeps the opening's length. This
+ * makes every opening — including ones placed before the wall thickness changed —
+ * always read as flush and the same width as the wall it sits on. Non-openings,
+ * and openings not on any wall, are returned unchanged.
+ */
+export function alignOpeningToWall(obj: LayoutObject, walls: SnapWall[]): LayoutObject {
+  if (obj.object_type !== "door" && obj.object_type !== "window") return obj;
+  const w = parseFloat(obj.width);
+  const h = parseFloat(obj.height);
+  if (!Number.isFinite(w) || !Number.isFinite(h)) return obj;
+  const cx = parseFloat(obj.x) + w / 2;
+  const cy = parseFloat(obj.y) + h / 2;
+  const host = nearestWall(walls, cx, cy);
+  if (!host) return obj;
+  const length = Math.max(w, h);
+  const thickness = host.thickness;
+  const p = pointOnWall(host, projectAlong(host, cx, cy));
+  return {
+    ...obj,
+    x: (p.x - length / 2).toFixed(2),
+    y: (p.y - thickness / 2).toFixed(2),
+    width: length.toFixed(2),
+    height: thickness.toFixed(2),
+    rotation: host.angleDeg.toFixed(2),
+  };
+}
+
+/**
  * Constrain a proposed top-left move of a placed door/window so it slides only
  * along its host wall and never overlaps another opening. Returns null if the
  * object is not on any wall (caller should fall back to its normal handling).
@@ -436,14 +497,16 @@ export function constrainWallObjectMove(
   obj: LayoutObject,
   rawX: number,
   rawY: number,
-  objects: LayoutObject[]
+  objects: LayoutObject[],
+  boundary: FloorBoundary = DEFAULT_FLOOR_BOUNDARY,
+  cutouts: Rect[] = []
 ): { x: number; y: number } | null {
   const w = parseFloat(obj.width);
   const h = parseFloat(obj.height);
   if (!Number.isFinite(w) || !Number.isFinite(h)) return null;
   const ocx = parseFloat(obj.x) + w / 2;
   const ocy = parseFloat(obj.y) + h / 2;
-  const host = nearestWall(getSnapWalls(objects), ocx, ocy);
+  const host = nearestWall(getSnapWalls(objects, boundary, cutouts), ocx, ocy);
   if (!host) return null;
   const anchor = projectAlong(host, ocx, ocy);
   const along = clampAlongWithinGap(
@@ -455,4 +518,58 @@ export function constrainWallObjectMove(
   );
   const p = pointOnWall(host, along);
   return { x: p.x - w / 2, y: p.y - h / 2 };
+}
+
+/**
+ * When the floor boundary is resized, the four boundary walls move and/or change
+ * length. Doors/windows mounted on them are part of the wall and must follow, the
+ * same way openings follow a user `wall` object. For each opening sitting on an
+ * OLD boundary wall, this returns its new top-left so it stays on the matching
+ * NEW wall: its position along the wall scales with the wall's length, and it is
+ * re-placed on the new wall's centreline (which captures pure translation too).
+ * Size and orientation are preserved (a door stays a door). Returns position-only
+ * updates; openings on user walls are handled separately and are left untouched.
+ */
+export function carryBoundaryOpeningsOnResize(
+  oldBoundary: FloorBoundary,
+  newBoundary: FloorBoundary,
+  objects: LayoutObject[]
+): Array<{ id: number; x: number; y: number }> {
+  const oldWalls = getBoundaryWalls(oldBoundary);
+  const newWalls = getBoundaryWalls(newBoundary);
+  const updates: Array<{ id: number; x: number; y: number }> = [];
+
+  for (const o of objects) {
+    if (o.object_type !== "door" && o.object_type !== "window") continue;
+    const w = parseFloat(o.width);
+    const h = parseFloat(o.height);
+    const cx = parseFloat(o.x) + w / 2;
+    const cy = parseFloat(o.y) + h / 2;
+    if (![w, h, cx, cy].every(Number.isFinite)) continue;
+
+    // Which old boundary wall is this opening on? (nearest within the band).
+    let idx = -1;
+    let bestPerp = Infinity;
+    oldWalls.forEach((wall, i) => {
+      const perp = Math.abs(projectPerp(wall, cx, cy));
+      const along = Math.abs(projectAlong(wall, cx, cy));
+      if (perp <= wall.thickness / 2 + 4 && along <= wall.length / 2 + 4 && perp < bestPerp) {
+        bestPerp = perp;
+        idx = i;
+      }
+    });
+    if (idx === -1) continue; // not on a boundary wall (e.g. on a user wall)
+
+    const ow = oldWalls[idx];
+    const nw = newWalls[idx];
+    const scale = ow.length !== 0 ? nw.length / ow.length : 1;
+    const along = projectAlong(ow, cx, cy) * scale;
+    // Keep the whole opening on the (possibly shorter) new wall.
+    const halfFree = Math.max(0, (nw.length - w) / 2);
+    const clamped = Math.max(-halfFree, Math.min(halfFree, along));
+    const p = pointOnWall(nw, clamped);
+    updates.push({ id: o.id, x: p.x - w / 2, y: p.y - h / 2 });
+  }
+
+  return updates;
 }

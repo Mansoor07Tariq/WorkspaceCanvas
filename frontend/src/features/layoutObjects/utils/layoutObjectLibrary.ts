@@ -212,6 +212,13 @@ export const LAYOUT_OBJECT_LIBRARY: LayoutObjectDefinition[] = [
     defaultSize: { width: 120, height: 10 },
     bookableCandidate: false,
   },
+  {
+    type: "cutout",
+    label: "Cutout",
+    category: "Structure",
+    defaultSize: { width: 120, height: 100 },
+    bookableCandidate: false,
+  },
 
   // Facilities
   {

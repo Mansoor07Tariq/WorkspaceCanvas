@@ -44,12 +44,17 @@ vi.mock("react-konva", () => ({
       data-stroke={stroke}
       onClick={
         onClick
-          ? () =>
+          ? (domEvent: React.MouseEvent) => {
+              // In real Konva a shape click does not also run the Stage's
+              // background-click handler (e.target is the shape, not the stage).
+              // Stop DOM bubbling so the nested mock matches that behaviour.
+              domEvent.stopPropagation();
               onClick({
                 target: {
                   getStage: () => ({ getRelativePointerPosition: () => ({ x: 500, y: 50 }) }),
                 },
-              })
+              });
+            }
           : undefined
       }
     />
@@ -178,6 +183,224 @@ describe("FloorMapCanvas", () => {
     );
     fireEvent.click(screen.getByTestId(/canvas-object-group/));
     expect(onSelectObject).toHaveBeenCalledWith(7);
+  });
+
+  // ─── Editable boundary resize handles ─────────────────────────────────────
+
+  it("renders clickable boundary walls for managers", () => {
+    render(
+      <FloorMapCanvas
+        objects={[makeObj()]}
+        selectedObjectId={null}
+        onSelectObject={vi.fn()}
+        canManageLayout={true}
+        onBoundaryResize={vi.fn()}
+      />
+    );
+    expect(screen.getAllByTestId("boundary-wall").length).toBe(4);
+  });
+
+  it("does not show resize handles until a wall is clicked (selects the room)", () => {
+    render(
+      <FloorMapCanvas
+        objects={[makeObj()]}
+        selectedObjectId={null}
+        onSelectObject={vi.fn()}
+        canManageLayout={true}
+        onBoundaryResize={vi.fn()}
+      />
+    );
+    // Hidden initially…
+    expect(screen.queryByTestId("boundary-resize-target")).not.toBeInTheDocument();
+    // …shown after selecting the room by clicking a wall.
+    fireEvent.click(screen.getAllByTestId("boundary-wall")[0]);
+    expect(screen.getByTestId("boundary-resize-target")).toBeInTheDocument();
+  });
+
+  it("clicking a wall clears any object selection", () => {
+    const onSelectObject = vi.fn();
+    render(
+      <FloorMapCanvas
+        objects={[makeObj()]}
+        selectedObjectId={null}
+        onSelectObject={onSelectObject}
+        canManageLayout={true}
+        onBoundaryResize={vi.fn()}
+      />
+    );
+    fireEvent.click(screen.getAllByTestId("boundary-wall")[0]);
+    expect(onSelectObject).toHaveBeenCalledWith(null);
+  });
+
+  it("hides resize handles again once an object is selected", () => {
+    const { rerender } = render(
+      <FloorMapCanvas
+        objects={[makeObj({ id: 5 })]}
+        selectedObjectId={null}
+        onSelectObject={vi.fn()}
+        canManageLayout={true}
+        onBoundaryResize={vi.fn()}
+      />
+    );
+    fireEvent.click(screen.getAllByTestId("boundary-wall")[0]);
+    expect(screen.getByTestId("boundary-resize-target")).toBeInTheDocument();
+    rerender(
+      <FloorMapCanvas
+        objects={[makeObj({ id: 5 })]}
+        selectedObjectId={5}
+        onSelectObject={vi.fn()}
+        canManageLayout={true}
+        onBoundaryResize={vi.fn()}
+      />
+    );
+    expect(screen.queryByTestId("boundary-resize-target")).not.toBeInTheDocument();
+  });
+
+  it("does not make walls selectable for members", () => {
+    render(
+      <FloorMapCanvas
+        objects={[makeObj()]}
+        selectedObjectId={null}
+        onSelectObject={vi.fn()}
+        canManageLayout={false}
+        onBoundaryResize={vi.fn()}
+      />
+    );
+    fireEvent.click(screen.getAllByTestId("boundary-wall")[0]);
+    expect(screen.queryByTestId("boundary-resize-target")).not.toBeInTheDocument();
+  });
+
+  // ─── Cutouts (non-rectangular floors) ─────────────────────────────────────
+
+  const cutoutObj = (overrides: Partial<LayoutObject> = {}): LayoutObject =>
+    makeObj({
+      id: 90,
+      object_type: "cutout",
+      x: "48.00",
+      y: "48.00",
+      width: "200.00",
+      height: "150.00",
+      ...overrides,
+    });
+
+  it("keeps the boundary rectangular (4 walls) with a cutout in the editor", () => {
+    render(
+      <FloorMapCanvas objects={[cutoutObj()]} selectedObjectId={null} onSelectObject={vi.fn()} />
+    );
+    expect(screen.getAllByTestId("boundary-wall").length).toBe(4);
+    // The cutout shows as an editable object box in the editor.
+    expect(screen.getAllByTestId(/canvas-object-group/).length).toBe(1);
+  });
+
+  it("reroutes the walls (L-shape, 6 segments) for a corner cutout when enhanced", () => {
+    render(
+      <FloorMapCanvas
+        objects={[cutoutObj()]}
+        selectedObjectId={null}
+        onSelectObject={vi.fn()}
+        enhanced
+      />
+    );
+    expect(screen.getAllByTestId("boundary-wall").length).toBe(6);
+  });
+
+  it("hides the cutout's editor box in the enhanced view", () => {
+    render(
+      <FloorMapCanvas
+        objects={[cutoutObj()]}
+        selectedObjectId={null}
+        onSelectObject={vi.fn()}
+        enhanced
+      />
+    );
+    expect(screen.queryByTestId(/canvas-object-group/)).not.toBeInTheDocument();
+  });
+
+  // ─── Enhanced view polish ─────────────────────────────────────────────────
+
+  it("hides the grid in the enhanced view", () => {
+    const { rerender } = render(
+      <FloorMapCanvas objects={[]} selectedObjectId={null} onSelectObject={vi.fn()} showGrid />
+    );
+    expect(screen.getAllByTestId("grid-line").length).toBeGreaterThan(0);
+    rerender(
+      <FloorMapCanvas
+        objects={[]}
+        selectedObjectId={null}
+        onSelectObject={vi.fn()}
+        showGrid
+        enhanced
+      />
+    );
+    expect(screen.queryAllByTestId("grid-line").length).toBe(0);
+  });
+
+  it("draws thin walls around rooms only in the enhanced view", () => {
+    // A mid-room room has all four edges → four wall segments.
+    const room = makeObj({ id: 30, object_type: "meeting_room", x: "300.00", y: "300.00" });
+    const { rerender } = render(
+      <FloorMapCanvas objects={[room]} selectedObjectId={null} onSelectObject={vi.fn()} />
+    );
+    expect(screen.queryAllByTestId("room-wall").length).toBe(0);
+    rerender(
+      <FloorMapCanvas objects={[room]} selectedObjectId={null} onSelectObject={vi.fn()} enhanced />
+    );
+    expect(screen.getAllByTestId("room-wall").length).toBe(4);
+  });
+
+  it("skips room-wall edges that sit on the boundary wall", () => {
+    // A room flush in the top-left corner: top + left edges are on the boundary,
+    // so only the bottom + right edges get walls.
+    const room = makeObj({
+      id: 31,
+      object_type: "meeting_room",
+      x: "48.00",
+      y: "48.00",
+      width: "200.00",
+      height: "150.00",
+    });
+    render(
+      <FloorMapCanvas objects={[room]} selectedObjectId={null} onSelectObject={vi.fn()} enhanced />
+    );
+    expect(screen.getAllByTestId("room-wall").length).toBe(2);
+  });
+
+  it("draws a single shared wall between two adjacent rooms (no doubling)", () => {
+    // Two mid-room rooms touching at x=400. Without merging this is 8 walls; the
+    // shared border + the colinear tops/bottoms merge → 5.
+    const a = makeObj({
+      id: 40,
+      object_type: "meeting_room",
+      x: "200.00",
+      y: "200.00",
+      width: "200.00",
+      height: "150.00",
+    });
+    const b = makeObj({
+      id: 41,
+      object_type: "meeting_room",
+      x: "400.00",
+      y: "200.00",
+      width: "200.00",
+      height: "150.00",
+    });
+    render(
+      <FloorMapCanvas objects={[a, b]} selectedObjectId={null} onSelectObject={vi.fn()} enhanced />
+    );
+    expect(screen.getAllByTestId("room-wall").length).toBe(5);
+  });
+
+  it("does not select the room when no onBoundaryResize handler is given", () => {
+    render(
+      <FloorMapCanvas
+        objects={[makeObj()]}
+        selectedObjectId={null}
+        onSelectObject={vi.fn()}
+        canManageLayout={true}
+      />
+    );
+    fireEvent.click(screen.getAllByTestId("boundary-wall")[0]);
+    expect(screen.queryByTestId("boundary-resize-target")).not.toBeInTheDocument();
   });
 
   it("calls onSelectObject with null when stage background is clicked", () => {
@@ -450,10 +673,12 @@ describe("FloorMapCanvas", () => {
     // White interior
     expect(rects.some((r) => r.getAttribute("data-fill") === "#FFFFFF")).toBe(true);
     // Walls match the "wall" object: grey fill + darker stroke, four segments
-    const walls = rects.filter(
-      (r) =>
-        r.getAttribute("data-fill") === "#D1D5DB" && r.getAttribute("data-stroke") === "#4B5563"
-    );
+    const walls = screen
+      .getAllByTestId("boundary-wall")
+      .filter(
+        (r) =>
+          r.getAttribute("data-fill") === "#D1D5DB" && r.getAttribute("data-stroke") === "#4B5563"
+      );
     expect(walls.length).toBe(4);
   });
 
@@ -631,10 +856,10 @@ describe("FloorMapCanvas", () => {
         onPlaceObject={onPlaceObject}
       />
     );
-    // Mock pointer is (500, 50) → snaps to the top wall centre (500, 42) and
-    // matches the wall thickness (12): door 40×12 → top-left (480, 36), rot 0.
+    // Mock pointer is (500, 50) → snaps to the top wall centre (500, 39) and
+    // matches the wall thickness (18): door 40×18 → top-left (480, 30), rot 0.
     fireEvent.click(screen.getByTestId("wall-placement-capture"));
-    expect(onPlaceObject).toHaveBeenCalledWith("door", 480, 36, 40, 12, 0);
+    expect(onPlaceObject).toHaveBeenCalledWith("door", 480, 30, 40, 18, 0);
   });
 
   it("does not place a door on top of an existing one (no overlap)", () => {

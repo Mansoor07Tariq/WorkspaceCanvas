@@ -49,8 +49,8 @@ const ALL_BACKEND_TYPES: LayoutObjectType[] = [
 ];
 
 describe("LAYOUT_OBJECT_LIBRARY", () => {
-  it("contains exactly 36 object definitions", () => {
-    expect(LAYOUT_OBJECT_LIBRARY).toHaveLength(36);
+  it("contains exactly 37 object definitions", () => {
+    expect(LAYOUT_OBJECT_LIBRARY).toHaveLength(37);
   });
 
   it("all frontend types match backend ObjectType choices", () => {
@@ -149,6 +149,6 @@ describe("getObjectsByCategory", () => {
     for (const defs of map.values()) {
       total += defs.length;
     }
-    expect(total).toBe(36);
+    expect(total).toBe(37);
   });
 });
