@@ -9,7 +9,7 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
-import { AutoFixHighOutlined } from "@mui/icons-material";
+import { AutoFixHighOutlined, AutoAwesomeMosaicOutlined } from "@mui/icons-material";
 import { en } from "@/i18n/en";
 import {
   CANVAS_GRID_SIZES,
@@ -29,6 +29,8 @@ interface Props {
   canManageLayout: boolean;
   enhanced: boolean;
   onEnhancedChange: (v: boolean) => void;
+  /** Open the Tidy preview. Admin-only; omit to hide the Tidy button. */
+  onTidy?: () => void;
   /** Current room width/height (px). Omit to hide the room-size controls. */
   boundaryWidth?: number;
   boundaryHeight?: number;
@@ -46,6 +48,7 @@ export function LayoutCanvasToolbar({
   canManageLayout,
   enhanced,
   onEnhancedChange,
+  onTidy,
   boundaryWidth,
   boundaryHeight,
   onBoundaryWidthChange,
@@ -177,8 +180,25 @@ export function LayoutCanvasToolbar({
         </Box>
       )}
 
-      {/* Enhance toggle — swaps simple boxes for detailed assets. Available to
-          everyone; it is a purely visual, client-side toggle. */}
+      {/* Tidy layout — explicit admin action: computes a plan, previews it, then
+          applies as a tracked best-effort backend run. Distinct from the
+          view-only isometric toggle. */}
+      {canManageLayout && onTidy && (
+        <Tooltip describeChild title={c.tidyTooltip}>
+          <Button
+            size="small"
+            variant="outlined"
+            startIcon={<AutoAwesomeMosaicOutlined />}
+            onClick={onTidy}
+            sx={{ ml: "auto", py: 0.25 }}
+          >
+            {c.tidyButton}
+          </Button>
+        </Tooltip>
+      )}
+
+      {/* View toggle — swaps simple boxes for detailed isometric assets. Purely
+          visual and client-side: it NEVER moves, resizes, or persists objects. */}
       <Tooltip describeChild title={enhanced ? c.toolbarRevertTooltip : c.toolbarEnhanceTooltip}>
         <Button
           size="small"
@@ -186,7 +206,7 @@ export function LayoutCanvasToolbar({
           startIcon={<AutoFixHighOutlined />}
           onClick={() => onEnhancedChange(!enhanced)}
           aria-pressed={enhanced}
-          sx={{ ml: "auto", py: 0.25 }}
+          sx={{ ml: canManageLayout && onTidy ? 1 : "auto", py: 0.25 }}
         >
           {enhanced ? c.toolbarRevert : c.toolbarEnhance}
         </Button>

@@ -462,11 +462,107 @@ export const en = {
       toolbarGridSize: "Grid size:",
       toolbarEnhance: "Enhance",
       toolbarRevert: "Revert",
-      toolbarEnhanceTooltip: "Replace boxes with detailed assets",
-      toolbarRevertTooltip: "Switch back to simple boxes",
+      toolbarEnhanceTooltip: "Show detailed isometric assets (view only — never moves objects)",
+      toolbarRevertTooltip: "Switch back to simple boxes (view only)",
       toolbarRoomSize: "Room size:",
       toolbarRoomWidth: "Width",
       toolbarRoomHeight: "Height",
+
+      // Tidy / Enhance plan apply (PR 063) — explicit admin action, separate
+      // from the view-only isometric toggle above.
+      tidyButton: "Tidy layout",
+      tidyTooltip: "Preview and clean up desk and wall placement",
+      tidyDialogTitle: "Tidy layout",
+      tidyPreviewChanged: "{count} object(s) will be updated",
+      tidyPreviewUnchanged: "{count} unchanged",
+      tidyPreviewClean: "Layout already looks tidy — nothing to apply.",
+      tidyPreviewWarnings: "Warnings",
+      tidyApply: "Apply",
+      tidyApplySelected: "Apply selected",
+      tidySelectedSummary: "{selected} of {total} selected · {objects} object(s)",
+      tidySuggestSelectLabel: "Include this suggestion",
+      tidyCancel: "Cancel",
+      tidyClose: "Close",
+      tidyApplying: "Applying…",
+      tidyResultSuccess: "Layout tidied",
+      tidyResultPartial: "Tidy partially applied",
+      tidyResultFailed: "Tidy could not be applied",
+      tidyResultSummary: "{applied} updated · {failed} failed · {skipped} skipped",
+      tidyResultDetails: "Details",
+      tidyUndo: "Undo applied changes",
+      tidyRetry: "Retry failed",
+      tidyUndoDone: "Applied changes were undone.",
+      tidyRetryDone: "Retried failed operations.",
+      tidyStaleHint:
+        "Some objects changed since the plan was generated — run Tidy again to refresh.",
+      tidyError: "Could not apply the tidy plan. Please try again.",
+      tidyReasonRepositioned: "moved",
+      tidyReasonResized: "resized",
+      tidyReasonRotated: "rotated",
+      tidyReasonWallExtended: "wall connected",
+
+      // Friendly Tidy suggestions (PR 063) — deterministic copy built from
+      // reason codes + object metadata (no AI/LLM). {name} is the object's
+      // label / display name. Tone: helpful, never blaming.
+      tidySuggestTitle: "Tidy suggestions",
+      tidySuggestIntro: "I found a few small layout improvements.",
+      tidySuggestMore: "…and {count} more small improvement(s).",
+      tidySuggestManual: "Some items need manual adjustment — I'll leave those as they are.",
+      tidySuggestFallbackName: "Object",
+      // Used in grouped titles ({name}) when objects share a type → the
+      // pluralized library name (e.g. "Standing desks"); else this fallback.
+      tidySuggestFallbackNamePlural: "Objects",
+      tidySuggestDetailsToggle: "Technical details",
+      tidySuggestions: {
+        cutout: {
+          single: "{name} overlaps a cutout area",
+          singleDesc: "I can move it back into the usable floor space.",
+          group: "{name} overlap a cutout area",
+          groupDesc: "I can move them back into the usable floor space.",
+        },
+        boundary: {
+          single: "{name} is outside the office boundary",
+          singleDesc: "I can move it back inside the usable floor area.",
+          group: "{name} are outside the office boundary",
+          groupDesc: "I can move them back inside the usable floor area.",
+        },
+        wallExtend: {
+          single: "A wall segment can connect more cleanly",
+          singleDesc: "I can extend it so it meets the nearby structure.",
+          group: "A few wall segments can connect more cleanly",
+          groupDesc: "I can extend them so they meet the nearby structure.",
+        },
+        wallSnap: {
+          single: "{name} is close to a wall",
+          singleDesc: "I can align it neatly with the nearby wall.",
+          group: "{name} are close to a wall",
+          groupDesc: "I can align them neatly with the nearby walls.",
+        },
+        arrange: {
+          single: "{name} is slightly out of line",
+          singleDesc: "I can align it with the nearby desk row.",
+          group: "{name} are unevenly spaced",
+          groupDesc: "I can align and space them for a cleaner layout.",
+        },
+        resize: {
+          single: "{name} is a different size to its neighbours",
+          singleDesc: "I can make its size consistent.",
+          group: "{name} have different sizes",
+          groupDesc: "I can make their sizes consistent.",
+        },
+        rotate: {
+          single: "{name} is slightly rotated",
+          singleDesc: "I can straighten it.",
+          group: "{name} are slightly rotated",
+          groupDesc: "I can straighten them.",
+        },
+        align: {
+          single: "{name} looks slightly misaligned",
+          singleDesc: "I can tidy up its position.",
+          group: "{name} look slightly misaligned",
+          groupDesc: "I can tidy up their positions.",
+        },
+      },
 
       // Canvas zoom / pan controls (PR 061)
       zoomControlsLabel: "Zoom controls",

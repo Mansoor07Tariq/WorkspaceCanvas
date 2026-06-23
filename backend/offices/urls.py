@@ -6,6 +6,9 @@ from .views import (
     DeskBookingListCreateView,
     DeskDetailView,
     DeskListCreateView,
+    EnhanceRunListCreateView,
+    EnhanceRunRetryView,
+    EnhanceRunUndoView,
     FloorDetailView,
     FloorListCreateView,
     LayoutObjectDetailView,
@@ -36,6 +39,21 @@ urlpatterns = [
         "<int:office_id>/floors/<int:floor_id>/layout-objects/<int:object_id>/",
         LayoutObjectDetailView.as_view(),
         name="layout-object-detail",
+    ),
+    path(
+        "<int:office_id>/floors/<int:floor_id>/layout-objects/enhance-runs/",
+        EnhanceRunListCreateView.as_view(),
+        name="enhance-run-list-create",
+    ),
+    path(
+        "<int:office_id>/floors/<int:floor_id>/enhance-runs/<int:run_id>/undo/",
+        EnhanceRunUndoView.as_view(),
+        name="enhance-run-undo",
+    ),
+    path(
+        "<int:office_id>/floors/<int:floor_id>/enhance-runs/<int:run_id>/retry/",
+        EnhanceRunRetryView.as_view(),
+        name="enhance-run-retry",
     ),
     path(
         "<int:office_id>/floors/<int:floor_id>/desks/",

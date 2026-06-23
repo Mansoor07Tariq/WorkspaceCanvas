@@ -22,7 +22,20 @@
       "Bash(grep -nA3 \"test\\\\|pytest\" Makefile)",
       "Bash(POSTGRES_HOST=localhost python -m pytest accounts/tests/test_pending_invitations.py -q)",
       "Bash(POSTGRES_HOST=localhost python -m pytest accounts/tests/test_invitations.py accounts/tests/test_invitation_throttle.py -q)",
-      "Bash(POSTGRES_HOST=localhost python -m pytest accounts/ -q)"
+      "Bash(POSTGRES_HOST=localhost python -m pytest accounts/ -q)",
+      "Bash(cd /home/mansoortariq/Projects/WorkspaceCanvas/backend *)",
+      "Read(//home/mansoortariq/Projects/WorkspaceCanvas/frontend/src/features/floors/types/**)",
+      "Bash(python manage.py makemigrations offices)",
+      "Bash(POSTGRES_HOST=localhost python -m pytest offices/tests/test_floor_update.py -q)",
+      "Bash(POSTGRES_HOST=localhost python -m pytest offices/tests/test_floor_update.py offices/tests/test_floor_create.py offices/tests/test_floor_list.py -q)",
+      "Bash(POSTGRES_HOST=localhost python -m pytest offices/tests/test_layout_object_create.py offices/tests/test_seed_demo_workspace.py -q)",
+      "Bash(grep -n \"y: 36\\\\|toBe\\(36\\)\\\\|toEqual\\({ x: 580, y: 36\\\\|36 }\\\\|toBeCloseTo\\(593\\\\|toBeCloseTo\\(1234\\\\|y: \\\\\"36\" src/features/layoutObjects/__tests__/wallPlacement.test.ts)",
+      "Bash(echo \"tsc=$?\")",
+      "Bash(git add *)",
+      "Bash(echo \"TSC=$?\")",
+      "Bash(./node_modules/.bin/tsc -b)",
+      "Bash(POSTGRES_HOST=localhost python -m pytest offices/tests/test_enhance_runs.py -q)",
+      "Bash(POSTGRES_HOST=localhost python -m pytest offices/tests/test_enhance_runs.py::test_owner_can_apply -q)"
     ]
   }
 }
