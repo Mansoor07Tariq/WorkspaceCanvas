@@ -105,6 +105,7 @@ function floor(orgId: number): Floor {
     updated_at: "",
     boundary_width: "904",
     boundary_height: "544",
+    status: "published",
   };
 }
 

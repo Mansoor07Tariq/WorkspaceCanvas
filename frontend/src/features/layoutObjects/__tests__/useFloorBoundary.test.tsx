@@ -23,6 +23,7 @@ function makeFloor(overrides: Partial<Floor> = {}): Floor {
     level_number: 0,
     boundary_width: "1200",
     boundary_height: "800",
+    status: "published",
     is_active: true,
     created_at: "",
     updated_at: "",

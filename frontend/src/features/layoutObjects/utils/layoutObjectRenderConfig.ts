@@ -125,6 +125,8 @@ const CONFIGS: Record<LayoutObjectType, RenderConfig> = {
   lounge_chair: seating("LCH", true),
   bench: seating("BEN"),
   sofa: seating("SOF"),
+  chair_table_set: seating("CTS"),
+  stool: seating("STL", true),
 
   // Tables
   table: table("TBL"),
@@ -134,6 +136,9 @@ const CONFIGS: Record<LayoutObjectType, RenderConfig> = {
 
   // Rooms & Zones
   room: room("RM"),
+  lobby: room("LBY"),
+  kitchen: room("KIT"),
+  bathroom: room("BTH"),
   meeting_room: room("MTG"),
   quiet_room: room("QT"),
   focus_zone: room("FOC"),

@@ -35,7 +35,13 @@
       "Bash(echo \"TSC=$?\")",
       "Bash(./node_modules/.bin/tsc -b)",
       "Bash(POSTGRES_HOST=localhost python -m pytest offices/tests/test_enhance_runs.py -q)",
-      "Bash(POSTGRES_HOST=localhost python -m pytest offices/tests/test_enhance_runs.py::test_owner_can_apply -q)"
+      "Bash(POSTGRES_HOST=localhost python -m pytest offices/tests/test_enhance_runs.py::test_owner_can_apply -q)",
+      "Bash(python -m pytest --collect-only)",
+      "Bash(POSTGRES_HOST=localhost python manage.py makemigrations offices)",
+      "Bash(POSTGRES_HOST=localhost python -m pytest offices/tests/test_floor_publish.py -q)",
+      "Bash(POSTGRES_HOST=localhost python -m pytest offices/tests/test_floor_publish.py::test_new_floor_defaults_to_published -q)",
+      "Bash(POSTGRES_HOST=localhost python -m pytest offices/tests/test_desk_booking_create.py offices/tests/test_floor_update.py offices/tests/test_floor_create.py offices/tests/test_desk_booking_cancel.py offices/tests/test_enhance_runs.py -q)",
+      "Bash(POSTGRES_HOST=localhost python -m pytest offices/tests/test_layout_object_create.py -q)"
     ]
   }
 }

@@ -1,3 +1,6 @@
+/** Setup lifecycle (PR 064): only `published` floors are bookable. */
+export type FloorStatus = "draft" | "published";
+
 export interface Floor {
   id: number;
   /** Owning organization id (TD-045: used to resolve per-office UI role). */
@@ -10,6 +13,8 @@ export interface Floor {
   boundary_width: string;
   /** Editable inner room height (canvas px). DRF DecimalField → string. */
   boundary_height: string;
+  /** Setup lifecycle status. Draft = being built (not bookable). */
+  status: FloorStatus;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -23,6 +28,7 @@ export interface CreateFloorPayload {
 export interface UpdateFloorPayload {
   boundary_width?: number;
   boundary_height?: number;
+  status?: FloorStatus;
 }
 
 export type FloorCreationStep = "details" | "review";

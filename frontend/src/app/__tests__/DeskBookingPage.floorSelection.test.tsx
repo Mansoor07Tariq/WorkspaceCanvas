@@ -75,6 +75,7 @@ const FLOOR_A: Floor = {
   updated_at: "",
   boundary_width: "904",
   boundary_height: "544",
+  status: "published",
 };
 const FLOOR_B: Floor = { ...FLOOR_A, id: 20, name: "Floor B", slug: "floor-b", level_number: 1 };
 

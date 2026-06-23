@@ -101,6 +101,20 @@ export const LAYOUT_OBJECT_LIBRARY: LayoutObjectDefinition[] = [
     defaultSize: { width: 120, height: 45 },
     bookableCandidate: false,
   },
+  {
+    type: "chair_table_set",
+    label: "Chair & Table Set",
+    category: "Seating",
+    defaultSize: { width: 100, height: 100 },
+    bookableCandidate: false,
+  },
+  {
+    type: "stool",
+    label: "Stool",
+    category: "Seating",
+    defaultSize: { width: 32, height: 32 },
+    bookableCandidate: false,
+  },
 
   // Tables
   {
@@ -135,10 +149,31 @@ export const LAYOUT_OBJECT_LIBRARY: LayoutObjectDefinition[] = [
   // Rooms & Zones
   {
     type: "room",
-    label: "Room",
+    label: "Empty Room",
     category: "Rooms & Zones",
     defaultSize: { width: 200, height: 150 },
     bookableCandidate: true,
+  },
+  {
+    type: "lobby",
+    label: "Lobby",
+    category: "Rooms & Zones",
+    defaultSize: { width: 260, height: 180 },
+    bookableCandidate: false,
+  },
+  {
+    type: "kitchen",
+    label: "Kitchen",
+    category: "Rooms & Zones",
+    defaultSize: { width: 200, height: 150 },
+    bookableCandidate: false,
+  },
+  {
+    type: "bathroom",
+    label: "Bathroom",
+    category: "Rooms & Zones",
+    defaultSize: { width: 140, height: 120 },
+    bookableCandidate: false,
   },
   {
     type: "meeting_room",
@@ -333,3 +368,53 @@ export function getObjectsByCategory(): Map<LayoutObjectCategory, LayoutObjectDe
 export const VALID_OBJECT_TYPES: ReadonlySet<LayoutObjectType> = new Set(
   LAYOUT_OBJECT_LIBRARY.map((def) => def.type)
 );
+
+/**
+ * Curated palette shown in the object library (PR 065), in display order. Every
+ * other type stays valid (existing objects render) but isn't offered as a new
+ * placement, keeping the palette focused.
+ */
+export const PALETTE_TYPES: LayoutObjectType[] = [
+  // Workstations
+  "desk",
+  "standing_desk",
+  // Seating
+  "sofa",
+  "bench",
+  "chair_table_set",
+  "stool",
+  // Tables
+  "table",
+  // Rooms & Zones
+  "lobby",
+  "meeting_room",
+  "kitchen",
+  "meeting_pod",
+  "bathroom",
+  "room",
+  // Structure
+  "wall",
+  "door",
+  "window",
+  "cutout",
+  // Facilities
+  "printer",
+  // Decor
+  "plant",
+];
+
+/**
+ * The curated palette grouped by category, preserving PALETTE_TYPES order within
+ * each category. Categories with no palette items are omitted.
+ */
+export function getPaletteObjectsByCategory(): Map<LayoutObjectCategory, LayoutObjectDefinition[]> {
+  const result = new Map<LayoutObjectCategory, LayoutObjectDefinition[]>();
+  for (const type of PALETTE_TYPES) {
+    const def = _libraryByType.get(type);
+    if (!def) continue;
+    const list = result.get(def.category) ?? [];
+    list.push(def);
+    result.set(def.category, list);
+  }
+  return result;
+}

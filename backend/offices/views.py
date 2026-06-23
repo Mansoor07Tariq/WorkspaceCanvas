@@ -52,6 +52,7 @@ from .serializers import (
 )
 from .services.booking_service import (
     BookingDeskNotAvailableError,
+    BookingFloorNotPublishedError,
     DuplicateBookingError,
     cancel_active_bookings_for_desk,
     create_booking_for_user,
@@ -944,6 +945,11 @@ class DeskBookingListCreateView(APIView):
             return Response(
                 {"detail": "Desk not found on this floor."},
                 status=status.HTTP_404_NOT_FOUND,
+            )
+        except BookingFloorNotPublishedError:
+            return Response(
+                {"detail": "This floor is not published for booking yet."},
+                status=status.HTTP_409_CONFLICT,
             )
         except BookingDeskNotAvailableError:
             return Response(

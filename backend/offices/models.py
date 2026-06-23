@@ -57,6 +57,10 @@ class Office(models.Model):
 
 
 class Floor(models.Model):
+    class Status(models.TextChoices):
+        DRAFT = "draft", "Draft"
+        PUBLISHED = "published", "Published"
+
     office = models.ForeignKey(
         Office,
         on_delete=models.CASCADE,
@@ -65,6 +69,14 @@ class Floor(models.Model):
     name = models.CharField(max_length=255)
     slug = models.SlugField(max_length=255)
     level_number = models.IntegerField(default=0)
+    # Setup lifecycle (PR 064). Only PUBLISHED floors are bookable; a floor being
+    # built/edited in the setup wizard is DRAFT. Defaults to PUBLISHED so existing
+    # floors and seed/test data stay bookable without a data migration.
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.PUBLISHED,
+    )
     # Editable rectangular floor boundary (inner room dimensions, in canvas px).
     # The wall inset is a fixed frontend constant; only width/height are stored.
     # Defaults match the original fixed boundary so existing floors are unchanged.
@@ -128,6 +140,8 @@ class FloorLayoutObject(models.Model):
         LOUNGE_CHAIR = "lounge_chair", "Lounge Chair"
         BENCH = "bench", "Bench"
         SOFA = "sofa", "Sofa"
+        CHAIR_TABLE_SET = "chair_table_set", "Chair & Table Set"
+        STOOL = "stool", "Stool"
 
         # Tables
         TABLE = "table", "Table"
@@ -137,6 +151,9 @@ class FloorLayoutObject(models.Model):
 
         # Rooms / zones
         ROOM = "room", "Room"
+        LOBBY = "lobby", "Lobby"
+        KITCHEN = "kitchen", "Kitchen"
+        BATHROOM = "bathroom", "Bathroom"
         MEETING_ROOM = "meeting_room", "Meeting Room"
         QUIET_ROOM = "quiet_room", "Quiet Room"
         FOCUS_ZONE = "focus_zone", "Focus Zone"
