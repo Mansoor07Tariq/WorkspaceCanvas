@@ -27,6 +27,7 @@ const mockFloor = {
   updated_at: "",
   boundary_width: "904",
   boundary_height: "544",
+  status: "published" as const,
 };
 
 const defaultProps = {

@@ -1,11 +1,14 @@
 import { Paper, Typography } from "@mui/material";
 import { en } from "@/i18n/en";
 import type { LayoutObjectType } from "../types/layoutObject.types";
-import { LAYOUT_OBJECT_CATEGORIES, getObjectsByCategory } from "../utils/layoutObjectLibrary";
+import {
+  LAYOUT_OBJECT_CATEGORIES,
+  getPaletteObjectsByCategory,
+} from "../utils/layoutObjectLibrary";
 import { LayoutObjectLibraryCategory } from "./LayoutObjectLibraryCategory";
 
 const c = en.app.layoutObjects;
-const objectsByCategory = getObjectsByCategory();
+const objectsByCategory = getPaletteObjectsByCategory();
 
 interface Props {
   selectedType: LayoutObjectType | "";
@@ -14,7 +17,7 @@ interface Props {
 
 export function LayoutObjectLibrary({ selectedType, onSelect }: Props) {
   return (
-    <Paper variant="outlined" sx={{ p: 2 }}>
+    <Paper variant="outlined" data-testid="object-library" sx={{ p: 2 }}>
       <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 2 }}>
         {c.libraryTitle}
       </Typography>

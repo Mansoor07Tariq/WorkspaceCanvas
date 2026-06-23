@@ -94,6 +94,9 @@ class UpdateFloorSerializer(serializers.Serializer):
     boundary_height = serializers.DecimalField(
         max_digits=7, decimal_places=2, min_value=240, max_value=4000, required=False
     )
+    # Setup-lifecycle transition (PR 064): publish (make bookable) or unpublish
+    # (back to draft for editing). Validated against the model's choices.
+    status = serializers.ChoiceField(choices=Floor.Status.choices, required=False)
 
     def validate(self, attrs: dict) -> dict:
         if not attrs:
@@ -121,6 +124,7 @@ class FloorResponseSerializer(serializers.ModelSerializer):
             "level_number",
             "boundary_width",
             "boundary_height",
+            "status",
             "is_active",
             "created_at",
             "updated_at",

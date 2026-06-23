@@ -455,6 +455,13 @@ export const en = {
       inspectorNo: "No",
       inspectorSaving: "Saving…",
       inspectorSaved: "Saved",
+      inspectorSave: "Save",
+      inspectorDelete: "Delete",
+      inspectorLabelPlaceholder: "Add a name (optional)",
+      inspectorWidthField: "Width",
+      inspectorHeightField: "Height",
+      inspectorRotationField: "Rotation",
+      inspectorInvalidSize: "Width and height must be greater than 0.",
 
       // Canvas toolbar (grid / snap controls)
       toolbarShowGrid: "Show grid",
@@ -562,6 +569,42 @@ export const en = {
           group: "{name} look slightly misaligned",
           groupDesc: "I can tidy up their positions.",
         },
+      },
+
+      // Floor setup wizard (PR 064)
+      wizard: {
+        build: "Build",
+        openings: "Doors & windows",
+        tidy: "Tidy",
+        review: "Review",
+        buildDesc: "Place desks, rooms and walls, and set the room size.",
+        openingsDesc: "Add doors and windows to the walls.",
+        tidyDesc: "Review and apply layout clean-ups.",
+        reviewDesc: "Preview the finished floor and publish it.",
+        stepOf: "Step {current} of {total}",
+        back: "Back",
+        nextStep: "Next",
+        freeEdit: "Free editing",
+        guidedSetup: "Guided setup",
+        openingsHint:
+          "Hover a wall and click to drop a door or window. Add openings to meeting rooms, the kitchen, bathrooms and the main entrance.",
+        publish: "Publish floor",
+        publishing: "Publishing…",
+        published: "Published",
+        draft: "Draft",
+        publishedHint: "This floor is live and its desks are bookable.",
+        draftHint: "This floor is a draft — its desks won't be bookable until you publish it.",
+        reviewIntro: "Here's your finished floor. Publish it to make its desks bookable.",
+        editFloor: "Edit floor",
+        editConfirmTitle: "Edit this floor?",
+        editConfirmBody:
+          "Editing takes the floor back to draft and pauses new desk bookings until you publish it again. Existing bookings are kept.",
+        editConfirm: "Edit floor",
+        editCancel: "Cancel",
+        unpublishError: "Could not switch the floor to draft. Please try again.",
+        publishError: "Could not publish the floor. Please try again.",
+        publishedToast: "Floor published — desks are now bookable.",
+        draftToast: "Floor moved to draft for editing.",
       },
 
       // Canvas zoom / pan controls (PR 061)

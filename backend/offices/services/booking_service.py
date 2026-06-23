@@ -3,11 +3,15 @@ from __future__ import annotations
 from django.db import IntegrityError, transaction
 from django.utils import timezone as tz
 
-from offices.models import Desk, DeskBooking
+from offices.models import Desk, DeskBooking, Floor
 
 
 class BookingDeskNotAvailableError(Exception):
     """Raised when the target desk exists but is not available for booking."""
+
+
+class BookingFloorNotPublishedError(Exception):
+    """Raised when the desk's floor is still in draft (not published for booking)."""
 
 
 class DuplicateBookingError(Exception):
@@ -67,12 +71,18 @@ def create_booking_for_user(
 
     Raises:
         Desk.DoesNotExist          — desk not found, inactive, or out of scope.
+        BookingFloorNotPublishedError — floor.status != PUBLISHED.
         BookingDeskNotAvailableError — desk.status != AVAILABLE.
         DuplicateBookingError      — duplicate active booking detected.
         IntegrityError             — concurrent race that bypassed pre-checks.
         ValidationError            — clean() found an inconsistency.
     """
     with transaction.atomic():
+        # Only published floors are bookable (PR 064). A floor still being built
+        # or edited in the setup wizard is draft and must not accept bookings.
+        if floor.status != Floor.Status.PUBLISHED:
+            raise BookingFloorNotPublishedError()
+
         desk = Desk.objects.select_for_update().get(
             id=desk_id,
             floor=floor,

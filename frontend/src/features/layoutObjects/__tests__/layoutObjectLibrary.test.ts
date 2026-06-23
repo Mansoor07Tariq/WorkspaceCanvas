@@ -6,6 +6,7 @@ import {
   getLayoutObjectDefinition,
   getDefaultSizeForObjectType,
   getObjectsByCategory,
+  getPaletteObjectsByCategory,
 } from "../utils/layoutObjectLibrary";
 import type { LayoutObjectType } from "../types/layoutObject.types";
 
@@ -20,11 +21,16 @@ const ALL_BACKEND_TYPES: LayoutObjectType[] = [
   "lounge_chair",
   "bench",
   "sofa",
+  "chair_table_set",
+  "stool",
   "table",
   "lunch_table",
   "boardroom_table",
   "coffee_table",
   "room",
+  "lobby",
+  "kitchen",
+  "bathroom",
   "meeting_room",
   "quiet_room",
   "focus_zone",
@@ -49,8 +55,8 @@ const ALL_BACKEND_TYPES: LayoutObjectType[] = [
 ];
 
 describe("LAYOUT_OBJECT_LIBRARY", () => {
-  it("contains exactly 37 object definitions", () => {
-    expect(LAYOUT_OBJECT_LIBRARY).toHaveLength(37);
+  it("contains exactly 42 object definitions", () => {
+    expect(LAYOUT_OBJECT_LIBRARY).toHaveLength(42);
   });
 
   it("all frontend types match backend ObjectType choices", () => {
@@ -149,6 +155,35 @@ describe("getObjectsByCategory", () => {
     for (const defs of map.values()) {
       total += defs.length;
     }
-    expect(total).toBe(37);
+    expect(total).toBe(42);
+  });
+});
+
+describe("getPaletteObjectsByCategory (curated PR 065)", () => {
+  it("returns only the curated palette types in the requested order", () => {
+    const map = getPaletteObjectsByCategory();
+    expect((map.get("Workstations") ?? []).map((d) => d.type)).toEqual(["desk", "standing_desk"]);
+    expect((map.get("Seating") ?? []).map((d) => d.type)).toEqual([
+      "sofa",
+      "bench",
+      "chair_table_set",
+      "stool",
+    ]);
+    expect((map.get("Rooms & Zones") ?? []).map((d) => d.type)).toEqual([
+      "lobby",
+      "meeting_room",
+      "kitchen",
+      "meeting_pod",
+      "bathroom",
+      "room",
+    ]);
+    expect((map.get("Facilities") ?? []).map((d) => d.type)).toEqual(["printer"]);
+    expect((map.get("Decor") ?? []).map((d) => d.type)).toEqual(["plant"]);
+  });
+
+  it("every palette type is a valid object type", () => {
+    for (const defs of getPaletteObjectsByCategory().values()) {
+      for (const def of defs) expect(VALID_OBJECT_TYPES.has(def.type)).toBe(true);
+    }
   });
 });
