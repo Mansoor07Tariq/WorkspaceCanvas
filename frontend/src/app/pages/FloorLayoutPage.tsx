@@ -16,8 +16,9 @@ import { useLayoutObjectForm } from "@/features/layoutObjects/hooks/useLayoutObj
 import { useCanvasInteractions } from "@/features/layoutObjects/hooks/useCanvasInteractions";
 import { useFloorBoundary } from "@/features/layoutObjects/hooks/useFloorBoundary";
 import { useFloors } from "@/features/floors/hooks/useFloors";
-import { computeEnhanceNormalization } from "@/features/layoutObjects/utils/enhanceNormalize";
 import { getCutoutRects } from "@/features/layoutObjects/utils/floorShape";
+import { useEnhanceTidy } from "@/features/layoutObjects/hooks/useEnhanceTidy";
+import { EnhanceTidyDialog } from "@/features/layoutObjects/components/EnhanceTidyDialog";
 import {
   DEFAULT_GRID_SIZE,
   CANVAS_HEIGHT,
@@ -146,7 +147,6 @@ export function FloorLayoutPage() {
     handleCanvasKeyDown,
     reflowObjectsIntoBoundary,
     applyBoundaryResize,
-    applyNormalization,
     layoutSaveError,
     setLayoutSaveError,
     savedObjectId,
@@ -181,30 +181,26 @@ export function FloorLayoutPage() {
     [boundary, applyBoundaryResize, resizeBoundary]
   );
 
-  // Auto-tidy when Enhance turns on (managers only): snap furniture flush to
-  // walls and connect/equalize clean desk rows, then persist. Runs once per
-  // enable; a ref holds the latest layout so the effect only fires on the toggle.
-  const tidyDataRef = useRef({ objects, boundary, canManageLayout, applyNormalization });
-  useEffect(() => {
-    tidyDataRef.current = { objects, boundary, canManageLayout, applyNormalization };
+  // Tidy layout — an EXPLICIT admin action (PR 063), fully decoupled from the
+  // view-only `enhanced` toggle. The pure engine computes a plan; the admin
+  // previews it; applying it runs a tracked best-effort backend EnhanceRun that
+  // can be undone/retried. The isometric toggle never mutates the layout.
+  const buildTidyInput = useCallback(
+    () => ({ boundary, objects, cutouts: getCutoutRects(objects) }),
+    [boundary, objects]
+  );
+  const resyncObjects = useCallback(
+    (updated: typeof objects) => {
+      for (const o of updated) updateObjectLocally(o.id, o);
+    },
+    [updateObjectLocally]
+  );
+  const tidy = useEnhanceTidy({
+    officeId: isNaN(officeId) ? 0 : officeId,
+    floorId: isNaN(floorId) ? 0 : floorId,
+    buildInput: buildTidyInput,
+    onObjectsUpdated: resyncObjects,
   });
-  const didTidyRef = useRef(false);
-  useEffect(() => {
-    if (!enhanced) {
-      didTidyRef.current = false;
-      return;
-    }
-    if (didTidyRef.current) return;
-    const {
-      objects: objs,
-      boundary: b,
-      canManageLayout: canManage,
-      applyNormalization: apply,
-    } = tidyDataRef.current;
-    didTidyRef.current = true;
-    const patches = canManage ? computeEnhanceNormalization(objs, b, getCutoutRects(objs)) : [];
-    if (patches.length) void apply(patches);
-  }, [enhanced]);
 
   // PR 061: place a door/window onto a wall by clicking the canvas. Bypasses the
   // manual create form — coordinates come from the hover-snapped placement.
@@ -414,6 +410,7 @@ export function FloorLayoutPage() {
               canManageLayout={canManageLayout}
               enhanced={enhanced}
               onEnhancedChange={setEnhanced}
+              onTidy={canManageLayout ? tidy.openPreview : undefined}
               boundaryWidth={boundary.width}
               boundaryHeight={boundary.height}
               onBoundaryWidthChange={(w) => handleBoundaryResize(w, boundary.height)}
@@ -439,6 +436,7 @@ export function FloorLayoutPage() {
                 onPlaceObject={handlePlaceObject}
               />
             </Suspense>
+            <EnhanceTidyDialog tidy={tidy} />
           </Grid>
 
           {/* Right: inspector + object list */}

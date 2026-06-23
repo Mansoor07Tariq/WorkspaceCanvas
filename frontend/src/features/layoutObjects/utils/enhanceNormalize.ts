@@ -206,6 +206,11 @@ function snapToWalls(r: WRect, boundary: FloorBoundary, cutouts: Rect[], dist: n
 
 // ── Desk clustering ────────────────────────────────────────────────────────────
 
+/** Overlap (px) of two 1-D spans; negative when they don't overlap. */
+function spanOverlap(aLo: number, aHi: number, bLo: number, bHi: number): number {
+  return Math.min(aHi, bHi) - Math.max(aLo, bLo);
+}
+
 function adjacent(a: WRect, b: WRect): boolean {
   const acx = a.x + a.w / 2;
   const acy = a.y + a.h / 2;
@@ -213,9 +218,16 @@ function adjacent(a: WRect, b: WRect): boolean {
   const bcy = b.y + b.h / 2;
   const gapX = Math.max(a.x - (b.x + b.w), b.x - (a.x + a.w));
   const gapY = Math.max(a.y - (b.y + b.h), b.y - (a.y + a.h));
-  // Aligned on one axis and within the connect gap (overlaps allowed) on the other.
-  const rowAdj = Math.abs(acy - bcy) <= ALIGN_TOL && gapX <= CONNECT_GAP;
-  const colAdj = Math.abs(acx - bcx) <= ALIGN_TOL && gapY <= CONNECT_GAP;
+  // Same row/column is decided by EDGE OVERLAP, not centre distance: two desks of
+  // different sizes share a row when their vertical spans overlap (and a column
+  // when their horizontal spans overlap), even though their centres are offset.
+  // Centre tolerance stays as a fallback for tiny desks that barely overlap.
+  const vOver = spanOverlap(a.y, a.y + a.h, b.y, b.y + b.h);
+  const hOver = spanOverlap(a.x, a.x + a.w, b.x, b.x + b.w);
+  const rowAligned = vOver >= 0.5 * Math.min(a.h, b.h) || Math.abs(acy - bcy) <= ALIGN_TOL;
+  const colAligned = hOver >= 0.5 * Math.min(a.w, b.w) || Math.abs(acx - bcx) <= ALIGN_TOL;
+  const rowAdj = rowAligned && gapX <= CONNECT_GAP;
+  const colAdj = colAligned && gapY <= CONNECT_GAP;
   return rowAdj || colAdj;
 }
 
@@ -257,7 +269,16 @@ function groupRows(cluster: WRect[]): WRect[][] {
   const rows: WRect[][] = [];
   for (const d of sorted) {
     const cy = d.y + d.h / 2;
-    const row = rows.find((r) => Math.abs(r[0].y + r[0].h / 2 - cy) <= ALIGN_TOL);
+    // A desk joins a row if its vertical span overlaps a member of that row (so
+    // different-height desks still group as one row), with centre distance as a
+    // fallback for tiny desks.
+    const row = rows.find((r) =>
+      r.some(
+        (m) =>
+          spanOverlap(m.y, m.y + m.h, d.y, d.y + d.h) >= 0.5 * Math.min(m.h, d.h) ||
+          Math.abs(m.y + m.h / 2 - cy) <= ALIGN_TOL
+      )
+    );
     if (row) row.push(d);
     else rows.push([d]);
   }
@@ -472,15 +493,28 @@ function extendWallEnds(w: WRect, walls: WRect[], boundary: FloorBoundary, cutou
   }
 }
 
+/** Max convergence iterations before the tidy pass gives up (see loop below). */
+export const MAX_ITERATIONS = 6;
+
+export interface NormalizationResult {
+  patches: NormalizationPatch[];
+  /** How many convergence iterations actually ran. */
+  iterations: number;
+  /** Whether the pass reached a fixed point before the iteration cap. */
+  converged: boolean;
+}
+
 /**
- * Compute the tidy-up patches for a layout. Returns one patch per object that
- * actually changed. Pure — no I/O.
+ * Compute the tidy-up patches for a layout, plus convergence metadata. Returns
+ * one patch per object that actually changed. Pure — no I/O. This is the engine
+ * core; `computeEnhancePlan` (see ../enhance) wraps it in the richer plan
+ * contract, and `computeEnhanceNormalization` keeps the legacy patch-only shape.
  */
-export function computeEnhanceNormalization(
+export function runEnhanceNormalization(
   objects: LayoutObject[],
   boundary: FloorBoundary = DEFAULT_FLOOR_BOUNDARY,
   cutoutsInput?: Rect[]
-): NormalizationPatch[] {
+): NormalizationResult {
   const cutouts = clipCutoutsToBoundary(boundary, cutoutsInput ?? getCutoutRects(objects));
 
   // The whole engine works on screen-space AABBs (so 90/270 desks pack by what's
@@ -504,7 +538,10 @@ export function computeEnhanceNormalization(
       .join("|");
   const desks = rects.filter(isPackableDesk);
   const walls = rects.filter(isAxisAlignedWall);
-  for (let iter = 0; iter < 6; iter++) {
+  let iterations = 0;
+  let converged = false;
+  for (let iter = 0; iter < MAX_ITERATIONS; iter++) {
+    iterations = iter + 1;
     const before = snapshot();
 
     // 0) Connect inner walls to nearby walls by closing sub-grid-cell gaps.
@@ -540,7 +577,10 @@ export function computeEnhanceNormalization(
       }
     }
 
-    if (snapshot() === before) break; // converged
+    if (snapshot() === before) {
+      converged = true;
+      break;
+    }
   }
 
   // 4) Emit patches for anything that moved/resized.
@@ -564,5 +604,17 @@ export function computeEnhanceNormalization(
       rotation: formatCoordinate(r.rot),
     });
   }
-  return patches;
+  return { patches, iterations, converged };
+}
+
+/**
+ * Legacy patch-only entry point. Kept for existing callers; new code should use
+ * `computeEnhancePlan` for the full plan/diagnostics/summary contract.
+ */
+export function computeEnhanceNormalization(
+  objects: LayoutObject[],
+  boundary: FloorBoundary = DEFAULT_FLOOR_BOUNDARY,
+  cutoutsInput?: Rect[]
+): NormalizationPatch[] {
+  return runEnhanceNormalization(objects, boundary, cutoutsInput).patches;
 }

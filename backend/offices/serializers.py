@@ -438,6 +438,34 @@ class DeskBookingResponseSerializer(serializers.ModelSerializer):
         return data
 
 
+# ─── EnhanceRun serializers ───────────────────────────────────────────────────
+
+
+class EnhanceOperationInputSerializer(serializers.Serializer):
+    """A single object's enhancement operation. Geometry dicts carry
+    {x, y, width, height, rotation} as strings (2-decimal canvas px)."""
+
+    object_id = serializers.IntegerField()
+    before = serializers.DictField()
+    after = serializers.DictField()
+    patch = serializers.DictField()
+    reason_codes = serializers.ListField(
+        child=serializers.CharField(), required=False, default=list
+    )
+
+
+class ApplyEnhanceRunSerializer(serializers.Serializer):
+    plan_id = serializers.CharField(max_length=64)
+    operations = EnhanceOperationInputSerializer(many=True)
+    summary = serializers.DictField(required=False, default=dict)
+    diagnostics = serializers.ListField(required=False, default=list)
+
+    def validate_operations(self, value):
+        if not value:
+            raise serializers.ValidationError("At least one operation is required.")
+        return value
+
+
 class OrganizationSummarySerializer(serializers.Serializer):
     """Org-wide workspace summary for the dashboard (TD-035).
 

@@ -121,6 +121,23 @@ describe("computeEnhanceNormalization — connect + equalize desks", () => {
     expect(patches.get(2)?.height).toBe("53.00");
   });
 
+  it("equalizes two connected desks with a large size difference (centres offset)", () => {
+    // 80×50 next to 120×90, top-aligned: their centres are 20px apart vertically,
+    // beyond the centre tolerance — they must still connect (by edge overlap) and
+    // be averaged to one size, kept side-by-side.
+    const a = obj({ id: 1, x: "100.00", y: "200.00", width: "80.00", height: "50.00" });
+    const b = obj({ id: 2, x: "182.00", y: "200.00", width: "120.00", height: "90.00" }); // 2px gap
+    const patches = byId(computeEnhanceNormalization([a, b], B));
+    // Average: width (80+120)/2 = 100, height (50+90)/2 = 70 → both 100×70.
+    expect(patches.get(1)?.width).toBe("100.00");
+    expect(patches.get(2)?.width).toBe("100.00");
+    expect(patches.get(1)?.height).toBe("70.00");
+    expect(patches.get(2)?.height).toBe("70.00");
+    // Stay in one row, touching, same top (not stacked into a column).
+    expect(patches.get(1)?.y).toBe(patches.get(2)?.y);
+    expect(patches.get(2)?.x).toBe("200.00"); // 100 + 100, edge-to-edge
+  });
+
   it("equalizes a 3-desk run to the average size", () => {
     const a = obj({ id: 1, x: "100.00", y: "200.00", width: "80.00", height: "50.00" });
     const odd = obj({ id: 2, x: "182.00", y: "200.00", width: "110.00", height: "70.00" }); // 2px gap

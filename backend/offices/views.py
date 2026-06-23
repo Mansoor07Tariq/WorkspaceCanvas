@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import datetime
+import uuid
+from decimal import InvalidOperation
 
 from django.db import IntegrityError, transaction
 from django.utils import timezone as tz
@@ -18,6 +20,8 @@ from .models import (
     DESK_CAPABLE_TYPES,
     Desk,
     DeskBooking,
+    EnhanceRun,
+    EnhanceRunOperation,
     Floor,
     FloorLayoutObject,
     Office,
@@ -30,6 +34,7 @@ from .permissions import (
     user_can_manage_offices,
 )
 from .serializers import (
+    ApplyEnhanceRunSerializer,
     CreateDeskBookingSerializer,
     CreateDeskSerializer,
     CreateFloorSerializer,
@@ -1159,3 +1164,466 @@ class MyBookingCancelView(APIView):
             booking, context={"request": request}
         )
         return Response(serializer.data)
+
+
+# ─── EnhanceRun ───────────────────────────────────────────────────────────────
+
+_GEOMETRY_FIELDS = ("x", "y", "width", "height", "rotation")
+_ERR_NOT_AVAILABLE = "object_not_available_for_floor"
+_MSG_NOT_AVAILABLE = "Object is not available on this floor."
+_ERR_INACTIVE = "object_inactive"
+_MSG_INACTIVE = "Object is inactive."
+_ERR_STALE = "stale_geometry"
+_MSG_STALE = "Object changed since the plan was generated."
+_ERR_VALIDATION = "validation_error"
+_ERR_SAVE = "save_error"
+
+
+class _PatchInvalid(Exception):
+    """Internal: signals a layout-object patch failed serializer validation,
+    so the per-op savepoint rolls back cleanly."""
+
+    def __init__(self, errors):
+        super().__init__(str(errors))
+        self.errors = errors
+
+
+def _fmt_dp(value) -> str:
+    """Format a numeric/Decimal/str geometry value as a 2-decimal string."""
+    return f"{float(value):.2f}"
+
+
+def _current_geometry(obj: FloorLayoutObject) -> dict[str, str]:
+    return {field: _fmt_dp(getattr(obj, field)) for field in _GEOMETRY_FIELDS}
+
+
+def _geometry_matches(obj: FloorLayoutObject, before: dict) -> bool:
+    """True when the object's current geometry matches ``before`` at 2dp.
+
+    Only fields present in ``before`` are compared. A field that cannot be
+    parsed as a number counts as a mismatch (stale/invalid).
+    """
+    for field in _GEOMETRY_FIELDS:
+        if field not in before:
+            continue
+        try:
+            expected = _fmt_dp(before[field])
+        except (TypeError, ValueError, InvalidOperation):
+            return False
+        if _fmt_dp(getattr(obj, field)) != expected:
+            return False
+    return True
+
+
+def _patch_from_geometry(geometry: dict) -> dict:
+    """Build a layout-object patch dict from a geometry dict (geometry fields only)."""
+    return {f: geometry[f] for f in _GEOMETRY_FIELDS if f in geometry}
+
+
+def _operation_result(op: EnhanceRunOperation) -> dict:
+    result = {
+        "object_id": op.object_id,
+        "status": op.status,
+        "reason_codes": op.reason_codes,
+    }
+    if op.error_code is not None:
+        result["error_code"] = op.error_code
+    if op.error_message is not None:
+        result["error_message"] = op.error_message
+    return result
+
+
+def _build_run_response(run: EnhanceRun, updated_objects: list) -> dict:
+    operations = list(run.operations.all())
+    return {
+        "enhance_run_id": run.id,
+        "status": run.status,
+        "applied_count": run.applied_count,
+        "failed_count": run.failed_count,
+        "skipped_count": run.skipped_count,
+        "operation_results": [_operation_result(op) for op in operations],
+        "updated_objects": LayoutObjectResponseSerializer(
+            updated_objects, many=True
+        ).data,
+    }
+
+
+def _run_status(applied: int, failed: int, skipped: int) -> str:
+    if applied == 0:
+        return EnhanceRun.Status.FAILED
+    if failed == 0 and skipped == 0:
+        return EnhanceRun.Status.SUCCESS
+    return EnhanceRun.Status.PARTIAL_SUCCESS
+
+
+class _EnhanceRunWriteThrottle(SimpleRateThrottle):
+    """Applies the layout_object_write throttle scope on write requests."""
+
+    scope = "layout_object_write"
+
+    def get_cache_key(self, request: Request, view) -> str | None:  # type: ignore[override]
+        return _throttle_cache_key(self, request)
+
+    def allow_request(self, request: Request, view) -> bool:  # type: ignore[override]
+        if request.method not in _WRITE_METHODS:
+            return True
+        return super().allow_request(request, view)
+
+
+class _EnhanceRunBaseView(APIView):
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [_EnhanceRunWriteThrottle]
+
+    def _resolve(self, request: Request, office_id: int, floor_id: int):
+        """Resolve (floor, membership) or return an error Response.
+
+        Returns (floor, membership, None) on success, or (None, None, Response).
+        """
+        office, membership = get_office_for_user(request.user, office_id)
+        if office is None:
+            return (
+                None,
+                None,
+                Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND),
+            )
+        floor = get_floor_for_office(office, floor_id)
+        if floor is None:
+            return (
+                None,
+                None,
+                Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND),
+            )
+        if not user_can_manage_offices(membership):
+            return (
+                None,
+                None,
+                Response(
+                    {"detail": _NO_MANAGE_OFFICES},
+                    status=status.HTTP_403_FORBIDDEN,
+                ),
+            )
+        return floor, membership, None
+
+    def _apply_patch(self, obj: FloorLayoutObject, patch: dict):
+        """Validate + save a patch onto obj. Returns (ok, errors). Caller is
+        responsible for the per-op savepoint. Mirrors the layout-object update
+        view: UpdateLayoutObjectSerializer is a plain Serializer (no update()),
+        so we setattr the validated fields and save explicitly."""
+        serializer = UpdateLayoutObjectSerializer(
+            instance=obj, data=patch, partial=True
+        )
+        if not serializer.is_valid():
+            return False, serializer.errors
+        for field, value in serializer.validated_data.items():
+            setattr(obj, field, value)
+        obj.save()
+        return True, None
+
+    def _finalize(self, floor, user, kind, source, op_rows, updated_objects):
+        """Create the EnhanceRun + operation rows for a derived (undo/retry)
+        run and return its response."""
+        applied = sum(
+            1 for r in op_rows if r.status == EnhanceRunOperation.Status.APPLIED
+        )
+        failed = sum(
+            1 for r in op_rows if r.status == EnhanceRunOperation.Status.FAILED
+        )
+        skipped = sum(
+            1 for r in op_rows if r.status == EnhanceRunOperation.Status.SKIPPED
+        )
+        with transaction.atomic():
+            run = EnhanceRun.objects.create(
+                floor=floor,
+                triggered_by=user,
+                kind=kind,
+                parent_run=source,
+                plan_id=uuid.uuid4().hex,
+                status=_run_status(applied, failed, skipped),
+                total_operations=len(op_rows),
+                applied_count=applied,
+                failed_count=failed,
+                skipped_count=skipped,
+            )
+            for row in op_rows:
+                row.enhance_run = run
+            EnhanceRunOperation.objects.bulk_create(op_rows)
+        return Response(_build_run_response(run, updated_objects))
+
+
+class EnhanceRunListCreateView(_EnhanceRunBaseView):
+    """Apply a batch of layout-enhancement operations to a floor (best-effort,
+    per-operation, idempotent on plan_id)."""
+
+    def post(self, request: Request, office_id: int, floor_id: int) -> Response:
+        floor, membership, err = self._resolve(request, office_id, floor_id)
+        if err is not None:
+            return err
+
+        serializer = ApplyEnhanceRunSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        data = serializer.validated_data
+        plan_id = data["plan_id"]
+        operations = data["operations"]
+
+        # Idempotency: a prior apply with this plan_id on this floor wins —
+        # rebuild and return its result without re-applying.
+        existing = EnhanceRun.objects.filter(
+            floor=floor, plan_id=plan_id, kind=EnhanceRun.Kind.APPLY
+        ).first()
+        if existing is not None:
+            applied_ids = [
+                op.object_id
+                for op in existing.operations.all()
+                if op.status == EnhanceRunOperation.Status.APPLIED
+            ]
+            objmap = {
+                o.id: o
+                for o in FloorLayoutObject.objects.filter(
+                    floor=floor, id__in=applied_ids
+                )
+            }
+            updated_objects = [objmap[i] for i in applied_ids if i in objmap]
+            return Response(_build_run_response(existing, updated_objects))
+
+        # Load all floor objects once (incl. inactive) to distinguish inactive
+        # from not-on-floor.
+        objmap = {o.id: o for o in FloorLayoutObject.objects.filter(floor=floor)}
+
+        op_rows: list[EnhanceRunOperation] = []
+        updated_objects: list[FloorLayoutObject] = []
+
+        for op in operations:
+            object_id = op["object_id"]
+            before = op["before"]
+            patch = op["patch"]
+            reason_codes = op.get("reason_codes", [])
+            row = EnhanceRunOperation(
+                object_id=object_id,
+                before_geometry=before,
+                patch=patch,
+                reason_codes=reason_codes,
+            )
+
+            obj = objmap.get(object_id)
+            if obj is None:
+                row.status = EnhanceRunOperation.Status.SKIPPED
+                row.error_code = _ERR_NOT_AVAILABLE
+                row.error_message = _MSG_NOT_AVAILABLE
+            elif not obj.is_active:
+                row.status = EnhanceRunOperation.Status.SKIPPED
+                row.error_code = _ERR_INACTIVE
+                row.error_message = _MSG_INACTIVE
+            elif not _geometry_matches(obj, before):
+                row.status = EnhanceRunOperation.Status.SKIPPED
+                row.error_code = _ERR_STALE
+                row.error_message = _MSG_STALE
+            else:
+                try:
+                    with transaction.atomic():
+                        ok, errors = self._apply_patch(obj, patch)
+                        if not ok:
+                            raise _PatchInvalid(errors)
+                        row.status = EnhanceRunOperation.Status.APPLIED
+                        row.after_geometry = _current_geometry(obj)
+                        updated_objects.append(obj)
+                except _PatchInvalid as exc:
+                    row.status = EnhanceRunOperation.Status.FAILED
+                    row.error_code = _ERR_VALIDATION
+                    row.error_message = str(exc.errors)
+                except Exception as exc:  # noqa: BLE001 - record, do not crash
+                    row.status = EnhanceRunOperation.Status.FAILED
+                    row.error_code = _ERR_SAVE
+                    row.error_message = str(exc)
+            op_rows.append(row)
+
+        applied = sum(
+            1 for r in op_rows if r.status == EnhanceRunOperation.Status.APPLIED
+        )
+        failed = sum(
+            1 for r in op_rows if r.status == EnhanceRunOperation.Status.FAILED
+        )
+        skipped = sum(
+            1 for r in op_rows if r.status == EnhanceRunOperation.Status.SKIPPED
+        )
+        run_status = _run_status(applied, failed, skipped)
+
+        try:
+            with transaction.atomic():
+                run = EnhanceRun.objects.create(
+                    floor=floor,
+                    triggered_by=request.user,
+                    kind=EnhanceRun.Kind.APPLY,
+                    plan_id=plan_id,
+                    status=run_status,
+                    total_operations=len(op_rows),
+                    applied_count=applied,
+                    failed_count=failed,
+                    skipped_count=skipped,
+                    diagnostics=data.get("diagnostics", []),
+                    summary=data.get("summary", {}),
+                )
+                for row in op_rows:
+                    row.enhance_run = run
+                EnhanceRunOperation.objects.bulk_create(op_rows)
+        except IntegrityError:
+            # Concurrent apply with the same plan_id won the unique constraint —
+            # treat as idempotent and return the winning run's result.
+            existing = EnhanceRun.objects.filter(
+                floor=floor, plan_id=plan_id, kind=EnhanceRun.Kind.APPLY
+            ).first()
+            if existing is not None:
+                applied_ids = [
+                    op.object_id
+                    for op in existing.operations.all()
+                    if op.status == EnhanceRunOperation.Status.APPLIED
+                ]
+                objmap = {
+                    o.id: o
+                    for o in FloorLayoutObject.objects.filter(
+                        floor=floor, id__in=applied_ids
+                    )
+                }
+                return Response(
+                    _build_run_response(
+                        existing, [objmap[i] for i in applied_ids if i in objmap]
+                    )
+                )
+            raise
+
+        return Response(_build_run_response(run, updated_objects))
+
+
+class EnhanceRunUndoView(_EnhanceRunBaseView):
+    """Undo a prior run by restoring each applied operation's before_geometry."""
+
+    def post(
+        self, request: Request, office_id: int, floor_id: int, run_id: int
+    ) -> Response:
+        floor, membership, err = self._resolve(request, office_id, floor_id)
+        if err is not None:
+            return err
+
+        source = EnhanceRun.objects.filter(floor=floor, id=run_id).first()
+        if source is None:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        objmap = {o.id: o for o in FloorLayoutObject.objects.filter(floor=floor)}
+        op_rows: list[EnhanceRunOperation] = []
+        updated_objects: list[FloorLayoutObject] = []
+
+        for src_op in source.operations.all():
+            if src_op.status != EnhanceRunOperation.Status.APPLIED:
+                continue
+            target = src_op.before_geometry or {}
+            patch = _patch_from_geometry(target)
+            row = EnhanceRunOperation(
+                object_id=src_op.object_id,
+                patch=patch,
+                reason_codes=["undo"],
+            )
+            obj = objmap.get(src_op.object_id)
+            if obj is None:
+                row.status = EnhanceRunOperation.Status.SKIPPED
+                row.error_code = _ERR_NOT_AVAILABLE
+                row.error_message = _MSG_NOT_AVAILABLE
+                row.before_geometry = {}
+            elif not obj.is_active:
+                row.status = EnhanceRunOperation.Status.SKIPPED
+                row.error_code = _ERR_INACTIVE
+                row.error_message = _MSG_INACTIVE
+                row.before_geometry = _current_geometry(obj)
+            else:
+                row.before_geometry = _current_geometry(obj)
+                try:
+                    with transaction.atomic():
+                        ok, errors = self._apply_patch(obj, patch)
+                        if not ok:
+                            raise _PatchInvalid(errors)
+                        row.status = EnhanceRunOperation.Status.APPLIED
+                        row.after_geometry = _current_geometry(obj)
+                        updated_objects.append(obj)
+                except _PatchInvalid as exc:
+                    row.status = EnhanceRunOperation.Status.FAILED
+                    row.error_code = _ERR_VALIDATION
+                    row.error_message = str(exc.errors)
+                except Exception as exc:  # noqa: BLE001
+                    row.status = EnhanceRunOperation.Status.FAILED
+                    row.error_code = _ERR_SAVE
+                    row.error_message = str(exc)
+            op_rows.append(row)
+
+        return self._finalize(
+            floor, request.user, EnhanceRun.Kind.UNDO, source, op_rows, updated_objects
+        )
+
+
+class EnhanceRunRetryView(_EnhanceRunBaseView):
+    """Retry the failed operations of a prior run, re-attempting their patches."""
+
+    def post(
+        self, request: Request, office_id: int, floor_id: int, run_id: int
+    ) -> Response:
+        floor, membership, err = self._resolve(request, office_id, floor_id)
+        if err is not None:
+            return err
+
+        source = EnhanceRun.objects.filter(floor=floor, id=run_id).first()
+        if source is None:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        objmap = {o.id: o for o in FloorLayoutObject.objects.filter(floor=floor)}
+        op_rows: list[EnhanceRunOperation] = []
+        updated_objects: list[FloorLayoutObject] = []
+
+        for src_op in source.operations.all():
+            if src_op.status != EnhanceRunOperation.Status.FAILED:
+                continue
+            # Re-attempt the intended target. Prefer the original patch; fall
+            # back to the after_geometry fields when the patch is empty. No
+            # stale check on retry — the failure was object-level, not staleness.
+            patch = src_op.patch or _patch_from_geometry(src_op.after_geometry or {})
+            row = EnhanceRunOperation(
+                object_id=src_op.object_id,
+                patch=patch,
+                reason_codes=src_op.reason_codes,
+            )
+            obj = objmap.get(src_op.object_id)
+            if obj is None:
+                row.status = EnhanceRunOperation.Status.SKIPPED
+                row.error_code = _ERR_NOT_AVAILABLE
+                row.error_message = _MSG_NOT_AVAILABLE
+                row.before_geometry = {}
+            elif not obj.is_active:
+                row.status = EnhanceRunOperation.Status.SKIPPED
+                row.error_code = _ERR_INACTIVE
+                row.error_message = _MSG_INACTIVE
+                row.before_geometry = _current_geometry(obj)
+            else:
+                row.before_geometry = _current_geometry(obj)
+                try:
+                    with transaction.atomic():
+                        ok, errors = self._apply_patch(obj, patch)
+                        if not ok:
+                            raise _PatchInvalid(errors)
+                        row.status = EnhanceRunOperation.Status.APPLIED
+                        row.after_geometry = _current_geometry(obj)
+                        updated_objects.append(obj)
+                except _PatchInvalid as exc:
+                    row.status = EnhanceRunOperation.Status.FAILED
+                    row.error_code = _ERR_VALIDATION
+                    row.error_message = str(exc.errors)
+                except Exception as exc:  # noqa: BLE001
+                    row.status = EnhanceRunOperation.Status.FAILED
+                    row.error_code = _ERR_SAVE
+                    row.error_message = str(exc)
+            op_rows.append(row)
+
+        return self._finalize(
+            floor,
+            request.user,
+            EnhanceRun.Kind.RETRY,
+            source,
+            op_rows,
+            updated_objects,
+        )

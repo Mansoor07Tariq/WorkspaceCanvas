@@ -254,4 +254,53 @@ describe("LayoutCanvasToolbar", () => {
     fireEvent.change(getHeightInput(), { target: { value: "" } });
     expect(onBoundaryHeightChange).not.toHaveBeenCalled();
   });
+
+  // ─── Tidy action (PR 063) ─────────────────────────────────────────────────
+
+  it("renders the Tidy button for managers when onTidy is provided", () => {
+    render(<LayoutCanvasToolbar {...defaultProps} canManageLayout onTidy={vi.fn()} />);
+    expect(screen.getByRole("button", { name: /tidy layout/i })).toBeInTheDocument();
+  });
+
+  it("hides the Tidy button for members", () => {
+    render(<LayoutCanvasToolbar {...defaultProps} canManageLayout={false} onTidy={vi.fn()} />);
+    expect(screen.queryByRole("button", { name: /tidy layout/i })).not.toBeInTheDocument();
+  });
+
+  it("hides the Tidy button when no onTidy handler is given", () => {
+    render(<LayoutCanvasToolbar {...defaultProps} canManageLayout />);
+    expect(screen.queryByRole("button", { name: /tidy layout/i })).not.toBeInTheDocument();
+  });
+
+  it("clicking Tidy calls onTidy, not the view toggle", () => {
+    const onTidy = vi.fn();
+    const onEnhancedChange = vi.fn();
+    render(
+      <LayoutCanvasToolbar
+        {...defaultProps}
+        canManageLayout
+        onTidy={onTidy}
+        onEnhancedChange={onEnhancedChange}
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: /tidy layout/i }));
+    expect(onTidy).toHaveBeenCalledTimes(1);
+    expect(onEnhancedChange).not.toHaveBeenCalled();
+  });
+
+  it("the view toggle never triggers Tidy (view-only)", () => {
+    const onTidy = vi.fn();
+    const onEnhancedChange = vi.fn();
+    render(
+      <LayoutCanvasToolbar
+        {...defaultProps}
+        canManageLayout
+        onTidy={onTidy}
+        onEnhancedChange={onEnhancedChange}
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: /^enhance$/i }));
+    expect(onEnhancedChange).toHaveBeenCalledWith(true);
+    expect(onTidy).not.toHaveBeenCalled();
+  });
 });
