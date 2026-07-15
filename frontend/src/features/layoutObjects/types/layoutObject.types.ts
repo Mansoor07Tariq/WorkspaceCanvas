@@ -62,7 +62,6 @@ export interface LayoutObject {
   width: string;
   height: string;
   rotation: string;
-  is_bookable: boolean;
   metadata: Record<string, unknown>;
   is_active: boolean;
   created_at: string;
@@ -77,7 +76,6 @@ export interface CreateLayoutObjectPayload {
   width: string;
   height: string;
   rotation: string;
-  is_bookable: boolean;
   metadata?: Record<string, unknown>;
 }
 
@@ -89,7 +87,6 @@ export interface UpdateLayoutObjectPayload {
   width?: string;
   height?: string;
   rotation?: string;
-  is_bookable?: boolean;
   metadata?: Record<string, unknown>;
 }
 
@@ -109,7 +106,6 @@ export interface LayoutObjectFormFields {
   width: string;
   height: string;
   rotation: string;
-  is_bookable: boolean;
 }
 
 export interface LayoutObjectFieldErrors {

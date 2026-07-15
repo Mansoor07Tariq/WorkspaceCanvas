@@ -215,6 +215,29 @@ def test_patch_updates_metadata(
     assert response.data["metadata"] == {"color": "#FF0000"}
 
 
+def test_notes_round_trip_in_metadata(
+    client, owner_user, active_office, active_floor, layout_obj
+):
+    """Notes (PR 065 feature) live inside the free-form `metadata` JSON and must
+    round-trip through the update endpoint alongside any other metadata keys the
+    client sends. The frontend inspector merges other keys in before PATCHing (the
+    endpoint replaces the whole metadata object, so the client is responsible for
+    preserving them); this pins the storage contract that behaviour relies on."""
+    client.force_authenticate(user=owner_user)
+    url = detail_url(active_office.id, active_floor.id, layout_obj.id)
+    response = client.patch(
+        url,
+        {"metadata": {"notes": "Near the window", "color": "#FF0000"}},
+        format="json",
+    )
+    assert response.status_code == 200
+    assert response.data["metadata"]["notes"] == "Near the window"
+    assert response.data["metadata"]["color"] == "#FF0000"
+
+    layout_obj.refresh_from_db()
+    assert layout_obj.metadata["notes"] == "Near the window"
+
+
 def test_patch_updates_object_type(
     client, owner_user, active_office, active_floor, layout_obj
 ):

@@ -2,8 +2,11 @@ import type { LayoutObjectType } from "@/features/layoutObjects/types/layoutObje
 
 export type DeskStatus = "available" | "unavailable" | "maintenance";
 
-/** Layout object types that can be linked to a Desk resource. */
-export type DeskCapableLayoutObjectType = "desk" | "standing_desk" | "hot_desk" | "private_desk";
+/**
+ * Layout object types that can be linked to a Desk resource. Re-exported from
+ * the single source of truth so this type stays in lockstep with the runtime set.
+ */
+export type { DeskCapableLayoutObjectType } from "@/features/layoutObjects/constants/deskCapableTypes";
 
 export interface DeskAmenities {
   monitor?: boolean;

@@ -5,14 +5,17 @@ import type { EnhanceOperation, EnhancePlan, GeomSnapshot, ReasonCode } from "..
 
 const G: GeomSnapshot = { x: "0.00", y: "0.00", width: "1.00", height: "1.00", rotation: "0.00" };
 
-function op(objectId: number, reasonCodes: ReasonCode[] | string[]): EnhanceOperation {
+// Typed to ReasonCode[] on purpose: reason codes the engine cannot emit must not
+// be able to sneak back into these tests. The one deliberate exception (proving
+// runtime tolerance of unknown codes) casts explicitly at its call site.
+function op(objectId: number, reasonCodes: ReasonCode[]): EnhanceOperation {
   return {
     type: "updateObject",
     objectId,
     before: G,
     after: G,
     patch: { x: "1.00" },
-    reasonCodes: reasonCodes as ReasonCode[],
+    reasonCodes,
   };
 }
 
@@ -41,30 +44,6 @@ function obj(over: Partial<LayoutObjectLike> = {}): LayoutObjectLike {
 }
 
 describe("buildTidySuggestions", () => {
-  it("builds a friendly boundary suggestion (warning)", () => {
-    const s = buildTidySuggestions(plan([op(1, ["clamped-inside"])]), [obj({ id: 1 })]);
-    expect(s).toHaveLength(1);
-    expect(s[0].title).toMatch(/outside the office boundary/i);
-    expect(s[0].description).toMatch(/back inside the usable floor area/i);
-    expect(s[0].severity).toBe("warning");
-    expect(s[0].objectIds).toEqual([1]);
-  });
-
-  it("builds a friendly cutout suggestion (warning)", () => {
-    const s = buildTidySuggestions(plan([op(1, ["moved-out-of-cutout"])]), [obj({ id: 1 })]);
-    expect(s[0].title).toMatch(/overlaps a cutout area/i);
-    expect(s[0].description).toMatch(/usable floor space/i);
-    expect(s[0].severity).toBe("warning");
-  });
-
-  it("builds a wall-snap suggestion using the object name", () => {
-    const s = buildTidySuggestions(plan([op(1, ["snapped-to-wall"])]), [
-      obj({ id: 1, object_type_display: "Door" }),
-    ]);
-    expect(s[0].title).toMatch(/Door is close to a wall/i);
-    expect(s[0].description).toMatch(/align it neatly/i);
-  });
-
   it("builds a wall-extended suggestion", () => {
     const s = buildTidySuggestions(plan([op(1, ["wall-extended"])]), [
       obj({ id: 1, object_type: "wall", object_type_display: "Wall" }),
@@ -99,7 +78,7 @@ describe("buildTidySuggestions", () => {
   });
 
   it("groups multiple resize operations into one suggestion", () => {
-    const s = buildTidySuggestions(plan([op(1, ["resized"]), op(2, ["equalized"])]), [
+    const s = buildTidySuggestions(plan([op(1, ["resized"]), op(2, ["resized"])]), [
       obj({ id: 1 }),
       obj({ id: 2 }),
     ]);
@@ -128,18 +107,25 @@ describe("buildTidySuggestions", () => {
     expect(s[0].title).toMatch(/^Object looks slightly misaligned/i);
   });
 
+  // categoryOf takes string[] and falls through to "align" on purpose, so a code
+  // the engine does not know about (a future/renamed one arriving from a stale
+  // client) degrades to generic copy instead of throwing. The cast is the single
+  // deliberate bypass of the typed helper.
   it("handles an unknown reason code gracefully (generic align copy)", () => {
-    const s = buildTidySuggestions(plan([op(1, ["totally-unknown-code"])]), [obj({ id: 1 })]);
+    const s = buildTidySuggestions(plan([op(1, ["totally-unknown-code" as ReasonCode])]), [
+      obj({ id: 1 }),
+    ]);
     expect(s).toHaveLength(1);
     expect(s[0].title).toMatch(/looks slightly misaligned/i);
   });
 
-  it("orders warnings (boundary/cutout) before info suggestions", () => {
-    const s = buildTidySuggestions(
-      plan([op(1, ["arranged"]), op(2, ["clamped-inside"]), op(3, ["moved-out-of-cutout"])]),
-      [obj({ id: 1 }), obj({ id: 2 }), obj({ id: 3 })]
-    );
-    expect(s.map((x) => x.severity)).toEqual(["warning", "warning", "info"]);
+  it("orders suggestions by category, not by input order", () => {
+    // align (last in CATEGORY_ORDER) is fed first; wallExtend must still lead.
+    const s = buildTidySuggestions(plan([op(1, ["repositioned"]), op(2, ["wall-extended"])]), [
+      obj({ id: 1 }),
+      obj({ id: 2, object_type: "wall", object_type_display: "Wall" }),
+    ]);
+    expect(s.map((x) => x.id)).toEqual(["tidy-wallExtend", "tidy-align"]);
   });
 
   it("does not mutate the plan or objects", () => {

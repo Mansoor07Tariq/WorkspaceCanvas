@@ -15,33 +15,21 @@ import type { LayoutObjectLike, TidySuggestion, TidySuggestionSeverity } from ".
 
 const c = en.app.layoutObjects;
 
-type Category =
-  | "cutout"
-  | "boundary"
-  | "wallExtend"
-  | "wallSnap"
-  | "arrange"
-  | "resize"
-  | "rotate"
-  | "align";
+/**
+ * Categories correspond 1:1 to the reason codes the engine can actually emit.
+ * The cutout / boundary / wall-snap categories were removed with their reason
+ * codes (the engine performs those moves but does not thread per-rule
+ * provenance, so it could never label them) — see docs/063 and TD-049. If
+ * provenance is ever threaded through, re-add the code, the category and its
+ * i18n copy together.
+ */
+type Category = "wallExtend" | "arrange" | "resize" | "rotate" | "align";
 
-// Display order (also priority for the "+N more" cap — warnings first).
-const CATEGORY_ORDER: Category[] = [
-  "cutout",
-  "boundary",
-  "wallExtend",
-  "wallSnap",
-  "arrange",
-  "resize",
-  "rotate",
-  "align",
-];
+// Display order (also priority for the "+N more" cap).
+const CATEGORY_ORDER: Category[] = ["wallExtend", "arrange", "resize", "rotate", "align"];
 
 const SEVERITY: Record<Category, TidySuggestionSeverity> = {
-  cutout: "warning",
-  boundary: "warning",
   wallExtend: "info",
-  wallSnap: "info",
   arrange: "info",
   resize: "info",
   rotate: "info",
@@ -50,16 +38,14 @@ const SEVERITY: Record<Category, TidySuggestionSeverity> = {
 
 /**
  * Pick the dominant category for an operation from its reason codes, most
- * specific first. Unknown / future codes fall through to "align".
+ * specific first. Deliberately takes `string[]` and falls through to "align" so
+ * an unknown / future code degrades gracefully rather than throwing.
  */
 function categoryOf(reasonCodes: string[]): Category {
   const has = (code: string) => reasonCodes.includes(code);
-  if (has("moved-out-of-cutout")) return "cutout";
-  if (has("clamped-inside")) return "boundary";
   if (has("wall-extended")) return "wallExtend";
-  if (has("snapped-to-wall")) return "wallSnap";
   if (has("arranged")) return "arrange";
-  if (has("equalized") || has("resized")) return "resize";
+  if (has("resized")) return "resize";
   if (has("rotated")) return "rotate";
   return "align"; // "repositioned" or any unknown code
 }

@@ -27,7 +27,6 @@ import {
 } from "../utils/wallPlacement";
 import { snapToNeighbors, overlapsBlockingObject, resolveDrop } from "../utils/objectSnapping";
 import { getCutoutRects, snapCutoutToNeighbors } from "../utils/floorShape";
-import type { NormalizationPatch } from "../utils/enhanceNormalize";
 import type { LayoutObject } from "../types/layoutObject.types";
 
 const c = en.app.layoutObjects;
@@ -83,8 +82,6 @@ export interface UseCanvasInteractionsResult {
     shiftX: number,
     shiftY: number
   ) => void;
-  /** Persist the Enhance tidy-up patches (snap-to-wall, connect/equalize desks). */
-  applyNormalization: (patches: NormalizationPatch[]) => void;
   /** Error message for the last failed move/transform PATCH (undefined when none). */
   layoutSaveError: string | undefined;
   setLayoutSaveError: (value: string | undefined) => void;
@@ -304,41 +301,6 @@ export function useCanvasInteractions({
     [objects, handleObjectMove]
   );
 
-  // ─── Persist the Enhance tidy-up (optimistic + per-object rollback) ────────
-  const applyNormalization = useCallback(
-    async (patches: NormalizationPatch[]) => {
-      for (const p of patches) {
-        const prev = objects.find((o) => o.id === p.id);
-        const patch = {
-          x: p.x,
-          y: p.y,
-          width: p.width,
-          height: p.height,
-          rotation: p.rotation,
-        };
-        updateObjectLocally(p.id, patch);
-        setSaving(p.id, true);
-        try {
-          await updateLayoutObject(officeId, floorId, p.id, patch);
-        } catch (err) {
-          if (prev) {
-            updateObjectLocally(p.id, {
-              x: prev.x,
-              y: prev.y,
-              width: prev.width,
-              height: prev.height,
-              rotation: prev.rotation,
-            });
-          }
-          setLayoutSaveError(buildMoveError(err));
-        } finally {
-          setSaving(p.id, false);
-        }
-      }
-    },
-    [officeId, floorId, objects, updateObjectLocally, setSaving]
-  );
-
   // ─── Single-object transform persistence (optimistic + rollback) ──────────
   const persistTransform = useCallback(
     async (
@@ -549,7 +511,6 @@ export function useCanvasInteractions({
     handleCanvasKeyDown,
     reflowObjectsIntoBoundary,
     applyBoundaryResize,
-    applyNormalization,
     layoutSaveError,
     setLayoutSaveError,
     savedObjectId,

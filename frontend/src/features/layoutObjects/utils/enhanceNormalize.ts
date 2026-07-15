@@ -6,6 +6,7 @@ import {
   type FloorBoundary,
 } from "./coordinateHelpers";
 import { clipCutoutsToBoundary, getCutoutRects, type Rect } from "./floorShape";
+import { isDeskCapableType } from "../constants/deskCapableTypes";
 import type { LayoutObject } from "../types/layoutObject.types";
 
 /**
@@ -34,8 +35,6 @@ export const CONNECT_GAP = 10;
 export const ALIGN_TOL = 14;
 /** One grid cell — desks stretch to a wall only across a gap smaller than this. */
 export const GRID_CELL = 10;
-
-const WORKSTATION_TYPES = new Set(["desk", "standing_desk", "hot_desk", "private_desk"]);
 
 interface WRect {
   id: number;
@@ -92,7 +91,7 @@ function toStored(a: WRect): { x: number; y: number; width: number; height: numb
 
 function isPackableDesk(r: WRect): boolean {
   return (
-    WORKSTATION_TYPES.has(r.type) && (r.rot === 0 || r.rot === 90 || r.rot === 180 || r.rot === 270)
+    isDeskCapableType(r.type) && (r.rot === 0 || r.rot === 90 || r.rot === 180 || r.rot === 270)
   );
 }
 

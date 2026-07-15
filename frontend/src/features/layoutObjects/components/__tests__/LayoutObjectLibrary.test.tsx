@@ -10,7 +10,7 @@ describe("LayoutObjectLibrary (tiled palette)", () => {
     expect(screen.getByTestId("library-tile-desk")).toBeInTheDocument();
     expect(screen.getByTestId("library-tile-lobby")).toBeInTheDocument();
     expect(screen.getByTestId("library-tile-bathroom")).toBeInTheDocument();
-    expect(screen.getByText("Empty Room")).toBeInTheDocument();
+    expect(screen.getByText("Room")).toBeInTheDocument();
     // ...and de-curated ones are not offered.
     expect(screen.queryByTestId("library-tile-hot_desk")).toBeNull();
     expect(screen.queryByTestId("library-tile-toilet")).toBeNull();

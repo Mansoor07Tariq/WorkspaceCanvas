@@ -9,5 +9,4 @@ export type {
   DiagnosticLevel,
   GeomSnapshot,
   ReasonCode,
-  EnhanceRuleSet,
 } from "./types";

@@ -1,13 +1,12 @@
 import type { LayoutObjectType } from "@/features/layoutObjects/types/layoutObject.types";
+import {
+  DESK_CAPABLE_TYPE_SET,
+  isDeskCapableType,
+} from "@/features/layoutObjects/constants/deskCapableTypes";
 import type { Desk, DeskCapableLayoutObjectType } from "../types/desk.types";
 
-/** Layout object types that can be linked to a Desk resource. */
-export const DESK_CAPABLE_TYPES: ReadonlySet<DeskCapableLayoutObjectType> = new Set([
-  "desk",
-  "standing_desk",
-  "hot_desk",
-  "private_desk",
-]);
+/** Layout object types that can be linked to a Desk resource (shared source). */
+export const DESK_CAPABLE_TYPES = DESK_CAPABLE_TYPE_SET;
 
 /**
  * Returns true if the layout object type can be converted into a Desk resource.
@@ -15,7 +14,7 @@ export const DESK_CAPABLE_TYPES: ReadonlySet<DeskCapableLayoutObjectType> = new 
 export function isDeskCapableLayoutObject(
   type: LayoutObjectType
 ): type is DeskCapableLayoutObjectType {
-  return (DESK_CAPABLE_TYPES as ReadonlySet<string>).has(type);
+  return isDeskCapableType(type);
 }
 
 /**

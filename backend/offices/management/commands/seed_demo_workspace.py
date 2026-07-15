@@ -234,7 +234,6 @@ class Command(BaseCommand):
                 "y": 80,
                 "width": 80,
                 "height": 60,
-                "is_bookable": True,
             },
             {
                 "object_type": FloorLayoutObject.ObjectType.DESK,
@@ -243,7 +242,6 @@ class Command(BaseCommand):
                 "y": 80,
                 "width": 80,
                 "height": 60,
-                "is_bookable": True,
             },
             {
                 "object_type": FloorLayoutObject.ObjectType.DESK,
@@ -252,7 +250,6 @@ class Command(BaseCommand):
                 "y": 200,
                 "width": 80,
                 "height": 60,
-                "is_bookable": True,
             },
             {
                 "object_type": FloorLayoutObject.ObjectType.DESK,
@@ -261,7 +258,6 @@ class Command(BaseCommand):
                 "y": 200,
                 "width": 80,
                 "height": 60,
-                "is_bookable": True,
             },
             {
                 "object_type": FloorLayoutObject.ObjectType.DESK,
@@ -270,7 +266,6 @@ class Command(BaseCommand):
                 "y": 80,
                 "width": 80,
                 "height": 60,
-                "is_bookable": True,
             },
             # Tables
             {
@@ -280,7 +275,6 @@ class Command(BaseCommand):
                 "y": 80,
                 "width": 220,
                 "height": 100,
-                "is_bookable": False,
             },
             {
                 "object_type": FloorLayoutObject.ObjectType.LUNCH_TABLE,
@@ -289,7 +283,6 @@ class Command(BaseCommand):
                 "y": 200,
                 "width": 160,
                 "height": 80,
-                "is_bookable": False,
             },
             # Rooms / pods
             {
@@ -299,7 +292,6 @@ class Command(BaseCommand):
                 "y": 280,
                 "width": 120,
                 "height": 120,
-                "is_bookable": False,
             },
             # Seating
             {
@@ -309,7 +301,6 @@ class Command(BaseCommand):
                 "y": 320,
                 "width": 160,
                 "height": 70,
-                "is_bookable": False,
             },
             # Structure
             {
@@ -319,7 +310,6 @@ class Command(BaseCommand):
                 "y": 380,
                 "width": 50,
                 "height": 12,
-                "is_bookable": False,
             },
             {
                 "object_type": FloorLayoutObject.ObjectType.WINDOW,
@@ -328,7 +318,6 @@ class Command(BaseCommand):
                 "y": 380,
                 "width": 200,
                 "height": 12,
-                "is_bookable": False,
             },
             # Facilities
             {
@@ -338,7 +327,6 @@ class Command(BaseCommand):
                 "y": 40,
                 "width": 120,
                 "height": 70,
-                "is_bookable": False,
             },
             # Decor
             {
@@ -348,7 +336,6 @@ class Command(BaseCommand):
                 "y": 80,
                 "width": 40,
                 "height": 40,
-                "is_bookable": False,
             },
         ]
 
@@ -365,7 +352,6 @@ class Command(BaseCommand):
                     "width": spec["width"],
                     "height": spec["height"],
                     "rotation": 0,
-                    "is_bookable": spec["is_bookable"],
                     "is_active": True,
                 },
             )

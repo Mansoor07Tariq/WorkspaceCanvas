@@ -20,17 +20,14 @@ export interface GeomSnapshot {
   rotation: string;
 }
 
-/** Why an operation exists. Best-effort, derived from the change + object type. */
-export type ReasonCode =
-  | "repositioned"
-  | "resized"
-  | "rotated"
-  | "equalized"
-  | "snapped-to-wall"
-  | "arranged"
-  | "wall-extended"
-  | "clamped-inside"
-  | "moved-out-of-cutout";
+/**
+ * Why an operation exists. Best-effort, derived from the change + object type.
+ * Only the codes the engine can actually emit are listed (honest types): the
+ * per-rule provenance codes the engine does not yet thread (equalized,
+ * snapped-to-wall, clamped-inside, moved-out-of-cutout) were removed. See
+ * docs/063 and TD-049.
+ */
+export type ReasonCode = "repositioned" | "resized" | "rotated" | "arranged" | "wall-extended";
 
 /** A single proposed change to one object. */
 export interface EnhanceOperation {
@@ -47,8 +44,10 @@ export type DiagnosticLevel = "info" | "warning" | "error";
 
 export interface Diagnostic {
   level: DiagnosticLevel;
+  /** Stable, translatable key. The UI maps this to copy (see i18n tidyDiagnostics). */
   code: string;
-  message: string;
+  /** Optional fallback text; the pure engine emits code only (copy lives in i18n). */
+  message?: string;
   objectId?: number;
 }
 
@@ -71,17 +70,9 @@ export interface EnhancePlan {
   summary: EnhanceSummary;
 }
 
-/** Optional rule toggles. Defaults keep current engine behaviour. */
-export interface EnhanceRuleSet {
-  /** Reserved for future per-rule configuration; engine ignores unknown keys. */
-  preset?: "default";
-}
-
 export interface EnhanceEngineInput {
   boundary: FloorBoundary;
   objects: ReadonlyArray<LayoutObject>;
   /** Cutout rects; when omitted the engine derives them from `objects`. */
   cutouts?: Rect[];
-  rules?: EnhanceRuleSet;
-  options?: { maxIterations?: number };
 }

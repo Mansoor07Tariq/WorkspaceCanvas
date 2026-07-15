@@ -79,7 +79,6 @@ function makeLayoutObject(id: number): LayoutObject {
     width: "80",
     height: "60",
     rotation: "0",
-    is_bookable: true,
     metadata: {},
     is_active: true,
     created_at: "2026-01-01T00:00:00Z",

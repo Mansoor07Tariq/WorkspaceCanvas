@@ -63,8 +63,11 @@ surfaced; applied changes are undoable; failed operations are retryable.
   no existence leak), `object_inactive`, or `stale_geometry` (the object changed
   since the plan was generated; not an error — re-run Tidy).
 
-Run `status` = `success` (all applied), `failed` (none applied), else
-`partial_success`.
+Run `status` = `success` (all applied), `partial_success` (some applied),
+`failed` (none applied and at least one **failed**), or `skipped` (nothing
+applied and nothing failed — every op was a no-op: already tidy, stale, or not on
+this floor). `skipped` was added in PR 065: an all-skipped run is not a failure,
+and reporting it as `failed` was misleading in the audit trail.
 
 ## Idempotency
 
@@ -79,6 +82,19 @@ race is caught via the unique constraint and resolved the same way.
 `applied`** operations of that run, best-effort, as a new
 `EnhanceRun(kind=undo, parent_run=…)`. Failed/skipped operations are untouched.
 Single-level undo of the most recent applied run is supported.
+
+### Staleness rule (PR 065)
+
+Undo **never clobbers a manual edit**. Before restoring an operation, the server
+compares the object's *current* geometry against what the original run left it at
+(`after_geometry`). If they differ — the user dragged, resized or rotated the
+object after the tidy — that operation is **`skipped` with `stale_geometry`**
+instead of being overwritten. The manual edit wins. This mirrors apply's own
+stale check (which compares against the plan's `before`).
+
+Consequence: undoing a run after manually moving some of its objects yields a
+`partial_success` (or `skipped`) run — the untouched objects are restored, the
+manually-edited ones are reported as skipped.
 
 ## Retry
 
@@ -95,8 +111,26 @@ as a new `EnhanceRun(kind=retry, parent_run=…)`. Stale-`skipped` operations ar
   history survives object deletion), `status`, `before_geometry`,
   `after_geometry`, `patch`, `reason_codes`, `error_code`, `error_message`.
 
-Tenancy is scoped through `EnhanceRun.floor`. Apply uses per-operation
-`transaction.atomic()` savepoints so one failure rolls back only that op.
+Tenancy is scoped through `EnhanceRun.floor`.
+
+### Transaction semantics (corrected + hardened in PR 065)
+
+The whole apply — **every object write AND the `EnhanceRun`/operation rows** —
+runs inside **one outer `transaction.atomic()`**. Each operation additionally runs
+in its own **nested savepoint**, so a single bad object rolls back only itself and
+best-effort semantics are preserved.
+
+This closes a real gap: previously the per-op `transaction.atomic()` blocks were
+the *outermost* transaction (there is no `ATOMIC_REQUESTS`), so each object write
+committed immediately and the audit rows were written in a **separate** later
+transaction. A crash in between left objects moved with **no `EnhanceRun` to undo
+them**. Now the mutations and their audit record commit or roll back together — if
+the run cannot be recorded, the layout is not changed. (The earlier docs called
+these "savepoints", which was only true relative to an outer transaction that did
+not exist.)
+
+The duplicate-`plan_id` race is handled the same way: an `IntegrityError` on the
+run insert rolls the entire apply back and returns the winning run's result.
 
 ## Endpoints
 
@@ -110,10 +144,27 @@ carries authoritative server state so the canvas resyncs exactly.
 
 ## Reason codes
 
-`repositioned`, `resized`, `rotated`, `wall-extended` are emitted today (derived
-from the object type and which fields changed). `equalized`, `snapped-to-wall`,
-`arranged`, `clamped-inside`, `moved-out-of-cutout` are reserved for when the
-engine threads per-rule provenance.
+The `ReasonCode` union lists **only what the engine can actually emit** (corrected
+in PR 065 — the previous list was wrong in both directions):
+
+- `wall-extended` — a wall whose end was extended.
+- `resized` — the engine changed the object's size (run equalization).
+- `arranged` — a workstation that only moved (packed/aligned into its row).
+- `repositioned` — anything else that only moved.
+- `rotated` — emitted if a patch ever changes rotation. The geometry core does
+  not currently modify rotation, so in practice this is not produced today.
+
+The aspirational per-rule provenance codes (`equalized`, `snapped-to-wall`,
+`clamped-inside`, `moved-out-of-cutout`) were **removed from the type**: the
+engine performs those operations but does not thread provenance, so it could
+never emit them and the union was advertising a guarantee it could not keep.
+Their preview categories (`cutout`, `boundary`, `wallSnap`), the `categoryOf`
+branches that matched them, and their i18n copy were removed with them, so no
+layer describes an outcome the engine cannot produce. `categoryOf` still accepts
+`string[]` and falls through to `align`, so an unknown/future code from a stale
+client degrades to generic copy rather than throwing. Threading real per-rule
+provenance — and re-adding code + category + copy together — remains open, see
+TD-049.
 
 ## Tidy suggestion copy
 
@@ -132,18 +183,17 @@ a cleaner layout."
   type (`getFriendlyGroupName`, e.g. "Standing desks look slightly misaligned")
   and fall back to "Objects" only for mixed-type groups.
 - **Grouped.** Operations are bucketed into one **dominant category** chosen by
-  reason-code priority (cutout → boundary → wall-extend → wall-snap → arrange →
-  resize → rotate → align). A category with one object gets an object-specific
-  line; multiple objects get a single grouped line. Warnings (cutout/boundary)
-  sort first; the dialog caps the visible list at 5 and shows "…and N more".
+  reason-code priority (wall-extend → arrange → resize → rotate → align). A
+  category with one object gets an object-specific line; multiple objects get a
+  single grouped line; the dialog caps the visible list at 5 and shows "…and N
+  more". Every remaining category is `info` severity — the only two `warning`
+  categories were cutout/boundary, which went with their reason codes.
 - **Backend unchanged.** The backend still stores the raw `reasonCodes` and
   per-operation results on `EnhanceRun`/`EnhanceRunOperation` for audit; the
   friendly copy is presentation-only.
-- **Reason→suggestion map:** `moved-out-of-cutout`→overlaps a cutout area;
-  `clamped-inside`→outside the office boundary; `wall-extended`→wall segment can
-  connect; `snapped-to-wall`→close to a wall; `arranged`→unevenly spaced;
-  `resized`/`equalized`→different sizes; `rotated`→slightly rotated;
-  `repositioned`/unknown→looks slightly misaligned.
+- **Reason→suggestion map:** `wall-extended`→wall segment can connect;
+  `arranged`→unevenly spaced; `resized`→different sizes; `rotated`→slightly
+  rotated; `repositioned`/unknown→looks slightly misaligned.
 - **Selective apply.** Each suggestion has a checkbox (all ticked by default).
   "Apply selected" sends only the operations belonging to the ticked
   suggestions, so the admin can resolve all or just some in one run. The backend
@@ -175,9 +225,22 @@ retry/undo; undo restores only applied ops and persists across refresh.
 
 ## Remaining limitations / acceptable debt
 
-- Single-level undo only (no full history stack).
-- Preview is textual (no ghost overlay of the proposed positions).
+- Single-level undo only (no full history stack). See `review/06-proposals.md`.
+- Preview is textual (no ghost overlay of the proposed positions). The plan
+  already carries both `before` and `after` per operation, so this is a
+  client-only change.
 - Reason codes are heuristic (type + changed fields), not per-rule provenance.
+  The never-emittable codes were removed from the type in PR 065 (see above).
 - Rotated-object boundary collision still uses the unrotated AABB (see PR 061 /
-  TECHNICAL_DEBT).
-- No backend bulk-transaction apply — by design (best-effort), per-op savepoints.
+  TECHNICAL_DEBT TD-048). **Still open** — needs browser QA to change safely.
+
+### Closed in PR 065
+
+- ~~No backend bulk-transaction apply~~ — apply is now one outer transaction with
+  per-op savepoints, so a crash can no longer orphan object writes without an
+  audit record. Best-effort per-op semantics are unchanged.
+- ~~Undo silently overwrites manual edits~~ — undo now skips stale objects.
+- ~~An all-skipped run reports `failed`~~ — new `skipped` run status.
+- ~~The enhance `patch` could carry non-geometry fields (object_type, is_bookable,
+  metadata) that undo could not revert~~ — the input serializer now rejects any
+  non-geometry key in `before`/`after`/`patch`.

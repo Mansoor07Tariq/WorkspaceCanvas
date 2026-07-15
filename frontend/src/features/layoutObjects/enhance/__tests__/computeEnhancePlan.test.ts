@@ -17,7 +17,6 @@ function obj(overrides: Partial<LayoutObject> = {}): LayoutObject {
     width: "80.00",
     height: "50.00",
     rotation: "0.00",
-    is_bookable: false,
     metadata: {},
     is_active: true,
     created_at: "",
@@ -42,6 +41,28 @@ describe("computeEnhancePlan — contract", () => {
     const snapshot = JSON.stringify(objects);
     computeEnhancePlan({ boundary: B, objects });
     expect(JSON.stringify(objects)).toBe(snapshot);
+  });
+
+  // The pure engine must hold no user-facing English: diagnostics carry a stable
+  // code and the UI maps it to copy via i18n (tidyDiagnostics).
+  it("emits diagnostics as codes, never as hardcoded prose", () => {
+    const plan = computeEnhancePlan({ boundary: B, objects: [obj({ x: "300.00", y: "300.00" })] });
+    for (const d of plan.diagnostics) {
+      expect(d.code).toEqual(expect.any(String));
+      expect(d.code).not.toBe("");
+      expect(d.message).toBeUndefined();
+    }
+  });
+
+  // Determinism must not depend on input ORDER, only on input content.
+  it("produces the same plan when the input order is permuted", () => {
+    const a = obj({ id: 1, x: "100.00", y: "200.00", width: "80.00", height: "50.00" });
+    const b = obj({ id: 2, x: "182.00", y: "200.00", width: "120.00", height: "90.00" });
+    const forward = computeEnhancePlan({ boundary: B, objects: [a, b] });
+    const reversed = computeEnhancePlan({ boundary: B, objects: [b, a] });
+    const byId = (p: ReturnType<typeof computeEnhancePlan>) =>
+      [...p.operations].sort((x, y) => x.objectId - y.objectId);
+    expect(byId(reversed)).toEqual(byId(forward));
   });
 
   it("emits operations with before / after / patch / reasonCodes", () => {

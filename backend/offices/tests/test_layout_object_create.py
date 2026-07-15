@@ -377,18 +377,6 @@ def test_create_metadata_list_rejected(client, owner_user, active_office, active
     assert response.status_code == 400
 
 
-def test_create_is_bookable_defaults_false(
-    client, owner_user, active_office, active_floor
-):
-    client.force_authenticate(user=owner_user)
-    url = layout_url(active_office.id, active_floor.id)
-    payload = valid_payload()
-    payload.pop("is_bookable", None)
-    response = client.post(url, payload, format="json")
-    assert response.status_code == 201
-    assert response.data["is_bookable"] is False
-
-
 def test_create_floor_linked_to_url_floor(
     client, owner_user, active_office, active_floor
 ):
@@ -417,7 +405,6 @@ def test_create_response_has_all_fields(
         "width",
         "height",
         "rotation",
-        "is_bookable",
         "metadata",
         "is_active",
         "created_at",

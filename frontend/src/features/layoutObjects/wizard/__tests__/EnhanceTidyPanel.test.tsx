@@ -17,6 +17,7 @@ function makeTidy(over: Partial<UseEnhanceTidyResult> = {}): UseEnhanceTidyResul
     lastAction: null,
     busy: false,
     error: false,
+    errorMessage: null,
     canUndo: false,
     canRetry: false,
     openPreview: vi.fn(),

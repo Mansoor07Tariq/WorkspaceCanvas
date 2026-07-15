@@ -1,9 +1,7 @@
 import {
   Box,
   Button,
-  Checkbox,
   FormControl,
-  FormControlLabel,
   FormHelperText,
   InputLabel,
   MenuItem,
@@ -180,18 +178,6 @@ export function LayoutObjectCreateForm({
           error={fieldErrors.rotation}
           disabled={submissionLoading}
           onChange={(v) => onFieldChange("rotation", v)}
-        />
-
-        <FormControlLabel
-          control={
-            <Checkbox
-              checked={fields.is_bookable}
-              onChange={(e) => onFieldChange("is_bookable", e.target.checked)}
-              disabled={submissionLoading}
-              size="small"
-            />
-          }
-          label={c.isBookableLabel}
         />
 
         {submissionError && <ErrorAlert message={submissionError} />}

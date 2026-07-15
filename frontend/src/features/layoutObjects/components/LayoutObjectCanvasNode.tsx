@@ -39,6 +39,8 @@ interface Props {
   isBookingMode?: boolean;
   /** True when the Enhance toggle is on: render isometric assets instead of boxes. */
   enhanced?: boolean;
+  /** Reports hover (object id) / un-hover (null) so the canvas can show a tooltip. */
+  onHover?: (objectId: number | null) => void;
 }
 
 const LABEL_FONT_SIZE = 11;
@@ -68,6 +70,7 @@ export const LayoutObjectCanvasNode = forwardRef<Konva.Group, Props>(
       onAvailabilitySelect,
       isBookingMode = false,
       enhanced = false,
+      onHover,
     },
     ref
   ) {
@@ -75,7 +78,8 @@ export const LayoutObjectCanvasNode = forwardRef<Konva.Group, Props>(
     const h = parseFloat(obj.height);
     const x = parseFloat(obj.x);
     const y = parseFloat(obj.y);
-    const rotation = parseFloat(obj.rotation);
+    // || 0 guards against a NaN rotation corrupting the Konva transform (FE-10).
+    const rotation = parseFloat(obj.rotation) || 0;
 
     const config = getLayoutObjectRenderConfig(obj.object_type);
     const displayLabel = obj.label || config.shortCode;
@@ -155,18 +159,23 @@ export const LayoutObjectCanvasNode = forwardRef<Konva.Group, Props>(
     const handleMouseEnter = useCallback(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (e: any) => {
+        onHover?.(obj.id);
         if (!draggable) return;
         const stage = e.target.getStage();
         if (stage) stage.container().style.cursor = "grab";
       },
-      [draggable]
+      [draggable, onHover, obj.id]
     );
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const handleMouseLeave = useCallback((e: any) => {
-      const stage = e.target.getStage();
-      if (stage) stage.container().style.cursor = "default";
-    }, []);
+    const handleMouseLeave = useCallback(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (e: any) => {
+        onHover?.(null);
+        const stage = e.target.getStage();
+        if (stage) stage.container().style.cursor = "default";
+      },
+      [onHover]
+    );
 
     // In booking mode, onAvailabilitySelect replaces onSelect as the click handler.
     const handleClick = onAvailabilitySelect ?? onSelect;

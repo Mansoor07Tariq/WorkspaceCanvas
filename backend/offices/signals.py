@@ -7,14 +7,22 @@ from .models import Desk
 
 
 @receiver(pre_save, sender=Desk)
-def _desk_capture_active_state(sender, instance: Desk, **kwargs) -> None:
+def _desk_capture_active_state(
+    sender, instance: Desk, update_fields=None, **kwargs
+) -> None:
     """
     Capture the current DB-persisted is_active value before the save so that
     post_save can detect an active→inactive transition.
 
     New (unsaved) desks have no prior DB row; _pre_save_is_active is set to None.
+
+    BE-14: skip the extra SELECT when the caller passed ``update_fields`` and
+    is_active is not among them — the transition cannot be happening, and
+    post_save short-circuits on the same condition, so no state is lost.
     """
-    if instance.pk is None:
+    if instance.pk is None or (
+        update_fields is not None and "is_active" not in update_fields
+    ):
         instance._pre_save_is_active = None
         return
     try:

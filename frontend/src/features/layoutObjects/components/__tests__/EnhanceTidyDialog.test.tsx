@@ -19,6 +19,7 @@ function makeTidy(over: Partial<UseEnhanceTidyResult> = {}): UseEnhanceTidyResul
     lastAction: null,
     busy: false,
     error: false,
+    errorMessage: null,
     canUndo: false,
     canRetry: false,
     openPreview: vi.fn(),
@@ -142,6 +143,39 @@ describe("EnhanceTidyDialog", () => {
     render(<EnhanceTidyDialog tidy={makeTidy({ phase: "preview", plan: planWith(0) })} />);
     expect(screen.getByText(/already looks tidy/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /apply selected/i })).toBeDisabled();
+  });
+
+  // BE-12: an all-skipped run is NOT a failure — it reads as "no changes needed".
+  it("skipped result reads as 'no changes were needed', not as a failure", () => {
+    const result: EnhanceRunResult = {
+      enhance_run_id: 5,
+      status: "skipped",
+      applied_count: 0,
+      failed_count: 0,
+      skipped_count: 2,
+      operation_results: [
+        { object_id: 1, status: "skipped", reason_codes: [], error_code: "stale_geometry" },
+        { object_id: 2, status: "skipped", reason_codes: [], error_code: "stale_geometry" },
+      ],
+      updated_objects: [],
+    };
+    render(<EnhanceTidyDialog tidy={makeTidy({ phase: "result", result, lastAction: "apply" })} />);
+    expect(screen.getByText(/no changes were needed/i)).toBeInTheDocument();
+    expect(screen.queryByText(/could not be applied/i)).toBeNull();
+  });
+
+  // FE-5: the server's error detail is shown, not a generic string.
+  it("renders the server error detail when one is present", () => {
+    render(
+      <EnhanceTidyDialog
+        tidy={makeTidy({
+          phase: "result",
+          error: true,
+          errorMessage: "Only organization owners and admins can manage offices.",
+        })}
+      />
+    );
+    expect(screen.getByRole("alert")).toHaveTextContent(/only organization owners and admins/i);
   });
 
   it("partial-success result shows summary, details, retry and undo", () => {

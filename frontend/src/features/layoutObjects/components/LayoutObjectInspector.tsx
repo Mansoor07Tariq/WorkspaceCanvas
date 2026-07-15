@@ -12,6 +12,7 @@ import {
 } from "@mui/material";
 import { en } from "@/i18n/en";
 import type { LayoutObject } from "../types/layoutObject.types";
+import { getObjectNotes } from "../utils/layoutObjectNotes";
 
 const c = en.app.layoutObjects;
 
@@ -20,6 +21,7 @@ export interface InspectorPatch {
   width: string;
   height: string;
   rotation: string;
+  notes: string;
 }
 
 interface Props {
@@ -69,11 +71,13 @@ function InspectorEditor({
   const [width, setWidth] = useState(object.width);
   const [height, setHeight] = useState(object.height);
   const [rotation, setRotation] = useState(object.rotation);
+  const [notes, setNotes] = useState(getObjectNotes(object));
 
   const sizeValid = num(width) > 0 && num(height) > 0;
   const rotationValid = Number.isFinite(num(rotation));
   const dirty =
     label !== object.label ||
+    notes !== getObjectNotes(object) ||
     !eqNum(width, object.width) ||
     !eqNum(height, object.height) ||
     !eqNum(rotation, object.rotation);
@@ -119,6 +123,16 @@ function InspectorEditor({
         slotProps={{ htmlInput: { "aria-label": c.inspectorRotationField } }}
       />
       {!sizeValid && <Alert severity="error">{c.inspectorInvalidSize}</Alert>}
+      <TextField
+        label={c.inspectorNotesField}
+        placeholder={c.inspectorNotesPlaceholder}
+        size="small"
+        multiline
+        minRows={2}
+        value={notes}
+        onChange={(e) => setNotes(e.target.value)}
+        slotProps={{ htmlInput: { "aria-label": c.inspectorNotesField } }}
+      />
       <InspectorRow label={c.inspectorPosition} value={`(${object.x}, ${object.y})`} />
       <Stack direction="row" spacing={1}>
         <Button
@@ -126,7 +140,7 @@ function InspectorEditor({
           size="small"
           fullWidth
           disabled={!canSave}
-          onClick={() => onSave({ label, width, height, rotation })}
+          onClick={() => onSave({ label, width, height, rotation, notes })}
         >
           {c.inspectorSave}
         </Button>
@@ -149,6 +163,9 @@ function InspectorReadOnly({ object }: { object: LayoutObject }) {
       <InspectorRow label={c.inspectorPosition} value={`(${object.x}, ${object.y})`} />
       <InspectorRow label={c.inspectorSize} value={`${object.width} × ${object.height}`} />
       <InspectorRow label={c.inspectorRotation} value={`${object.rotation}°`} />
+      {getObjectNotes(object) && (
+        <InspectorRow label={c.inspectorNotesField} value={getObjectNotes(object)} />
+      )}
     </Stack>
   );
 }
@@ -195,7 +212,7 @@ export function LayoutObjectInspector({
         </Typography>
       ) : canEdit && onSave ? (
         <InspectorEditor
-          key={`${object.id}:${object.label}:${object.width}:${object.height}:${object.rotation}`}
+          key={`${object.id}:${object.label}:${object.width}:${object.height}:${object.rotation}:${getObjectNotes(object)}`}
           object={object}
           onSave={onSave}
           onDelete={onDelete}

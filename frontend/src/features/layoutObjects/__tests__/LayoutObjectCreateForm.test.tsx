@@ -64,11 +64,6 @@ describe("LayoutObjectCreateForm", () => {
     expect(screen.getByLabelText(/height/i)).toBeInTheDocument();
   });
 
-  it("renders the bookable checkbox", () => {
-    renderForm();
-    expect(screen.getByLabelText(/bookable/i)).toBeInTheDocument();
-  });
-
   it("calls onSubmit when Add object button is clicked", () => {
     const { onSubmit } = renderForm();
     fireEvent.click(screen.getByRole("button", { name: /add object/i }));

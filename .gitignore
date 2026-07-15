@@ -32,6 +32,17 @@ frontend/.env
 .vscode/
 .idea/
 
+# Claude Code / agent config (personal, machine-specific; not shared)
+.claude/
+.claude/settings.local.json
+
+# AI-workflow working artifacts — kept on disk, never committed (senior-review
+# reports, PR handoff docs, etc.). Product documentation lives in docs/.
+review/
+
+# Tooling caches
+.ruff_cache/
+
 # OS
 .DS_Store
 Thumbs.db

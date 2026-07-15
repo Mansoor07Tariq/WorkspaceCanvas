@@ -19,7 +19,14 @@ from django.contrib.auth import get_user_model
 from django.core.management import call_command
 
 from accounts.models import Invitation, MemberRole, Membership, Organization
-from offices.models import Desk, DeskBooking, Floor, FloorLayoutObject, Office
+from offices.models import (
+    DESK_CAPABLE_TYPES,
+    Desk,
+    DeskBooking,
+    Floor,
+    FloorLayoutObject,
+    Office,
+)
 
 User = get_user_model()
 
@@ -202,18 +209,27 @@ def test_creates_layout_objects():
     assert count >= 5
 
 
+# Bookability is defined ONLY as "a desk-capable layout object with an active
+# Desk" — the is_bookable flag was removed in PR 065 (TD-050). These two tests
+# assert the same seed invariants against that definition.
+
+
 @pytest.mark.django_db
 def test_desk_layout_objects_are_bookable():
     run_seed()
     org = Organization.objects.get(slug=_DEMO_SLUG)
     office = Office.objects.get(organization=org)
     floor = Floor.objects.get(office=office)
-    desk_objects = FloorLayoutObject.objects.filter(
-        floor=floor,
-        object_type=FloorLayoutObject.ObjectType.DESK,
-        is_bookable=True,
+    bookable = (
+        FloorLayoutObject.objects.filter(
+            floor=floor,
+            object_type__in=DESK_CAPABLE_TYPES,
+            desks__is_active=True,
+        )
+        .distinct()
+        .count()
     )
-    assert desk_objects.count() >= 4
+    assert bookable >= 4
 
 
 @pytest.mark.django_db
@@ -222,11 +238,14 @@ def test_non_desk_layout_objects_not_bookable():
     org = Organization.objects.get(slug=_DEMO_SLUG)
     office = Office.objects.get(organization=org)
     floor = Floor.objects.get(office=office)
-    non_desk_bookable = FloorLayoutObject.objects.filter(
-        floor=floor,
-        is_bookable=True,
-    ).exclude(object_type=FloorLayoutObject.ObjectType.DESK)
-    assert non_desk_bookable.count() == 0
+    # No non-desk-capable object may carry an active Desk resource.
+    non_desk_bookable = (
+        FloorLayoutObject.objects.filter(floor=floor, desks__is_active=True)
+        .exclude(object_type__in=DESK_CAPABLE_TYPES)
+        .distinct()
+        .count()
+    )
+    assert non_desk_bookable == 0
 
 
 # ─── Desks ────────────────────────────────────────────────────────────────────

@@ -69,7 +69,9 @@ export function EnhanceTidyDialog({ tidy }: { tidy: UseEnhanceTidyResult }) {
       ? c.tidyResultSuccess
       : result?.status === "partial_success"
         ? c.tidyResultPartial
-        : c.tidyResultFailed;
+        : result?.status === "skipped"
+          ? c.tidyResultSkipped
+          : c.tidyResultFailed;
 
   const changed = plan?.operations.length ?? 0;
   const isClean = isPreview && changed === 0;
@@ -88,7 +90,7 @@ export function EnhanceTidyDialog({ tidy }: { tidy: UseEnhanceTidyResult }) {
       <DialogContent>
         {tidy.error && (
           <Alert severity="error" role="alert" sx={{ mb: 2 }}>
-            {c.tidyError}
+            {tidy.errorMessage ?? c.tidyError}
           </Alert>
         )}
 
@@ -143,7 +145,7 @@ export function EnhanceTidyDialog({ tidy }: { tidy: UseEnhanceTidyResult }) {
                 <List dense>
                   {plan.diagnostics.map((d) => (
                     <ListItem key={d.code} disableGutters>
-                      <ListItemText primary={d.message} />
+                      <ListItemText primary={c.tidyDiagnostics[d.code] ?? d.message ?? d.code} />
                     </ListItem>
                   ))}
                 </List>

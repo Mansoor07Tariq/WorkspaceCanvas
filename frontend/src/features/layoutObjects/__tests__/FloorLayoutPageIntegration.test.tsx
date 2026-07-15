@@ -143,7 +143,6 @@ const MOCK_OBJ = {
   width: "80.00",
   height: "50.00",
   rotation: "0.00",
-  is_bookable: false,
   metadata: {},
   is_active: true,
   created_at: "",

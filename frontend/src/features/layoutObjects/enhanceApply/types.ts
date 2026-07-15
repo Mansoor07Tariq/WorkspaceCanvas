@@ -5,7 +5,7 @@
  */
 import type { LayoutObject } from "../types/layoutObject.types";
 
-export type EnhanceRunStatus = "success" | "partial_success" | "failed";
+export type EnhanceRunStatus = "success" | "partial_success" | "failed" | "skipped";
 export type EnhanceOperationStatus = "applied" | "failed" | "skipped";
 
 /** Per-operation outcome as reported by the backend. */

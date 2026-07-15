@@ -258,7 +258,6 @@ def test_list_response_fields_present(client, owner_user, active_office, active_
         "width",
         "height",
         "rotation",
-        "is_bookable",
         "metadata",
         "is_active",
         "created_at",
