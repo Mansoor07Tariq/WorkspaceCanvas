@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import zoneinfo
 from datetime import timedelta
+from decimal import Decimal
 
+from django.conf import settings
 from django.utils import timezone
 from rest_framework import serializers
 
@@ -12,6 +14,79 @@ from .permissions import user_can_manage_offices
 _VALID_TIMEZONES: frozenset[str] = frozenset(zoneinfo.available_timezones())
 
 _OPT_STR = {"required": False, "allow_blank": True, "default": ""}
+
+# Geometry sanity bounds (canvas px). The floor boundary maxes out at 4000
+# (Floor.boundary_width/height validators), so these are generous ceilings that
+# reject abuse (e.g. 10^8 coordinates) without rejecting any legitimate layout.
+_MAX_COORD = Decimal("100000")
+_MAX_SIZE = Decimal("100000")
+# Geometry fields an enhance operation is allowed to touch. The apply path must
+# never mutate object_type / metadata, because undo only restores
+# geometry and those changes would be unrevertable (BE-5).
+_GEOMETRY_FIELD_NAMES: frozenset[str] = frozenset(
+    {"x", "y", "width", "height", "rotation"}
+)
+
+
+def resolve_office_today(office: Office):
+    """Return "today" in the office's timezone.
+
+    Booking dates must be judged against the office's local day, not raw UTC —
+    otherwise a user west of UTC is wrongly told the current local day is in the
+    past during their evening (BE-3). Falls back to the configured
+    ``BOOKING_DEFAULT_TIMEZONE`` when the office has no timezone set.
+    """
+    tzname = (getattr(office, "timezone", "") or "").strip()
+    if tzname not in _VALID_TIMEZONES:
+        tzname = settings.BOOKING_DEFAULT_TIMEZONE
+    try:
+        zone = zoneinfo.ZoneInfo(tzname)
+    except Exception:  # pragma: no cover - guarded by _VALID_TIMEZONES above
+        zone = zoneinfo.ZoneInfo("UTC")
+    return timezone.now().astimezone(zone).date()
+
+
+class _LayoutObjectGeometryMixin:
+    """Shared geometry-field validation for the create/update layout-object
+    serializers: positive sizes, bounded coordinates, normalized rotation."""
+
+    def validate_width(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("Width must be greater than 0.")
+        if value > _MAX_SIZE:
+            raise serializers.ValidationError(f"Width must be at most {_MAX_SIZE}.")
+        return value
+
+    def validate_height(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("Height must be greater than 0.")
+        if value > _MAX_SIZE:
+            raise serializers.ValidationError(f"Height must be at most {_MAX_SIZE}.")
+        return value
+
+    def validate_x(self, value):
+        if abs(value) > _MAX_COORD:
+            raise serializers.ValidationError(
+                f"x must be between -{_MAX_COORD} and {_MAX_COORD}."
+            )
+        return value
+
+    def validate_y(self, value):
+        if abs(value) > _MAX_COORD:
+            raise serializers.ValidationError(
+                f"y must be between -{_MAX_COORD} and {_MAX_COORD}."
+            )
+        return value
+
+    def validate_rotation(self, value):
+        if value is None:
+            return value
+        # Normalize to [0, 360). Decimal % follows the dividend's sign (so
+        # -90 % 360 == -90), so fold negatives back into range explicitly.
+        normalized = value % Decimal(360)
+        if normalized < 0:
+            normalized += Decimal(360)
+        return normalized
 
 
 class CreateOfficeSerializer(serializers.Serializer):
@@ -135,7 +210,7 @@ _OPT_DECIMAL_10 = {"max_digits": 10, "decimal_places": 2, "required": False}
 _OPT_DECIMAL_6 = {"max_digits": 6, "decimal_places": 2, "required": False}
 
 
-class CreateLayoutObjectSerializer(serializers.Serializer):
+class CreateLayoutObjectSerializer(_LayoutObjectGeometryMixin, serializers.Serializer):
     object_type = serializers.ChoiceField(choices=FloorLayoutObject.ObjectType.choices)
     label = serializers.CharField(
         max_length=120, required=False, allow_blank=True, default=""
@@ -147,21 +222,10 @@ class CreateLayoutObjectSerializer(serializers.Serializer):
     rotation = serializers.DecimalField(
         max_digits=6, decimal_places=2, required=False, default=0
     )
-    is_bookable = serializers.BooleanField(required=False, default=False)
     metadata = serializers.JSONField(required=False, default=dict)
 
     def validate_label(self, value: str) -> str:
         return value.strip()
-
-    def validate_width(self, value):
-        if value <= 0:
-            raise serializers.ValidationError("Width must be greater than 0.")
-        return value
-
-    def validate_height(self, value):
-        if value <= 0:
-            raise serializers.ValidationError("Height must be greater than 0.")
-        return value
 
     def validate_metadata(self, value):
         if not isinstance(value, dict):
@@ -169,7 +233,7 @@ class CreateLayoutObjectSerializer(serializers.Serializer):
         return value
 
 
-class UpdateLayoutObjectSerializer(serializers.Serializer):
+class UpdateLayoutObjectSerializer(_LayoutObjectGeometryMixin, serializers.Serializer):
     object_type = serializers.ChoiceField(
         choices=FloorLayoutObject.ObjectType.choices, required=False
     )
@@ -179,21 +243,10 @@ class UpdateLayoutObjectSerializer(serializers.Serializer):
     width = serializers.DecimalField(**_OPT_DECIMAL_10)
     height = serializers.DecimalField(**_OPT_DECIMAL_10)
     rotation = serializers.DecimalField(**_OPT_DECIMAL_6)
-    is_bookable = serializers.BooleanField(required=False)
     metadata = serializers.JSONField(required=False)
 
     def validate_label(self, value: str) -> str:
         return value.strip()
-
-    def validate_width(self, value):
-        if value <= 0:
-            raise serializers.ValidationError("Width must be greater than 0.")
-        return value
-
-    def validate_height(self, value):
-        if value <= 0:
-            raise serializers.ValidationError("Height must be greater than 0.")
-        return value
 
     def validate_metadata(self, value):
         if not isinstance(value, dict):
@@ -217,7 +270,6 @@ class LayoutObjectResponseSerializer(serializers.ModelSerializer):
             "width",
             "height",
             "rotation",
-            "is_bookable",
             "metadata",
             "is_active",
             "created_at",
@@ -327,7 +379,15 @@ class CreateDeskBookingSerializer(serializers.Serializer):
     booking_date = serializers.DateField()
 
     def validate_booking_date(self, value):
-        today = timezone.now().date()
+        # "Today" is judged in the office's timezone (BE-3), passed via context.
+        # Without an office in context (defensive), fall back to the configured
+        # default timezone rather than raw UTC.
+        office = self.context.get("office")
+        if office is not None:
+            today = resolve_office_today(office)
+        else:
+            tzname = settings.BOOKING_DEFAULT_TIMEZONE
+            today = timezone.now().astimezone(zoneinfo.ZoneInfo(tzname)).date()
         if value < today:
             raise serializers.ValidationError("Booking date cannot be in the past.")
         max_date = today + timedelta(days=365)
@@ -447,7 +507,12 @@ class DeskBookingResponseSerializer(serializers.ModelSerializer):
 
 class EnhanceOperationInputSerializer(serializers.Serializer):
     """A single object's enhancement operation. Geometry dicts carry
-    {x, y, width, height, rotation} as strings (2-decimal canvas px)."""
+    {x, y, width, height, rotation} as strings (2-decimal canvas px).
+
+    ``before``/``after``/``patch`` are restricted to geometry keys only: the
+    enhance path must never mutate object_type/metadata, because
+    undo restores geometry only and such changes would be unrevertable (BE-5).
+    """
 
     object_id = serializers.IntegerField()
     before = serializers.DictField()
@@ -456,6 +521,30 @@ class EnhanceOperationInputSerializer(serializers.Serializer):
     reason_codes = serializers.ListField(
         child=serializers.CharField(), required=False, default=list
     )
+
+    def _geometry_only(self, value: dict, field_name: str) -> dict:
+        extra = set(value.keys()) - _GEOMETRY_FIELD_NAMES
+        if extra:
+            raise serializers.ValidationError(
+                f"'{field_name}' may only contain geometry fields "
+                f"{sorted(_GEOMETRY_FIELD_NAMES)}; got unexpected {sorted(extra)}."
+            )
+        return value
+
+    def validate_before(self, value):
+        return self._geometry_only(value, "before")
+
+    def validate_after(self, value):
+        return self._geometry_only(value, "after")
+
+    def validate_patch(self, value):
+        return self._geometry_only(value, "patch")
+
+
+# A single apply may not touch more objects than a floor could plausibly hold —
+# caps the per-request DB write amplification of an unbounded operations array
+# (BE-11). Real floors carry a few hundred objects at most.
+_MAX_ENHANCE_OPERATIONS = 1000
 
 
 class ApplyEnhanceRunSerializer(serializers.Serializer):
@@ -467,6 +556,10 @@ class ApplyEnhanceRunSerializer(serializers.Serializer):
     def validate_operations(self, value):
         if not value:
             raise serializers.ValidationError("At least one operation is required.")
+        if len(value) > _MAX_ENHANCE_OPERATIONS:
+            raise serializers.ValidationError(
+                f"Too many operations (max {_MAX_ENHANCE_OPERATIONS})."
+            )
         return value
 
 

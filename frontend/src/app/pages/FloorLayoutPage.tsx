@@ -49,8 +49,8 @@ import {
 } from "@/features/layoutObjects/components/LayoutObjectInspector";
 import { LayoutCanvasToolbar } from "@/features/layoutObjects/components/LayoutCanvasToolbar";
 import { useDesks } from "@/features/desks/hooks/useDesks";
-import { DeskResourcePanel } from "@/features/desks/components/DeskResourcePanel";
 import type { LayoutObjectType } from "@/features/layoutObjects/types/layoutObject.types";
+import { isDeskCapableType } from "@/features/layoutObjects/constants/deskCapableTypes";
 
 // Konva is large — lazy-load so it stays out of the initial bundle
 const FloorMapCanvas = lazy(() =>
@@ -105,10 +105,9 @@ export function FloorLayoutPage() {
     savingObjectIds,
   } = useLayoutObjects(isNaN(officeId) ? 0 : officeId, isNaN(floorId) ? 0 : floorId);
 
-  const { desks, refresh: refreshDesks } = useDesks(
-    isNaN(officeId) ? 0 : officeId,
-    isNaN(floorId) ? 0 : floorId
-  );
+  // Desks are still fetched to resolve this floor's organization (role gating);
+  // bookability no longer depends on them — desk objects are always bookable.
+  const { desks } = useDesks(isNaN(officeId) ? 0 : officeId, isNaN(floorId) ? 0 : floorId);
 
   // TD-045: gate layout-editing affordances on the membership for THIS floor's
   // organization (resolved from the loaded desks, which carry their org id), so
@@ -121,9 +120,11 @@ export function FloorLayoutPage() {
     getMembershipForOrganization(activeMemberships, floorOrganizationId) ?? selectedMembership;
   const canManageLayout = canManageWorkspaceContent(membership?.role);
 
+  // Desks and standing desks are always bookable (PR 065) — the green dot shows
+  // for every desk object, no manual "make bookable" step.
   const bookableObjectIds = useMemo(
-    () => new Set(desks.map((desk) => desk.layout_object)),
-    [desks]
+    () => new Set(objects.filter((o) => isDeskCapableType(o.object_type)).map((o) => o.id)),
+    [objects]
   );
 
   // ─── Editable, persisted floor boundary ───────────────────────────────────
@@ -281,7 +282,6 @@ export function FloorLayoutPage() {
         width: formatCoordinate(width),
         height: formatCoordinate(height),
         rotation: formatCoordinate(rotation),
-        is_bookable: false,
       });
       addObjectLocally(created);
       // One click places one door/window: clear the canvas selection and the
@@ -316,7 +316,6 @@ export function FloorLayoutPage() {
           width: formatCoordinate(width),
           height: formatCoordinate(height),
           rotation: "0.00",
-          is_bookable: false,
         });
         addObjectLocally(created);
         setSelectedObjectId(created.id);
@@ -339,7 +338,8 @@ export function FloorLayoutPage() {
     [setField, handleQuickAdd]
   );
 
-  // Persist inspector edits (label / size / rotation) with optimistic rollback.
+  // Persist inspector edits (label / size / rotation / notes) with optimistic
+  // rollback. Notes live in metadata, merged so other keys are preserved.
   const handleSaveDetails = useCallback(
     async (id: number, patch: InspectorPatch) => {
       const prev = objects.find((o) => o.id === id);
@@ -349,6 +349,7 @@ export function FloorLayoutPage() {
         width: formatCoordinate(parseFloat(patch.width)),
         height: formatCoordinate(parseFloat(patch.height)),
         rotation: formatCoordinate(parseFloat(patch.rotation)),
+        metadata: { ...prev.metadata, notes: patch.notes },
       };
       updateObjectLocally(id, update);
       setSaving(id, true);
@@ -361,6 +362,7 @@ export function FloorLayoutPage() {
           width: prev.width,
           height: prev.height,
           rotation: prev.rotation,
+          metadata: prev.metadata,
         });
         setLayoutSaveError(getApiErrorMessage(err));
       } finally {
@@ -641,17 +643,6 @@ export function FloorLayoutPage() {
                 onDelete={
                   selectedObject ? () => void handleDeleteSelected(selectedObject.id) : undefined
                 }
-              />
-              <DeskResourcePanel
-                key={selectedObject?.id ?? "none"}
-                selectedObject={selectedObject}
-                desks={desks}
-                officeId={officeId}
-                floorId={floorId}
-                canManageLayout={canManageLayout}
-                onDeskCreated={refreshDesks}
-                onDeskUpdated={refreshDesks}
-                onDeskDeleted={refreshDesks}
               />
             </Stack>
           </Grid>

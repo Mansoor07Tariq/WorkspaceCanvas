@@ -36,11 +36,10 @@ class FloorLayoutObjectAdmin(admin.ModelAdmin):
         "floor",
         "object_type",
         "label",
-        "is_bookable",
         "is_active",
         "updated_at",
     ]
-    list_filter = ["object_type", "is_bookable", "is_active"]
+    list_filter = ["object_type", "is_active"]
     search_fields = ["label", "floor__name", "floor__office__name"]
     readonly_fields = ["created_at", "updated_at"]
     raw_id_fields = ["floor"]

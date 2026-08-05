@@ -19,7 +19,6 @@ const baseFields: LayoutObjectFormFields = {
   width: "80",
   height: "50",
   rotation: "0",
-  is_bookable: false,
 };
 
 describe("validateObjectType", () => {
@@ -169,11 +168,6 @@ describe("buildLayoutObjectPayload", () => {
     expect("office_id" in payload).toBe(false);
     expect("floor_id" in payload).toBe(false);
   });
-
-  it("sets is_bookable from fields", () => {
-    const payload = buildLayoutObjectPayload({ ...baseFields, is_bookable: true });
-    expect(payload.is_bookable).toBe(true);
-  });
 });
 
 describe("makeDefaultFields", () => {
@@ -197,10 +191,5 @@ describe("makeDefaultFields", () => {
   it("sets rotation to 0 by default", () => {
     const fields = makeDefaultFields("desk");
     expect(fields.rotation).toBe("0");
-  });
-
-  it("sets is_bookable to false by default", () => {
-    const fields = makeDefaultFields("desk");
-    expect(fields.is_bookable).toBe(false);
   });
 });

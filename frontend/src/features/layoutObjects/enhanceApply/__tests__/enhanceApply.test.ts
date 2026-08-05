@@ -25,7 +25,7 @@ const plan: EnhancePlan = {
       before: { x: "100.00", y: "100.00", width: "80.00", height: "50.00", rotation: "0.00" },
       after: { x: "120.00", y: "100.00", width: "80.00", height: "50.00", rotation: "0.00" },
       patch: { x: "120.00" },
-      reasonCodes: ["snapped-to-wall"],
+      reasonCodes: ["repositioned"],
     },
   ],
   diagnostics: [],
@@ -38,7 +38,7 @@ const result: EnhanceRunResult = {
   applied_count: 1,
   failed_count: 0,
   skipped_count: 0,
-  operation_results: [{ object_id: 7, status: "applied", reason_codes: ["snapped-to-wall"] }],
+  operation_results: [{ object_id: 7, status: "applied", reason_codes: ["repositioned"] }],
   updated_objects: [],
 };
 
@@ -61,7 +61,7 @@ describe("applyEnhancePlan", () => {
         {
           object_id: 7,
           patch: { x: "120.00" },
-          reason_codes: ["snapped-to-wall"],
+          reason_codes: ["repositioned"],
         },
       ],
     });

@@ -16,6 +16,7 @@ import {
   newPlanId,
   type EnhanceRunResult,
 } from "../enhanceApply";
+import { getApiErrorMessage } from "@/lib/api/getApiErrorMessage";
 import type { LayoutObject } from "../types/layoutObject.types";
 
 export type TidyPhase = "idle" | "preview" | "result";
@@ -63,6 +64,8 @@ export interface UseEnhanceTidyResult {
   lastAction: TidyAction | null;
   busy: boolean;
   error: boolean;
+  /** The server's error detail for the last failed action (null when none). */
+  errorMessage: string | null;
   canUndo: boolean;
   canRetry: boolean;
   openPreview: () => void;
@@ -89,6 +92,7 @@ export function useEnhanceTidy({
   const [lastAction, setLastAction] = useState<TidyAction | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const reset = useCallback(() => {
     setPhase("idle");
@@ -100,6 +104,7 @@ export function useEnhanceTidy({
     setRunId(null);
     setLastAction(null);
     setError(false);
+    setErrorMessage(null);
   }, []);
 
   const openPreview = useCallback(() => {
@@ -113,6 +118,7 @@ export function useEnhanceTidy({
     setResult(null);
     setLastAction(null);
     setError(false);
+    setErrorMessage(null);
     setPhase("preview");
   }, [buildInput]);
 
@@ -153,6 +159,7 @@ export function useEnhanceTidy({
     };
     setBusy(true);
     setError(false);
+    setErrorMessage(null);
     try {
       const res = await applyEnhancePlan(officeId, floorId, selectedPlan, effectivePlanId);
       onObjectsUpdated(res.updated_objects);
@@ -160,8 +167,9 @@ export function useEnhanceTidy({
       setRunId(res.applied_count > 0 ? res.enhance_run_id : null);
       setLastAction("apply");
       setPhase("result");
-    } catch {
+    } catch (e) {
       setError(true);
+      setErrorMessage(getApiErrorMessage(e));
     } finally {
       setBusy(false);
     }
@@ -171,14 +179,16 @@ export function useEnhanceTidy({
     if (runId == null) return;
     setBusy(true);
     setError(false);
+    setErrorMessage(null);
     try {
       const res = await undoEnhanceRun(officeId, floorId, runId);
       onObjectsUpdated(res.updated_objects);
       setResult(res);
       setRunId(null); // single-level undo
       setLastAction("undo");
-    } catch {
+    } catch (e) {
       setError(true);
+      setErrorMessage(getApiErrorMessage(e));
     } finally {
       setBusy(false);
     }
@@ -188,13 +198,15 @@ export function useEnhanceTidy({
     if (runId == null) return;
     setBusy(true);
     setError(false);
+    setErrorMessage(null);
     try {
       const res = await retryEnhanceRun(officeId, floorId, runId);
       onObjectsUpdated(res.updated_objects);
       setResult(res);
       setLastAction("retry");
-    } catch {
+    } catch (e) {
       setError(true);
+      setErrorMessage(getApiErrorMessage(e));
     } finally {
       setBusy(false);
     }
@@ -216,6 +228,7 @@ export function useEnhanceTidy({
     lastAction,
     busy,
     error,
+    errorMessage,
     canUndo,
     canRetry,
     openPreview,

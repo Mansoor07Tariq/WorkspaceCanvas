@@ -149,7 +149,7 @@ export const LAYOUT_OBJECT_LIBRARY: LayoutObjectDefinition[] = [
   // Rooms & Zones
   {
     type: "room",
-    label: "Empty Room",
+    label: "Room",
     category: "Rooms & Zones",
     defaultSize: { width: 200, height: 150 },
     bookableCandidate: true,

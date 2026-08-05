@@ -14,7 +14,6 @@ const mockObject: LayoutObject = {
   width: "80.00",
   height: "50.00",
   rotation: "0.00",
-  is_bookable: false,
   metadata: {},
   is_active: true,
   created_at: "2026-05-30T00:00:00Z",
@@ -103,7 +102,25 @@ describe("LayoutObjectInspector", () => {
       width: "80.00",
       height: "50.00",
       rotation: "0.00",
+      notes: "",
     });
+  });
+
+  it("edits and saves notes", () => {
+    const onSave = vi.fn();
+    render(<LayoutObjectInspector object={mockObject} canEdit onSave={onSave} />);
+    fireEvent.change(screen.getByLabelText("Notes"), { target: { value: "Near the window" } });
+    fireEvent.click(screen.getByRole("button", { name: /^save$/i }));
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ notes: "Near the window" }));
+  });
+
+  it("shows existing notes in read-only mode", () => {
+    render(
+      <LayoutObjectInspector
+        object={{ ...mockObject, metadata: { notes: "Standing desk by the door" } }}
+      />
+    );
+    expect(screen.getByText("Standing desk by the door")).toBeInTheDocument();
   });
 
   it("disables Save and warns on an invalid size", () => {

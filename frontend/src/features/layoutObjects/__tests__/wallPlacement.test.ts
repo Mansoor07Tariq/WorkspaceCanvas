@@ -36,7 +36,6 @@ function wall(overrides: Partial<LayoutObject> = {}): LayoutObject {
     width: "100.00",
     height: "10.00",
     rotation: "0.00",
-    is_bookable: false,
     metadata: {},
     is_active: true,
     created_at: "",

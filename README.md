@@ -278,6 +278,39 @@ make frontend-docker-down   # stop frontend Docker services
 make ci                     # run all lint, format, migration check, test, and build checks locally
 ```
 
+## Running Tests
+
+### Backend (pytest)
+
+The simplest way, from the repository root:
+
+```bash
+make backend-test           # cd backend && POSTGRES_HOST=localhost pytest
+```
+
+If you run `pytest` by hand, two things bite you — both are environment, not code:
+
+1. **Run it from `backend/`.** `pytest.ini` (which sets `DJANGO_SETTINGS_MODULE`) lives in
+   `backend/`, so running `pytest` from the repo root fails with
+   `ImproperlyConfigured: settings are not configured`.
+2. **Override the DB host** when running against a Postgres on the host machine.
+   `backend/.env` sets `POSTGRES_HOST=db` (the docker-compose service name), which does not
+   resolve outside the compose network.
+
+```bash
+cd backend
+POSTGRES_HOST=localhost pytest          # against a host Postgres on localhost:5432
+```
+
+Inside the Docker network (where the host `db` resolves) the plain `pytest` works and the
+override is unnecessary.
+
+### Frontend (vitest)
+
+```bash
+cd frontend && npm test                 # vitest run
+```
+
 ## Local Development
 
 ### Prerequisites

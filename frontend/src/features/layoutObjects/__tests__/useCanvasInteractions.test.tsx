@@ -25,7 +25,6 @@ const OBJ: LayoutObject = {
   width: "80.00",
   height: "50.00",
   rotation: "0.00",
-  is_bookable: false,
   metadata: {},
   is_active: true,
   created_at: "",
@@ -382,9 +381,14 @@ describe("useCanvasInteractions — transform", () => {
       result.current.handleObjectTransform(42, 50, 60, 120, 70, 40);
     });
 
+    // x/y reflect the rotation-aware boundary clamp (FE-1): a 120×70 object at
+    // rotation 40° whose centre lands in the top-left corner is pushed in so its
+    // ROTATED footprint (half-extents ≈ 68.5 × 65.4) clears the top and left walls
+    // — centre.x → 48 + 68.46, centre.y → 48 + 65.37. Previously the unrotated
+    // clamp left the rotated corners poking through the walls.
     expect(mockUpdate).toHaveBeenCalledWith(1, 3, 42, {
-      x: "50.00",
-      y: "60.00",
+      x: "56.46",
+      y: "78.38",
       width: "120.00",
       height: "70.00",
       rotation: "40.00",
@@ -433,9 +437,11 @@ describe("useCanvasInteractions — transform", () => {
     });
 
     const payload = mockUpdate.mock.calls[0][3] as Record<string, unknown>;
+    // y reflects the rotation-aware boundary clamp (FE-1): the 40°-rotated object's
+    // footprint is pushed down off the top wall (centre.y → 48 + hy(120,80,40°)).
     expect(payload).toMatchObject({
       x: "60.00",
-      y: "60.00",
+      y: "77.21",
       width: "120.00",
       height: "80.00",
       rotation: "40.00",

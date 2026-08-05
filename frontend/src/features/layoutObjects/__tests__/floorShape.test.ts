@@ -25,7 +25,6 @@ function obj(overrides: Partial<LayoutObject> = {}): LayoutObject {
     width: "200.00",
     height: "150.00",
     rotation: "0.00",
-    is_bookable: false,
     metadata: {},
     is_active: true,
     created_at: "",

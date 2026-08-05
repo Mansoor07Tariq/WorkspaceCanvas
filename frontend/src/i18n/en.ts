@@ -405,7 +405,6 @@ export const en = {
       widthLabel: "Width",
       heightLabel: "Height",
       rotationLabel: "Rotation (deg)",
-      isBookableLabel: "Bookable",
       positionRequired: "Position is required.",
       positionInvalid: "Enter a valid number.",
       sizeRequired: "Size is required.",
@@ -461,6 +460,8 @@ export const en = {
       inspectorWidthField: "Width",
       inspectorHeightField: "Height",
       inspectorRotationField: "Rotation",
+      inspectorNotesField: "Notes",
+      inspectorNotesPlaceholder: "Add notes (shown on hover in the published map)",
       inspectorInvalidSize: "Width and height must be greater than 0.",
 
       // Canvas toolbar (grid / snap controls)
@@ -494,6 +495,12 @@ export const en = {
       tidyResultSuccess: "Layout tidied",
       tidyResultPartial: "Tidy partially applied",
       tidyResultFailed: "Tidy could not be applied",
+      tidyResultSkipped: "No changes were needed",
+      // Engine diagnostics — the pure engine emits a code; copy lives here.
+      tidyDiagnostics: {
+        "max-iterations-reached":
+          "Enhance stopped before the layout fully settled; results may be partial.",
+      } as Record<string, string>,
       tidyResultSummary: "{applied} updated · {failed} failed · {skipped} skipped",
       tidyResultDetails: "Details",
       tidyUndo: "Undo applied changes",
@@ -521,29 +528,11 @@ export const en = {
       tidySuggestFallbackNamePlural: "Objects",
       tidySuggestDetailsToggle: "Technical details",
       tidySuggestions: {
-        cutout: {
-          single: "{name} overlaps a cutout area",
-          singleDesc: "I can move it back into the usable floor space.",
-          group: "{name} overlap a cutout area",
-          groupDesc: "I can move them back into the usable floor space.",
-        },
-        boundary: {
-          single: "{name} is outside the office boundary",
-          singleDesc: "I can move it back inside the usable floor area.",
-          group: "{name} are outside the office boundary",
-          groupDesc: "I can move them back inside the usable floor area.",
-        },
         wallExtend: {
           single: "A wall segment can connect more cleanly",
           singleDesc: "I can extend it so it meets the nearby structure.",
           group: "A few wall segments can connect more cleanly",
           groupDesc: "I can extend them so they meet the nearby structure.",
-        },
-        wallSnap: {
-          single: "{name} is close to a wall",
-          singleDesc: "I can align it neatly with the nearby wall.",
-          group: "{name} are close to a wall",
-          groupDesc: "I can align them neatly with the nearby walls.",
         },
         arrange: {
           single: "{name} is slightly out of line",
@@ -628,13 +617,6 @@ export const en = {
       keyboardHintSnap: "Tap arrow keys to move by one grid step.",
     },
     desks: {
-      // Panel
-      panelTitle: "Desk Resource",
-      notDeskCapable: "This object type cannot be set up as a bookable desk.",
-      noDesk: "Not yet set up as a bookable desk.",
-      createAction: "Set up as bookable desk",
-      deactivateAction: "Remove desk",
-
       // Form labels
       nameLabel: "Desk name",
       namePlaceholder: "e.g. Desk A1",
@@ -646,7 +628,6 @@ export const en = {
       notesLabel: "Notes",
       notesPlaceholder: "Any additional notes…",
       submitCreate: "Create desk",
-      editAction: "Edit desk",
       submitEdit: "Save changes",
       cancelEdit: "Cancel",
       editError: "Could not update desk. Please try again.",
@@ -668,7 +649,6 @@ export const en = {
       createError: "Could not create desk. Please try again.",
       createErrorPermission: "You do not have permission to create a desk here.",
       createErrorValidation: "Please check your input and try again.",
-      deactivateError: "Could not remove desk. Please try again.",
     },
     pages: {
       comingSoon: "This feature is coming soon.",

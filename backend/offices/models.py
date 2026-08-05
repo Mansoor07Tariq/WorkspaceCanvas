@@ -47,7 +47,9 @@ class Office(models.Model):
     def generate_slug(cls, name: str, organization: Organization) -> str:
         """Returns a candidate slug. Uniqueness is not guaranteed; callers must handle
         IntegrityError or retry on collision."""
-        base = slugify(name) or "office"
+        # BE-15: clamp the base so base + "-<suffix>" can never exceed the
+        # SlugField's max_length (255) and blow up as an uncaught DataError.
+        base = (slugify(name) or "office")[:245]
         slug = base
         suffix = 1
         while cls.objects.filter(organization=organization, slug=slug).exists():
@@ -116,7 +118,9 @@ class Floor(models.Model):
     def generate_slug(cls, name: str, office: Office) -> str:
         """Returns a candidate slug. Uniqueness is not guaranteed; callers must handle
         IntegrityError or retry on collision."""
-        base = slugify(name) or "floor"
+        # BE-15: clamp the base so base + "-<suffix>" can never exceed the
+        # SlugField's max_length (255) and blow up as an uncaught DataError.
+        base = (slugify(name) or "floor")[:245]
         slug = base
         suffix = 1
         while cls.objects.filter(office=office, slug=slug).exists():
@@ -202,7 +206,6 @@ class FloorLayoutObject(models.Model):
     height = models.DecimalField(max_digits=10, decimal_places=2)
     rotation = models.DecimalField(max_digits=6, decimal_places=2, default=0)
 
-    is_bookable = models.BooleanField(default=False)
     metadata = models.JSONField(default=dict, blank=True)
 
     is_active = models.BooleanField(default=True)
@@ -212,7 +215,6 @@ class FloorLayoutObject(models.Model):
     class Meta:
         ordering = ["created_at"]
         indexes = [
-            models.Index(fields=["floor"], name="layout_obj_floor_idx"),
             models.Index(
                 fields=["floor", "object_type"],
                 name="layout_obj_floor_type_idx",
@@ -220,6 +222,15 @@ class FloorLayoutObject(models.Model):
             models.Index(
                 fields=["floor", "is_active"],
                 name="layout_obj_floor_active_idx",
+            ),
+        ]
+        constraints = [
+            # BE-8: geometry sanity at the DB level, not only in the two DRF
+            # serializers — any non-serializer write path (shell, bulk op, future
+            # service) still cannot persist a zero/negative-sized object.
+            models.CheckConstraint(
+                condition=Q(width__gt=0) & Q(height__gt=0),
+                name="layout_obj_positive_size",
             ),
         ]
 
@@ -465,6 +476,9 @@ class EnhanceRun(models.Model):
         SUCCESS = "success", "Success"
         PARTIAL_SUCCESS = "partial_success", "Partial success"
         FAILED = "failed", "Failed"
+        # Nothing applied and nothing failed — every operation was a no-op
+        # (already tidy / stale / not on this floor). Not a failure (BE-12).
+        SKIPPED = "skipped", "Skipped"
 
     floor = models.ForeignKey(
         Floor,

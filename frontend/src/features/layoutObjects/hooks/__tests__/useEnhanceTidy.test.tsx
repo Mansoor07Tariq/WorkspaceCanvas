@@ -30,7 +30,6 @@ function obj(overrides: Partial<LayoutObject> = {}): LayoutObject {
     width: "80.00",
     height: "50.00",
     rotation: "0.00",
-    is_bookable: false,
     metadata: {},
     is_active: true,
     created_at: "",
@@ -224,5 +223,65 @@ describe("useEnhanceTidy", () => {
       await result.current.apply();
     });
     await waitFor(() => expect(result.current.error).toBe(true));
+  });
+
+  // FE-5: the failure detail must survive, not collapse into a boolean.
+  it("surfaces an error message when apply fails (not just a boolean)", async () => {
+    mockApply.mockRejectedValue(new Error("network"));
+    const { result } = setup();
+    act(() => result.current.openPreview());
+    await act(async () => {
+      await result.current.apply();
+    });
+    await waitFor(() => expect(result.current.error).toBe(true));
+    expect(result.current.errorMessage).toEqual(expect.any(String));
+    expect(result.current.errorMessage).not.toBe("");
+  });
+
+  it("surfaces an error message when undo fails, and stops being busy", async () => {
+    mockApply.mockResolvedValue(runResult());
+    mockUndo.mockRejectedValue(new Error("boom"));
+    const { result } = setup();
+    act(() => result.current.openPreview());
+    await act(async () => {
+      await result.current.apply();
+    });
+    await act(async () => {
+      await result.current.undo();
+    });
+    await waitFor(() => expect(result.current.error).toBe(true));
+    expect(result.current.errorMessage).toEqual(expect.any(String));
+    expect(result.current.busy).toBe(false); // finally{} always resets — no stranded spinner
+  });
+
+  it("surfaces an error message when retry fails, and stops being busy", async () => {
+    mockApply.mockResolvedValue(
+      runResult({ status: "partial_success", applied_count: 1, failed_count: 1 })
+    );
+    mockRetry.mockRejectedValue(new Error("boom"));
+    const { result } = setup();
+    act(() => result.current.openPreview());
+    await act(async () => {
+      await result.current.apply();
+    });
+    await act(async () => {
+      await result.current.retry();
+    });
+    await waitFor(() => expect(result.current.error).toBe(true));
+    expect(result.current.errorMessage).toEqual(expect.any(String));
+    expect(result.current.busy).toBe(false);
+  });
+
+  it("clears the error message when a new preview is opened", async () => {
+    mockApply.mockRejectedValue(new Error("network"));
+    const { result } = setup();
+    act(() => result.current.openPreview());
+    await act(async () => {
+      await result.current.apply();
+    });
+    await waitFor(() => expect(result.current.error).toBe(true));
+    act(() => result.current.openPreview());
+    expect(result.current.error).toBe(false);
+    expect(result.current.errorMessage).toBeNull();
   });
 });

@@ -37,6 +37,7 @@ import {
   computeFloorWallSegments,
 } from "../utils/floorShape";
 import { getLayoutObjectRenderConfig } from "../utils/layoutObjectRenderConfig";
+import { getObjectNotes } from "../utils/layoutObjectNotes";
 import { useCanvasViewport } from "../hooks/useCanvasViewport";
 import { LayoutObjectCanvasNode } from "./LayoutObjectCanvasNode";
 import { CanvasZoomControls } from "./CanvasZoomControls";
@@ -302,6 +303,9 @@ export function FloorMapCanvas({
   const roomResizeRef = useRef<Konva.Rect>(null);
   const boundaryTransformerRef = useRef<Konva.Transformer>(null);
   const [boundarySelected, setBoundarySelected] = useState(false);
+  // Notes tooltip on hover — shown in the "real office" views (enhanced/booking).
+  const [hoveredObjectId, setHoveredObjectId] = useState<number | null>(null);
+  const notesTooltipEnabled = enhanced || isBookingMode;
   const canSelectBoundary = canManageLayout && !isBookingMode && !!onBoundaryResize;
   const canResizeBoundary = canSelectBoundary && boundarySelected;
 
@@ -323,12 +327,14 @@ export function FloorMapCanvas({
   function handleObjectDragMove(obj: LayoutObject, node: Konva.Node) {
     const w = parseFloat(obj.width);
     const h = parseFloat(obj.height);
+    const rot = parseFloat(obj.rotation) || 0;
     // Node position is the object's centre (group origin); convert to top-left.
     const { x, y, guides } = computeNeighborSnap(
       node.x() - w / 2,
       node.y() - h / 2,
       w,
       h,
+      rot,
       objects,
       obj.id
     );
@@ -578,6 +584,31 @@ export function FloorMapCanvas({
     return lines;
   }, [showGrid, enhanced, gridSize, stageWidth, stageHeight]);
 
+  // Notes tooltip anchor (in screen px within the scroll container): the hovered
+  // desk's bottom-centre, mapped through the viewport so it tracks pan/zoom and
+  // accounts for 90/270° rotation (footprint height = stored width).
+  const notesTooltip = (() => {
+    if (!notesTooltipEnabled || hoveredObjectId == null) return null;
+    const ho = objects.find((o) => o.id === hoveredObjectId);
+    if (!ho) return null;
+    const notes = getObjectNotes(ho).trim();
+    if (!notes) return null;
+    const ox = parseFloat(ho.x);
+    const oy = parseFloat(ho.y);
+    const ow = parseFloat(ho.width);
+    const oh = parseFloat(ho.height);
+    const rot = parseFloat(ho.rotation) || 0;
+    const quarter = rot === 90 || rot === 270;
+    const cx = ox + ow / 2;
+    const bottomY = oy + oh / 2 + (quarter ? ow : oh) / 2;
+    return {
+      left: cx * viewport.scale + viewport.x,
+      top: bottomY * viewport.scale + viewport.y,
+      label: ho.label,
+      notes,
+    };
+  })();
+
   return (
     <Box
       role="region"
@@ -600,8 +631,9 @@ export function FloorMapCanvas({
       }}
     >
       {/* Inner scroll container so the absolutely-positioned zoom controls stay
-          anchored to the visible canvas frame, not the scrolled stage. */}
-      <Box sx={{ overflow: "auto", borderRadius: 1 }}>
+          anchored to the visible canvas frame, not the scrolled stage. Position
+          relative so the HTML notes tooltip scrolls/zooms with the stage. */}
+      <Box sx={{ position: "relative", overflow: "auto", borderRadius: 1 }}>
         <Stage
           width={stageWidth}
           height={stageHeight}
@@ -697,6 +729,7 @@ export function FloorMapCanvas({
                   hasDesk={bookableObjectIds?.has(obj.id)}
                   isBookingMode={isBookingMode}
                   enhanced={enhanced}
+                  onHover={notesTooltipEnabled ? setHoveredObjectId : undefined}
                   availabilityStatus={availabilityStatus}
                   isAvailabilitySelected={isAvailabilitySelected}
                   onAvailabilitySelect={
@@ -716,7 +749,13 @@ export function FloorMapCanvas({
                 rotationSnapTolerance={5}
                 enabledAnchors={selectedIsWallMounted ? ["middle-left", "middle-right"] : undefined}
                 boundBoxFunc={(oldBox, newBox) => {
-                  if (newBox.width < MIN_OBJECT_SIZE || newBox.height < MIN_OBJECT_SIZE) {
+                  // newBox is in absolute (zoom-scaled) screen px; divide out the
+                  // stage scale so the world-space minimum holds at any zoom (FE-6).
+                  const scale = viewport.scale || 1;
+                  if (
+                    newBox.width / scale < MIN_OBJECT_SIZE ||
+                    newBox.height / scale < MIN_OBJECT_SIZE
+                  ) {
                     return oldBox;
                   }
                   return newBox;
@@ -767,11 +806,14 @@ export function FloorMapCanvas({
                 borderStroke={BOUNDARY_HANDLE_COLOR}
                 borderDash={[6, 4]}
                 onTransformEnd={handleBoundaryTransformEnd}
-                boundBoxFunc={(oldBox, newBox) =>
-                  newBox.width < MIN_FLOOR_BOUNDARY || newBox.height < MIN_FLOOR_BOUNDARY
+                boundBoxFunc={(oldBox, newBox) => {
+                  // Zoom-invariant min (FE-6): newBox is in scaled screen px.
+                  const scale = viewport.scale || 1;
+                  return newBox.width / scale < MIN_FLOOR_BOUNDARY ||
+                    newBox.height / scale < MIN_FLOOR_BOUNDARY
                     ? oldBox
-                    : newBox
-                }
+                    : newBox;
+                }}
               />
             </Layer>
           )}
@@ -834,6 +876,54 @@ export function FloorMapCanvas({
             </Layer>
           )}
         </Stage>
+        {notesTooltip && (
+          <Box
+            sx={{
+              position: "absolute",
+              left: notesTooltip.left,
+              top: notesTooltip.top,
+              transform: "translateX(-50%)",
+              zIndex: 4,
+              pointerEvents: "none",
+              maxWidth: 240,
+            }}
+          >
+            <Box
+              sx={{
+                position: "relative",
+                mt: "7px",
+                bgcolor: "rgba(17,24,39,0.96)",
+                color: "#fff",
+                px: 1.25,
+                py: 0.75,
+                borderRadius: 1.5,
+                boxShadow: 6,
+                fontSize: "0.75rem",
+                lineHeight: 1.4,
+                whiteSpace: "pre-wrap",
+                wordBreak: "break-word",
+                textAlign: "left",
+                "&::before": {
+                  content: '""',
+                  position: "absolute",
+                  top: "-5px",
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  width: 0,
+                  height: 0,
+                  borderLeft: "5px solid transparent",
+                  borderRight: "5px solid transparent",
+                  borderBottom: "5px solid rgba(17,24,39,0.96)",
+                },
+              }}
+            >
+              {notesTooltip.label && (
+                <Box sx={{ fontWeight: 700, mb: 0.25 }}>{notesTooltip.label}</Box>
+              )}
+              {notesTooltip.notes}
+            </Box>
+          </Box>
+        )}
       </Box>
 
       <CanvasZoomControls

@@ -27,7 +27,6 @@ import {
 } from "../utils/wallPlacement";
 import { snapToNeighbors, overlapsBlockingObject, resolveDrop } from "../utils/objectSnapping";
 import { getCutoutRects, snapCutoutToNeighbors } from "../utils/floorShape";
-import type { NormalizationPatch } from "../utils/enhanceNormalize";
 import type { LayoutObject } from "../types/layoutObject.types";
 
 const c = en.app.layoutObjects;
@@ -83,8 +82,6 @@ export interface UseCanvasInteractionsResult {
     shiftX: number,
     shiftY: number
   ) => void;
-  /** Persist the Enhance tidy-up patches (snap-to-wall, connect/equalize desks). */
-  applyNormalization: (patches: NormalizationPatch[]) => void;
   /** Error message for the last failed move/transform PATCH (undefined when none). */
   layoutSaveError: string | undefined;
   setLayoutSaveError: (value: string | undefined) => void;
@@ -220,14 +217,16 @@ export function useCanvasInteractions({
       }
 
       // Snap to grid (if enabled) → align to adjacent objects → clamp to room.
+      // All three are rotation-aware (FE-1/FE-4) so a rotated object aligns and
+      // stays inside by its true footprint, not its unrotated box.
+      const rot = parseFloat(prevObj.rotation) || 0;
       const { x: sx, y: sy } = snapEnabled
         ? snapObjectToGrid(rawX, rawY, gridSize)
         : { x: rawX, y: rawY };
-      const { x: ax, y: ay } = snapToNeighbors(sx, sy, w, h, objects, objectId);
-      const clamped = clampObjectToBoundary(ax, ay, w, h, boundary);
+      const { x: ax, y: ay } = snapToNeighbors(sx, sy, w, h, rot, objects, objectId);
+      const clamped = clampObjectToBoundary(ax, ay, w, h, boundary, rot);
 
       // Overlap: push aside for a single object, revert for 2+ (or unresolvable).
-      const rot = parseFloat(prevObj.rotation) || 0;
       const drop = resolveDrop(
         clamped.x,
         clamped.y,
@@ -241,7 +240,7 @@ export function useCanvasInteractions({
       if (drop.reverted) {
         return { x: parseFloat(prevObj.x), y: parseFloat(prevObj.y) };
       }
-      const { x, y } = clampObjectToBoundary(drop.x, drop.y, w, h, boundary);
+      const { x, y } = clampObjectToBoundary(drop.x, drop.y, w, h, boundary, rot);
 
       // Walls carry their mounted doors/windows; everything else moves alone.
       if (prevObj.object_type === "wall") {
@@ -266,7 +265,8 @@ export function useCanvasInteractions({
         const h = parseFloat(obj.height);
         const x = parseFloat(obj.x);
         const y = parseFloat(obj.y);
-        const { x: cx, y: cy } = clampObjectToBoundary(x, y, w, h, b);
+        const rot = parseFloat(obj.rotation) || 0;
+        const { x: cx, y: cy } = clampObjectToBoundary(x, y, w, h, b, rot);
         if (cx === x && cy === y) continue;
         if (obj.object_type === "wall") moveWallAndOpenings(obj, cx, cy);
         else handleObjectMove(obj.id, cx, cy);
@@ -302,41 +302,6 @@ export function useCanvasInteractions({
       }
     },
     [objects, handleObjectMove]
-  );
-
-  // ─── Persist the Enhance tidy-up (optimistic + per-object rollback) ────────
-  const applyNormalization = useCallback(
-    async (patches: NormalizationPatch[]) => {
-      for (const p of patches) {
-        const prev = objects.find((o) => o.id === p.id);
-        const patch = {
-          x: p.x,
-          y: p.y,
-          width: p.width,
-          height: p.height,
-          rotation: p.rotation,
-        };
-        updateObjectLocally(p.id, patch);
-        setSaving(p.id, true);
-        try {
-          await updateLayoutObject(officeId, floorId, p.id, patch);
-        } catch (err) {
-          if (prev) {
-            updateObjectLocally(p.id, {
-              x: prev.x,
-              y: prev.y,
-              width: prev.width,
-              height: prev.height,
-              rotation: prev.rotation,
-            });
-          }
-          setLayoutSaveError(buildMoveError(err));
-        } finally {
-          setSaving(p.id, false);
-        }
-      }
-    },
-    [officeId, floorId, objects, updateObjectLocally, setSaving]
   );
 
   // ─── Single-object transform persistence (optimistic + rollback) ──────────
@@ -441,15 +406,16 @@ export function useCanvasInteractions({
         x = snapToGrid(x, gridSize);
         y = snapToGrid(y, gridSize);
       }
-      // Doors/windows already returned above; regular objects clamp to the room.
+      // Rotation always snaps to a multiple of 10° (86 → 90, 82 → 80).
+      const rot = snapRotation(rawRotation);
+      // Doors/windows already returned above; regular objects clamp to the room by
+      // their rotated footprint (FE-1).
       const {
         x: fx,
         y: fy,
         width: fw,
         height: fh,
-      } = clampObjectTransformToBoundary(x, y, w, h, boundary);
-      // Rotation always snaps to a multiple of 10° (86 → 90, 82 → 80).
-      const rot = snapRotation(rawRotation);
+      } = clampObjectTransformToBoundary(x, y, w, h, boundary, rot);
 
       // A wall and its mounted doors/windows resize/rotate as one entity: scale
       // each opening through the wall's transform before persisting them.
@@ -517,9 +483,9 @@ export function useCanvasInteractions({
         return;
       }
 
-      const { x, y } = clampObjectToBoundary(rawX, rawY, w, h, boundary);
-      // Block the move if it would overlap another object.
       const rot = parseFloat(obj.rotation) || 0;
+      const { x, y } = clampObjectToBoundary(rawX, rawY, w, h, boundary, rot);
+      // Block the move if it would overlap another object.
       if (overlapsBlockingObject(x, y, w, h, rot, objects, selectedObjectId, obj.object_type)) {
         return;
       }
@@ -549,7 +515,6 @@ export function useCanvasInteractions({
     handleCanvasKeyDown,
     reflowObjectsIntoBoundary,
     applyBoundaryResize,
-    applyNormalization,
     layoutSaveError,
     setLayoutSaveError,
     savedObjectId,

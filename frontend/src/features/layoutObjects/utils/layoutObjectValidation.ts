@@ -84,7 +84,6 @@ export function buildLayoutObjectPayload(
     width: fields.width.trim(),
     height: fields.height.trim(),
     rotation,
-    is_bookable: fields.is_bookable,
   };
 }
 
@@ -98,7 +97,6 @@ export function makeDefaultFields(type: LayoutObjectType | "" = ""): LayoutObjec
       width: "80",
       height: "50",
       rotation: "0",
-      is_bookable: false,
     };
   }
   const size = getDefaultSizeForObjectType(type);
@@ -110,6 +108,5 @@ export function makeDefaultFields(type: LayoutObjectType | "" = ""): LayoutObjec
     width: String(size.width),
     height: String(size.height),
     rotation: "0",
-    is_bookable: false,
   };
 }

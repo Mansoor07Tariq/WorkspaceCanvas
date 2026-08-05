@@ -2,6 +2,8 @@ import datetime
 
 import pytest
 from django.contrib.auth import get_user_model
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 from rest_framework.test import APIClient
 
@@ -526,3 +528,101 @@ def test_admin_sees_full_identity_for_others(
     # Admin must see real identity, not the anonymized placeholder
     assert booking_data["user_name"] != "Reserved"
     assert booking_data.get("user") == member_user.id
+
+
+# ─── BE-7: the floor bookings list must not N+1 on office / floor ────────────
+# The serializer renders office_name and floor_name via SerializerMethodFields.
+# Without select_related("office", "floor") each row costs two extra queries.
+
+
+def _make_booking(org, office, floor, day, *, code):
+    """A booking on its own desk AND its own user. Each same-day booking needs a
+    distinct user because of the unique-active-booking-per-user-per-org-per-date
+    constraint; a distinct desk keeps the desk-per-date constraint happy too. So N
+    bookings = N distinct desks + N distinct users — the shape that exposes an N+1
+    on either the desk join or the office/floor render."""
+    user = User.objects.create_user(
+        username=f"booker-{code}@example.com",
+        email=f"booker-{code}@example.com",
+        password="pass123",
+    )
+    Membership.objects.create(
+        user=user,
+        organization=org,
+        role=MemberRole.MEMBER,
+        status=Membership.Status.ACTIVE,
+    )
+    layout_object = make_layout_object(floor, label=f"Desk {code}")
+    desk = make_desk(org, office, floor, layout_object, name=f"Desk {code}", code=code)
+    return DeskBooking.objects.create(
+        organization=org,
+        office=office,
+        floor=floor,
+        desk=desk,
+        user=user,
+        booking_date=day,
+        status=DeskBooking.Status.ACTIVE,
+    )
+
+
+def test_bookings_list_query_count_is_constant(
+    django_assert_num_queries,
+    client,
+    admin_user,
+    active_org,
+    active_office,
+    active_floor,
+):
+    """Pins the exact query count for the floor bookings list (measured: 5).
+
+    membership pre-check + office + that office's org-membership + floor + the
+    bookings SELECT (which joins desk/user/cancelled_by/office/floor). Dropping
+    `office`/`floor` from the view's select_related makes the serializer
+    dereference obj.office and obj.floor per row, which would push this to 5 + 2N —
+    hence the companion invariance test below, which does not hard-code the number.
+    """
+    today = timezone.now().date()
+    for i in range(3):
+        _make_booking(active_org, active_office, active_floor, today, code=f"Q{i}")
+    client.force_authenticate(user=admin_user)
+    url = booking_list_url(active_office.id, active_floor.id, today.isoformat())
+
+    with django_assert_num_queries(5):
+        response = client.get(url)
+
+    assert response.status_code == 200
+    assert len(response.data) == 3
+
+
+def test_bookings_list_query_count_does_not_grow_with_bookings(
+    client,
+    admin_user,
+    active_org,
+    active_office,
+    active_floor,
+):
+    """The N+1 guard proper: the same request must cost the SAME number of queries
+    with 1 booking as with 4.
+
+    Deliberately measures the baseline instead of hard-coding it, so it keeps
+    guarding the N+1 even if an unrelated change shifts the absolute count (unlike
+    the exact-count test above, which would then need a new number).
+    """
+    today = timezone.now().date()
+    client.force_authenticate(user=admin_user)
+    url = booking_list_url(active_office.id, active_floor.id, today.isoformat())
+
+    _make_booking(active_org, active_office, active_floor, today, code="N0")
+    with CaptureQueriesContext(connection) as one_booking:
+        assert client.get(url).status_code == 200
+    baseline = len(one_booking.captured_queries)
+
+    for i in range(1, 4):
+        _make_booking(active_org, active_office, active_floor, today, code=f"N{i}")
+    with CaptureQueriesContext(connection) as four_bookings:
+        response = client.get(url)
+
+    # Without select_related("office","floor") this would be baseline + 2*3.
+    assert len(four_bookings.captured_queries) == baseline
+    assert response.status_code == 200
+    assert len(response.data) == 4

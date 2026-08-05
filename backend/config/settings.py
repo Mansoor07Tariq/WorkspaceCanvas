@@ -211,6 +211,10 @@ REST_FRAMEWORK = {
         # is a PATCH), so a fixed hourly cap locks admins out mid-edit. Set
         # THROTTLE_LAYOUT_OBJECT_WRITE (e.g. "600/hour") to re-enable in prod.
         "layout_object_write": os.environ.get("THROTTLE_LAYOUT_OBJECT_WRITE") or None,
+        # Enhance/Tidy apply/undo/retry (BE-11). These are explicit, occasional
+        # admin actions (a button, not a per-drag PATCH), so unlike
+        # layout_object_write they carry a sensible default cap by default.
+        "enhance_apply": os.environ.get("THROTTLE_ENHANCE_APPLY", "30/min"),
         "desk_write": os.environ.get("THROTTLE_DESK_WRITE", "120/hour"),
         "desk_booking_write": os.environ.get("THROTTLE_DESK_BOOKING_WRITE", "60/hour"),
         "desk_booking_read": os.environ.get("THROTTLE_DESK_BOOKING_READ", "120/hour"),
@@ -237,6 +241,13 @@ AVATAR_ALLOWED_FORMATS: frozenset[str] = frozenset({"JPEG", "PNG", "WEBP"})
 # ─── Localisation ────────────────────────────────────────────────────────────
 
 SUPPORTED_LOCALES: frozenset[str] = frozenset({"en", "en-IE", "en-GB", "en-US"})
+
+# ─── Bookings ────────────────────────────────────────────────────────────────
+
+# Timezone used to judge "today" for booking-date validation when an office has
+# no timezone configured. Offices should set their own timezone; this is the
+# global fallback so booking validation never depends on raw server-UTC (BE-3).
+BOOKING_DEFAULT_TIMEZONE = os.environ.get("BOOKING_DEFAULT_TIMEZONE", "UTC")
 
 
 # Email
@@ -284,12 +295,47 @@ RESEND_VERIFICATION_COOLDOWN_SECONDS = int(
 # Auth refresh cookie (httpOnly, sent automatically by the browser)
 # AUTH_COOKIE_MAX_AGE is derived from SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"] so
 # the two values cannot drift independently.
+#
+# BE-19 (CSRF): the API authenticates with a Bearer access token (JWTAuthentication),
+# which is immune to CSRF. The only cookie-carried credential is this refresh
+# cookie, read by the refresh/logout endpoints under AUTH_COOKIE_PATH. Its CSRF
+# safety depends on SameSite: with "Lax" (the default) a cross-site POST does not
+# send the cookie, so the refresh/logout endpoints cannot be driven cross-site.
+# Setting AUTH_COOKIE_SAMESITE="None" REMOVES that protection and MUST be paired
+# with a CSRF token on those endpoints — the guard below refuses the unsafe combo.
 
 AUTH_COOKIE_NAME = "wsc_rt"
 AUTH_COOKIE_SECURE = not DEBUG  # True in production (HTTPS only)
 AUTH_COOKIE_SAMESITE: str = os.environ.get("AUTH_COOKIE_SAMESITE", "Lax")
 AUTH_COOKIE_PATH = "/api/auth/"
 AUTH_COOKIE_MAX_AGE = int(SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"].total_seconds())
+
+if not DEBUG and AUTH_COOKIE_SAMESITE.lower() == "none":
+    raise ImproperlyConfigured(
+        "AUTH_COOKIE_SAMESITE='None' disables the SameSite CSRF protection for the "
+        "cookie-authenticated refresh/logout endpoints. Use 'Lax' (or add explicit "
+        "CSRF-token protection to those endpoints before relaxing it)."
+    )
+
+
+# ─── Production transport security (applied only when DEBUG is off) ───────────
+# BE-18: HTTPS/HSTS/secure-cookie hardening for production. All are opt-out via
+# env for unusual deploys, but secure-by-default when DEBUG is False.
+
+if not DEBUG:
+    SECURE_SSL_REDIRECT = os.environ.get(
+        "DJANGO_SECURE_SSL_REDIRECT", "True"
+    ).lower() in ["true", "1", "yes"]
+    SECURE_HSTS_SECONDS = int(
+        os.environ.get("DJANGO_SECURE_HSTS_SECONDS", str(60 * 60 * 24 * 365))
+    )
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    # TLS is terminated at the proxy; trust its forwarded-proto header so Django
+    # knows the original request was HTTPS.
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 
 # Production guard: reject an insecure default POSTGRES_PASSWORD when not in debug mode.

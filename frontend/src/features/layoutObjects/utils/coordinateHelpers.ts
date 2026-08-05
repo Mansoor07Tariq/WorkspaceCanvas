@@ -1,3 +1,5 @@
+import { clampRotatedRectToBoundary } from "./rotatedGeometry";
+
 /**
  * Minimum allowed dimension for a layout object on the canvas.
  * The backend validates width/height > 0; we enforce a larger minimum in the UI.
@@ -299,43 +301,49 @@ export function clampObjectTransform(
 // ─── Boundary (room) clamping ──────────────────────────────────────────────────
 
 /**
- * Clamp an object's top-left position so its bounding box stays fully inside the
- * office boundary (room), not just the raw stage.
+ * Clamp an object's top-left position so its ROTATED bounding box stays fully
+ * inside the office boundary (room), not just the raw stage (FE-1).
  *
- * Uses the unrotated bounding box. When the object is wider/taller than the
- * boundary it is anchored at the boundary's top-left so it stays visible and the
- * math never produces an inverted range (max < min) that would crash.
+ * `rotation` defaults to 0, in which case this is byte-for-byte the old
+ * axis-aligned clamp. For a rotated object it uses the true rotated footprint, so
+ * the visual corners can no longer poke through the walls. When the object is
+ * larger than the boundary it is anchored at the boundary's near edge so it stays
+ * visible and the range never inverts.
  */
 export function clampObjectToBoundary(
   x: number,
   y: number,
   width: number,
   height: number,
-  boundary: FloorBoundary = DEFAULT_FLOOR_BOUNDARY
+  boundary: FloorBoundary = DEFAULT_FLOOR_BOUNDARY,
+  rotation: number = 0
 ): { x: number; y: number } {
-  const maxX = boundary.x + Math.max(0, boundary.width - width);
-  const maxY = boundary.y + Math.max(0, boundary.height - height);
-  return {
-    x: clamp(x, boundary.x, maxX),
-    y: clamp(y, boundary.y, maxY),
-  };
+  return clampRotatedRectToBoundary(x, y, width, height, rotation, boundary);
 }
 
 /**
- * Clamp object dimensions to the boundary, then clamp position. An object larger
- * than the room is shrunk to fit and pinned to the boundary's top-left. Returns
- * updated x, y, width, and height in world coordinates.
+ * Clamp object dimensions to the boundary, then clamp position (rotation-aware,
+ * FE-1). An object larger than the room is shrunk to fit and pinned to the
+ * boundary's near edge. Returns updated x, y, width, and height in world coords.
  */
 export function clampObjectTransformToBoundary(
   x: number,
   y: number,
   width: number,
   height: number,
-  boundary: FloorBoundary = DEFAULT_FLOOR_BOUNDARY
+  boundary: FloorBoundary = DEFAULT_FLOOR_BOUNDARY,
+  rotation: number = 0
 ): { x: number; y: number; width: number; height: number } {
   const clampedWidth = Math.min(width, boundary.width);
   const clampedHeight = Math.min(height, boundary.height);
-  const { x: cx, y: cy } = clampObjectToBoundary(x, y, clampedWidth, clampedHeight, boundary);
+  const { x: cx, y: cy } = clampObjectToBoundary(
+    x,
+    y,
+    clampedWidth,
+    clampedHeight,
+    boundary,
+    rotation
+  );
   return { x: cx, y: cy, width: clampedWidth, height: clampedHeight };
 }
 

@@ -8,6 +8,7 @@
 import { runEnhanceNormalization, type NormalizationPatch } from "../utils/enhanceNormalize";
 import { formatCoordinate, DEFAULT_FLOOR_BOUNDARY } from "../utils/coordinateHelpers";
 import { getCutoutRects } from "../utils/floorShape";
+import { isDeskCapableType } from "../constants/deskCapableTypes";
 import type { LayoutObject } from "../types/layoutObject.types";
 import type {
   EnhanceEngineInput,
@@ -44,9 +45,6 @@ function minimalPatch(before: GeomSnapshot, after: GeomSnapshot): Partial<GeomSn
   return patch;
 }
 
-/** Workstation types the engine packs/aligns into rows, columns and grids. */
-const WORKSTATION_TYPES = new Set(["desk", "standing_desk", "hot_desk", "private_desk"]);
-
 /**
  * Best-effort reason codes. The engine core does not yet thread per-rule
  * provenance, so codes are derived from the object type and which geometry
@@ -63,7 +61,7 @@ function reasonCodesFor(objectType: string, patch: Partial<GeomSnapshot>): Reaso
   const resized = patch.width !== undefined || patch.height !== undefined;
   const codes: ReasonCode[] = [];
   if (resized) codes.push("resized");
-  else if (moved && WORKSTATION_TYPES.has(objectType)) codes.push("arranged");
+  else if (moved && isDeskCapableType(objectType)) codes.push("arranged");
   else if (moved) codes.push("repositioned");
   if (patch.rotation !== undefined) codes.push("rotated");
   return codes.length ? codes : ["repositioned"];
@@ -102,11 +100,9 @@ export function computeEnhancePlan(input: EnhanceEngineInput): EnhancePlan {
 
   const diagnostics: Diagnostic[] = [];
   if (!converged) {
-    diagnostics.push({
-      level: "warning",
-      code: "max-iterations-reached",
-      message: "Enhance stopped before the layout fully settled; results may be partial.",
-    });
+    // Emit a stable code only — the UI maps it to copy via i18n (tidyDiagnostics),
+    // so the pure engine holds no user-facing English string.
+    diagnostics.push({ level: "warning", code: "max-iterations-reached" });
   }
 
   const warnings = diagnostics.filter((d) => d.level !== "info").length;

@@ -345,13 +345,56 @@ def test_past_date_rejected(
     assert response.status_code == 400
 
 
-def test_today_allowed(client, member_user, active_office, active_floor, active_desk):
-    today = str(datetime.date.today())
+# BE-3: "today" is judged in the office timezone, not raw server-UTC. Time is
+# pinned via mock (stdlib) rather than a real wall clock so these are stable
+# regardless of the runner's local timezone.
+_PINNED_UTC = datetime.datetime(2026, 7, 14, 2, 0, tzinfo=datetime.UTC)
+
+
+def test_today_allowed_in_office_timezone(
+    client, member_user, active_office, active_floor, active_desk
+):
+    # 02:00 UTC on the 14th is still 19:00 on the 13th in Los Angeles (UTC-7).
+    # A booking for the office-local "today" (the 13th) must be accepted, even
+    # though it is "yesterday" in UTC — the bug this fixes.
+    active_office.timezone = "America/Los_Angeles"
+    active_office.save(update_fields=["timezone"])
     client.force_authenticate(user=member_user)
     url = booking_list_url(active_office.id, active_floor.id)
-    response = client.post(
-        url, valid_payload(active_desk.id, booking_date=today), format="json"
-    )
+    with patch("offices.serializers.timezone.now", return_value=_PINNED_UTC):
+        response = client.post(
+            url, valid_payload(active_desk.id, booking_date="2026-07-13"), format="json"
+        )
+    assert response.status_code == 201
+
+
+def test_yesterday_in_office_timezone_rejected(
+    client, member_user, active_office, active_floor, active_desk
+):
+    active_office.timezone = "America/Los_Angeles"
+    active_office.save(update_fields=["timezone"])
+    client.force_authenticate(user=member_user)
+    url = booking_list_url(active_office.id, active_floor.id)
+    with patch("offices.serializers.timezone.now", return_value=_PINNED_UTC):
+        response = client.post(
+            url, valid_payload(active_desk.id, booking_date="2026-07-12"), format="json"
+        )
+    assert response.status_code == 400
+
+
+def test_today_allowed_falls_back_to_default_timezone(
+    settings, client, member_user, active_office, active_floor, active_desk
+):
+    # No office timezone → configured default (UTC here); today = the 14th.
+    settings.BOOKING_DEFAULT_TIMEZONE = "UTC"
+    active_office.timezone = ""
+    active_office.save(update_fields=["timezone"])
+    client.force_authenticate(user=member_user)
+    url = booking_list_url(active_office.id, active_floor.id)
+    with patch("offices.serializers.timezone.now", return_value=_PINNED_UTC):
+        response = client.post(
+            url, valid_payload(active_desk.id, booking_date="2026-07-14"), format="json"
+        )
     assert response.status_code == 201
 
 

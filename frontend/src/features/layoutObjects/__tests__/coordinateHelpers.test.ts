@@ -559,6 +559,21 @@ describe("clampObjectToBoundary", () => {
     const custom = { x: 0, y: 0, width: 100, height: 100 };
     expect(clampObjectToBoundary(200, 200, 20, 20, custom)).toEqual({ x: 80, y: 80 });
   });
+
+  it("is unchanged by a rotation param of 0 (regression guard)", () => {
+    expect(clampObjectToBoundary(-50, -50, 80, 50, B, 0)).toEqual({ x: B.x, y: B.y });
+    expect(clampObjectToBoundary(5000, 5000, 80, 50, B, 0)).toEqual({ x: 872, y: 542 });
+  });
+
+  it("clamps a rotated object by its rotated footprint (FE-1)", () => {
+    // 80×50 @ 90° → 50-wide × 80-tall footprint. Dropped past the top-left, its
+    // tall side needs more room than the unrotated box: centre.y ≥ B.y + 40.
+    const custom = { x: 0, y: 0, width: 1000, height: 640 };
+    const r = clampObjectToBoundary(-100, -100, 80, 50, custom, 90);
+    // centre.x → 25 (hx), centre.y → 40 (hy); top-left = centre − (40, 25)
+    expect(r.x).toBeCloseTo(25 - 40); // -15
+    expect(r.y).toBeCloseTo(40 - 25); // 15
+  });
 });
 
 describe("clampObjectTransformToBoundary", () => {

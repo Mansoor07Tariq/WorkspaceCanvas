@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime
+import logging
 import uuid
 from decimal import InvalidOperation
 
@@ -58,6 +59,8 @@ from .services.booking_service import (
     create_booking_for_user,
 )
 
+logger = logging.getLogger(__name__)
+
 _MAX_SLUG_RETRIES = 5
 _SLUG_ERROR = "Could not generate a unique office slug. Please try a different name."
 _FLOOR_SLUG_ERROR = (
@@ -91,6 +94,45 @@ def _throttle_cache_key(throttle: SimpleRateThrottle, request: Request) -> str:
     else:
         ident = throttle.get_ident(request)
     return throttle.cache_format % {"scope": throttle.scope, "ident": ident}
+
+
+_DEFAULT_PAGE_SIZE = 100
+_MAX_PAGE_SIZE = 500
+
+
+def _maybe_paginate_qs(request: Request, queryset):
+    """Opt-in, backward-compatible pagination for list endpoints (BE-10).
+
+    These endpoints are plain APIViews that historically return a bare JSON
+    array, and the SPA depends on that shape. To bound an otherwise unbounded
+    response without breaking existing clients, pagination is *opt-in*: only when
+    ``?page`` or ``?page_size`` is present does this apply a DB-level slice and
+    signal an envelope. Returns ``(rows, None)`` for the legacy array response, or
+    ``(rows, meta)`` where ``meta`` = ``{count, page, page_size, num_pages}`` — the
+    caller wraps the serialized rows as ``{"results": rows, **meta}``.
+    """
+    page_param = request.query_params.get("page")
+    size_param = request.query_params.get("page_size")
+    if page_param is None and size_param is None:
+        return queryset, None
+    try:
+        page = max(1, int(page_param)) if page_param is not None else 1
+    except (TypeError, ValueError):
+        page = 1
+    try:
+        page_size = int(size_param) if size_param is not None else _DEFAULT_PAGE_SIZE
+    except (TypeError, ValueError):
+        page_size = _DEFAULT_PAGE_SIZE
+    page_size = max(1, min(page_size, _MAX_PAGE_SIZE))
+    total = queryset.count()
+    start = (page - 1) * page_size
+    meta = {
+        "count": total,
+        "page": page,
+        "page_size": page_size,
+        "num_pages": (total + page_size - 1) // page_size if page_size else 1,
+    }
+    return queryset[start : start + page_size], meta
 
 
 class _PostScopedThrottle(SimpleRateThrottle):
@@ -441,6 +483,35 @@ class _LayoutObjectWriteThrottle(SimpleRateThrottle):
         return super().allow_request(request, view)
 
 
+def _provision_desk_for_object(
+    obj: FloorLayoutObject, office: Office, floor: Floor
+) -> None:
+    """Auto-provision the bookable Desk resource for a desk-capable layout
+    object, unless one is already active. Code is left blank (excluded from the
+    per-office code-uniqueness constraint). Caller runs inside a transaction."""
+    if obj.desks.filter(is_active=True).exists():
+        return
+    Desk.objects.create(
+        organization=office.organization,
+        office=office,
+        floor=floor,
+        layout_object=obj,
+        name=obj.label or f"Desk {obj.id}",
+        code="",
+        status=Desk.Status.AVAILABLE,
+    )
+
+
+def _retire_active_desks(obj: FloorLayoutObject, *, cancelled_by) -> None:
+    """Deactivate any active Desk on this layout object and cancel its active
+    bookings, so a no-longer-desk object stops being bookable. Caller runs
+    inside a transaction."""
+    for desk in obj.desks.filter(is_active=True):
+        cancel_active_bookings_for_desk(desk, cancelled_by=cancelled_by)
+        desk.is_active = False
+        desk.save(update_fields=["is_active", "updated_at"])
+
+
 class LayoutObjectListCreateView(APIView):
     permission_classes = [IsAuthenticated]
     throttle_classes = [_LayoutObjectWriteThrottle]
@@ -460,7 +531,11 @@ class LayoutObjectListCreateView(APIView):
         if floor is None:
             return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
         objects = FloorLayoutObject.objects.filter(floor=floor, is_active=True)
-        return Response(LayoutObjectResponseSerializer(objects, many=True).data)
+        page_qs, meta = _maybe_paginate_qs(request, objects)
+        data = LayoutObjectResponseSerializer(page_qs, many=True).data
+        if meta is None:
+            return Response(data)
+        return Response({"results": data, **meta})
 
     def post(self, request: Request, office_id: int, floor_id: int) -> Response:
         membership = get_first_active_membership(request.user)
@@ -484,18 +559,22 @@ class LayoutObjectListCreateView(APIView):
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         data = serializer.validated_data
-        obj = FloorLayoutObject.objects.create(
-            floor=floor,
-            object_type=data["object_type"],
-            label=data["label"],
-            x=data["x"],
-            y=data["y"],
-            width=data["width"],
-            height=data["height"],
-            rotation=data["rotation"],
-            is_bookable=data["is_bookable"],
-            metadata=data["metadata"],
-        )
+        with transaction.atomic():
+            obj = FloorLayoutObject.objects.create(
+                floor=floor,
+                object_type=data["object_type"],
+                label=data["label"],
+                x=data["x"],
+                y=data["y"],
+                width=data["width"],
+                height=data["height"],
+                rotation=data["rotation"],
+                metadata=data["metadata"],
+            )
+            # A desk drawn on the canvas is bookable immediately — provision its
+            # Desk resource automatically so admins don't link one by hand.
+            if obj.object_type in DESK_CAPABLE_TYPES:
+                _provision_desk_for_object(obj, office, floor)
         return Response(
             LayoutObjectResponseSerializer(obj).data,
             status=status.HTTP_201_CREATED,
@@ -515,11 +594,14 @@ class LayoutObjectDetailView(APIView):
     ):
         # PR 055: resolve the office among the caller's active orgs and return
         # the per-office membership (so role checks use the office's org).
+        # Returns (obj, err_response, membership, office, floor).
         office, membership = get_office_for_user(user, office_id)
         if office is None:
             return (
                 None,
                 Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND),
+                None,
+                None,
                 None,
             )
         floor = get_floor_for_office(office, floor_id)
@@ -527,6 +609,8 @@ class LayoutObjectDetailView(APIView):
             return (
                 None,
                 Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND),
+                None,
+                None,
                 None,
             )
         try:
@@ -538,8 +622,10 @@ class LayoutObjectDetailView(APIView):
                 None,
                 Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND),
                 None,
+                None,
+                None,
             )
-        return obj, None, membership
+        return obj, None, membership, office, floor
 
     def patch(
         self, request: Request, office_id: int, floor_id: int, object_id: int
@@ -548,7 +634,7 @@ class LayoutObjectDetailView(APIView):
             return Response(
                 {"detail": _NO_MEMBERSHIP}, status=status.HTTP_403_FORBIDDEN
             )
-        obj, err, membership = self._get_object(
+        obj, err, membership, office, floor = self._get_object(
             request.user, office_id, floor_id, object_id
         )
         if err is not None:
@@ -560,9 +646,21 @@ class LayoutObjectDetailView(APIView):
         serializer = UpdateLayoutObjectSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        for field, value in serializer.validated_data.items():
-            setattr(obj, field, value)
-        obj.save()
+        with transaction.atomic():
+            # Keep the linked Desk resource consistent when object_type crosses
+            # the desk-capable boundary (BE-1): leaving it retires the desk and
+            # cancels its bookings; entering it auto-provisions one, mirroring the
+            # create path. Without this, a desk→plant PATCH would strand a
+            # bookable Desk on a non-desk object.
+            was_desk_capable = obj.object_type in DESK_CAPABLE_TYPES
+            for field, value in serializer.validated_data.items():
+                setattr(obj, field, value)
+            obj.save()
+            now_desk_capable = obj.object_type in DESK_CAPABLE_TYPES
+            if was_desk_capable and not now_desk_capable:
+                _retire_active_desks(obj, cancelled_by=request.user)
+            elif now_desk_capable and not was_desk_capable:
+                _provision_desk_for_object(obj, office, floor)
         return Response(LayoutObjectResponseSerializer(obj).data)
 
     def delete(
@@ -572,7 +670,7 @@ class LayoutObjectDetailView(APIView):
             return Response(
                 {"detail": _NO_MEMBERSHIP}, status=status.HTTP_403_FORBIDDEN
             )
-        obj, err, membership = self._get_object(
+        obj, err, membership, office, floor = self._get_object(
             request.user, office_id, floor_id, object_id
         )
         if err is not None:
@@ -581,8 +679,12 @@ class LayoutObjectDetailView(APIView):
             return Response(
                 {"detail": _NO_MANAGE_OFFICES}, status=status.HTTP_403_FORBIDDEN
             )
-        obj.is_active = False
-        obj.save()
+        with transaction.atomic():
+            # Retire any auto-provisioned desk (and cancel its bookings) so a
+            # deleted desk object stops being bookable.
+            _retire_active_desks(obj, cancelled_by=request.user)
+            obj.is_active = False
+            obj.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -901,13 +1003,18 @@ class DeskBookingListCreateView(APIView):
                 booking_date=booking_date,
                 status=DeskBooking.Status.ACTIVE,
             )
-            .select_related("desk", "user", "cancelled_by")
+            # office/floor added (BE-7): the serializer renders office_name and
+            # floor_name, so without these each row triggers two extra queries.
+            .select_related("desk", "user", "cancelled_by", "office", "floor")
             .order_by("desk__name")
         )
-        serializer = DeskBookingResponseSerializer(
-            bookings, many=True, context={"request": request, "membership": membership}
-        )
-        return Response(serializer.data)
+        page_qs, meta = _maybe_paginate_qs(request, bookings)
+        data = DeskBookingResponseSerializer(
+            page_qs, many=True, context={"request": request, "membership": membership}
+        ).data
+        if meta is None:
+            return Response(data)
+        return Response({"results": data, **meta})
 
     def post(self, request: Request, office_id: int, floor_id: int) -> Response:
         # NOTE: get_first_active_membership resolves the alphabetically-first org.
@@ -927,7 +1034,9 @@ class DeskBookingListCreateView(APIView):
         if floor is None:
             return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        serializer = CreateDeskBookingSerializer(data=request.data)
+        serializer = CreateDeskBookingSerializer(
+            data=request.data, context={"office": office}
+        )
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         validated = serializer.validated_data
@@ -1098,11 +1207,15 @@ class MyBookingsView(APIView):
         )
 
         status_param = request.query_params.get("status", "active")
-        if status_param == "active":
-            qs = qs.filter(status=DeskBooking.Status.ACTIVE)
-        elif status_param == "cancelled":
+        if status_param == "cancelled":
             qs = qs.filter(status=DeskBooking.Status.CANCELLED)
-        # "all" means no status filter
+        elif status_param == "all":
+            pass  # explicit: no status filter
+        else:
+            # BE-16: "active" and any UNRECOGNIZED value default to active — an
+            # unknown status must never silently leak cancelled bookings.
+            status_param = "active"
+            qs = qs.filter(status=DeskBooking.Status.ACTIVE)
 
         from_date_str = request.query_params.get("from")
         to_date_str = request.query_params.get("to")
@@ -1183,6 +1296,10 @@ _ERR_STALE = "stale_geometry"
 _MSG_STALE = "Object changed since the plan was generated."
 _ERR_VALIDATION = "validation_error"
 _ERR_SAVE = "save_error"
+# BE-9: the generic save-failure path returns this stable message to the client
+# (and persists it in the audit trail) instead of raw exception text; the real
+# exception is logged server-side only.
+_MSG_SAVE = "Could not save the object."
 
 
 class _PatchInvalid(Exception):
@@ -1232,9 +1349,11 @@ def _operation_result(op: EnhanceRunOperation) -> dict:
         "status": op.status,
         "reason_codes": op.reason_codes,
     }
-    if op.error_code is not None:
+    # BE-13: error_code/error_message default to "" (not None), so a truthiness
+    # check is required — otherwise applied ops carry empty error strings.
+    if op.error_code:
         result["error_code"] = op.error_code
-    if op.error_message is not None:
+    if op.error_message:
         result["error_message"] = op.error_message
     return result
 
@@ -1255,17 +1374,28 @@ def _build_run_response(run: EnhanceRun, updated_objects: list) -> dict:
 
 
 def _run_status(applied: int, failed: int, skipped: int) -> str:
-    if applied == 0:
+    if applied > 0:
+        if failed == 0 and skipped == 0:
+            return EnhanceRun.Status.SUCCESS
+        return EnhanceRun.Status.PARTIAL_SUCCESS
+    if failed > 0:
         return EnhanceRun.Status.FAILED
-    if failed == 0 and skipped == 0:
-        return EnhanceRun.Status.SUCCESS
-    return EnhanceRun.Status.PARTIAL_SUCCESS
+    if skipped > 0:
+        # BE-12: nothing applied and nothing failed — every op was a no-op
+        # (already tidy / stale / not on this floor). That is not a failure.
+        return EnhanceRun.Status.SKIPPED
+    return EnhanceRun.Status.FAILED  # empty run (no operations processed)
 
 
 class _EnhanceRunWriteThrottle(SimpleRateThrottle):
-    """Applies the layout_object_write throttle scope on write requests."""
+    """Applies the enhance_apply throttle scope on write requests (BE-11).
 
-    scope = "layout_object_write"
+    Enhance apply/undo/retry get their own default-on cap, separate from the
+    per-drag layout_object_write scope (which stays disabled by default so an
+    editing session is never locked out mid-drag).
+    """
+
+    scope = "enhance_apply"
 
     def get_cache_key(self, request: Request, view) -> str | None:  # type: ignore[override]
         return _throttle_cache_key(self, request)
@@ -1324,6 +1454,42 @@ class _EnhanceRunBaseView(APIView):
             setattr(obj, field, value)
         obj.save()
         return True, None
+
+    def _run_geometry_patch(
+        self, obj: FloorLayoutObject, patch: dict, row: EnhanceRunOperation
+    ) -> bool:
+        """Apply one geometry patch inside a nested savepoint (best-effort).
+
+        Shared by apply/undo/retry (BE-6) so the per-operation execution logic
+        lives in exactly one place. Mutates ``row`` (status / error / after
+        geometry). Returns True iff the operation APPLIED. The caller MUST already
+        be inside an outer ``transaction.atomic()`` so the savepoint is meaningful
+        and a single failed op rolls back only itself (BE-2).
+        """
+        try:
+            with transaction.atomic():
+                ok, errors = self._apply_patch(obj, patch)
+                if not ok:
+                    raise _PatchInvalid(errors)
+                row.status = EnhanceRunOperation.Status.APPLIED
+                row.after_geometry = _current_geometry(obj)
+                return True
+        except _PatchInvalid as exc:
+            row.status = EnhanceRunOperation.Status.FAILED
+            row.error_code = _ERR_VALIDATION
+            # Serializer field errors are user-facing validation feedback (safe).
+            row.error_message = str(exc.errors)
+            return False
+        except Exception:  # noqa: BLE001 - record, do not crash the batch
+            # BE-9: log the real exception server-side; return a generic message.
+            logger.exception(
+                "Enhance operation save failed for object %s",
+                getattr(obj, "id", "?"),
+            )
+            row.status = EnhanceRunOperation.Status.FAILED
+            row.error_code = _ERR_SAVE
+            row.error_message = _MSG_SAVE
+            return False
 
     def _finalize(self, floor, user, kind, source, op_rows, updated_objects):
         """Create the EnhanceRun + operation rows for a derived (undo/retry)
@@ -1399,69 +1565,58 @@ class EnhanceRunListCreateView(_EnhanceRunBaseView):
         op_rows: list[EnhanceRunOperation] = []
         updated_objects: list[FloorLayoutObject] = []
 
-        for op in operations:
-            object_id = op["object_id"]
-            before = op["before"]
-            patch = op["patch"]
-            reason_codes = op.get("reason_codes", [])
-            row = EnhanceRunOperation(
-                object_id=object_id,
-                before_geometry=before,
-                patch=patch,
-                reason_codes=reason_codes,
-            )
-
-            obj = objmap.get(object_id)
-            if obj is None:
-                row.status = EnhanceRunOperation.Status.SKIPPED
-                row.error_code = _ERR_NOT_AVAILABLE
-                row.error_message = _MSG_NOT_AVAILABLE
-            elif not obj.is_active:
-                row.status = EnhanceRunOperation.Status.SKIPPED
-                row.error_code = _ERR_INACTIVE
-                row.error_message = _MSG_INACTIVE
-            elif not _geometry_matches(obj, before):
-                row.status = EnhanceRunOperation.Status.SKIPPED
-                row.error_code = _ERR_STALE
-                row.error_message = _MSG_STALE
-            else:
-                try:
-                    with transaction.atomic():
-                        ok, errors = self._apply_patch(obj, patch)
-                        if not ok:
-                            raise _PatchInvalid(errors)
-                        row.status = EnhanceRunOperation.Status.APPLIED
-                        row.after_geometry = _current_geometry(obj)
-                        updated_objects.append(obj)
-                except _PatchInvalid as exc:
-                    row.status = EnhanceRunOperation.Status.FAILED
-                    row.error_code = _ERR_VALIDATION
-                    row.error_message = str(exc.errors)
-                except Exception as exc:  # noqa: BLE001 - record, do not crash
-                    row.status = EnhanceRunOperation.Status.FAILED
-                    row.error_code = _ERR_SAVE
-                    row.error_message = str(exc)
-            op_rows.append(row)
-
-        applied = sum(
-            1 for r in op_rows if r.status == EnhanceRunOperation.Status.APPLIED
-        )
-        failed = sum(
-            1 for r in op_rows if r.status == EnhanceRunOperation.Status.FAILED
-        )
-        skipped = sum(
-            1 for r in op_rows if r.status == EnhanceRunOperation.Status.SKIPPED
-        )
-        run_status = _run_status(applied, failed, skipped)
-
+        # BE-2: the object writes AND the EnhanceRun/operation bookkeeping are
+        # wrapped in ONE outer transaction, so a crash (or a duplicate-plan_id
+        # IntegrityError on the run insert) can never leave objects moved with no
+        # audit record. Each operation still runs in its own nested savepoint so a
+        # single bad object rolls back only itself (best-effort semantics intact).
         try:
             with transaction.atomic():
+                for op in operations:
+                    object_id = op["object_id"]
+                    before = op["before"]
+                    patch = op["patch"]
+                    reason_codes = op.get("reason_codes", [])
+                    row = EnhanceRunOperation(
+                        object_id=object_id,
+                        before_geometry=before,
+                        patch=patch,
+                        reason_codes=reason_codes,
+                    )
+
+                    obj = objmap.get(object_id)
+                    if obj is None:
+                        row.status = EnhanceRunOperation.Status.SKIPPED
+                        row.error_code = _ERR_NOT_AVAILABLE
+                        row.error_message = _MSG_NOT_AVAILABLE
+                    elif not obj.is_active:
+                        row.status = EnhanceRunOperation.Status.SKIPPED
+                        row.error_code = _ERR_INACTIVE
+                        row.error_message = _MSG_INACTIVE
+                    elif not _geometry_matches(obj, before):
+                        row.status = EnhanceRunOperation.Status.SKIPPED
+                        row.error_code = _ERR_STALE
+                        row.error_message = _MSG_STALE
+                    elif self._run_geometry_patch(obj, patch, row):
+                        updated_objects.append(obj)
+                    op_rows.append(row)
+
+                applied = sum(
+                    1 for r in op_rows if r.status == EnhanceRunOperation.Status.APPLIED
+                )
+                failed = sum(
+                    1 for r in op_rows if r.status == EnhanceRunOperation.Status.FAILED
+                )
+                skipped = sum(
+                    1 for r in op_rows if r.status == EnhanceRunOperation.Status.SKIPPED
+                )
+
                 run = EnhanceRun.objects.create(
                     floor=floor,
                     triggered_by=request.user,
                     kind=EnhanceRun.Kind.APPLY,
                     plan_id=plan_id,
-                    status=run_status,
+                    status=_run_status(applied, failed, skipped),
                     total_operations=len(op_rows),
                     applied_count=applied,
                     failed_count=failed,
@@ -1474,7 +1629,8 @@ class EnhanceRunListCreateView(_EnhanceRunBaseView):
                 EnhanceRunOperation.objects.bulk_create(op_rows)
         except IntegrityError:
             # Concurrent apply with the same plan_id won the unique constraint —
-            # treat as idempotent and return the winning run's result.
+            # the whole transaction (object writes included) rolled back; treat as
+            # idempotent and return the winning run's result.
             existing = EnhanceRun.objects.filter(
                 floor=floor, plan_id=plan_id, kind=EnhanceRun.Kind.APPLY
             ).first()
@@ -1501,7 +1657,14 @@ class EnhanceRunListCreateView(_EnhanceRunBaseView):
 
 
 class EnhanceRunUndoView(_EnhanceRunBaseView):
-    """Undo a prior run by restoring each applied operation's before_geometry."""
+    """Undo a prior run by restoring each applied operation's before_geometry.
+
+    A staleness guard (BE-4) skips any object whose current geometry no longer
+    matches what the original run left it at (``after_geometry``) — i.e. the user
+    manually moved/resized it after the run — so undo never silently clobbers
+    intervening manual edits. Such operations are reported as ``skipped`` with a
+    ``stale_geometry`` reason instead of being overwritten.
+    """
 
     def post(
         self, request: Request, office_id: int, floor_id: int, run_id: int
@@ -1518,50 +1681,51 @@ class EnhanceRunUndoView(_EnhanceRunBaseView):
         op_rows: list[EnhanceRunOperation] = []
         updated_objects: list[FloorLayoutObject] = []
 
-        for src_op in source.operations.all():
-            if src_op.status != EnhanceRunOperation.Status.APPLIED:
-                continue
-            target = src_op.before_geometry or {}
-            patch = _patch_from_geometry(target)
-            row = EnhanceRunOperation(
-                object_id=src_op.object_id,
-                patch=patch,
-                reason_codes=["undo"],
-            )
-            obj = objmap.get(src_op.object_id)
-            if obj is None:
-                row.status = EnhanceRunOperation.Status.SKIPPED
-                row.error_code = _ERR_NOT_AVAILABLE
-                row.error_message = _MSG_NOT_AVAILABLE
-                row.before_geometry = {}
-            elif not obj.is_active:
-                row.status = EnhanceRunOperation.Status.SKIPPED
-                row.error_code = _ERR_INACTIVE
-                row.error_message = _MSG_INACTIVE
-                row.before_geometry = _current_geometry(obj)
-            else:
-                row.before_geometry = _current_geometry(obj)
-                try:
-                    with transaction.atomic():
-                        ok, errors = self._apply_patch(obj, patch)
-                        if not ok:
-                            raise _PatchInvalid(errors)
-                        row.status = EnhanceRunOperation.Status.APPLIED
-                        row.after_geometry = _current_geometry(obj)
+        # BE-2: object writes + run bookkeeping in one outer transaction.
+        with transaction.atomic():
+            for src_op in source.operations.all():
+                if src_op.status != EnhanceRunOperation.Status.APPLIED:
+                    continue
+                target = src_op.before_geometry or {}
+                patch = _patch_from_geometry(target)
+                row = EnhanceRunOperation(
+                    object_id=src_op.object_id,
+                    patch=patch,
+                    reason_codes=["undo"],
+                )
+                obj = objmap.get(src_op.object_id)
+                if obj is None:
+                    row.status = EnhanceRunOperation.Status.SKIPPED
+                    row.error_code = _ERR_NOT_AVAILABLE
+                    row.error_message = _MSG_NOT_AVAILABLE
+                    row.before_geometry = {}
+                elif not obj.is_active:
+                    row.status = EnhanceRunOperation.Status.SKIPPED
+                    row.error_code = _ERR_INACTIVE
+                    row.error_message = _MSG_INACTIVE
+                    row.before_geometry = _current_geometry(obj)
+                elif src_op.after_geometry and not _geometry_matches(
+                    obj, src_op.after_geometry
+                ):
+                    # BE-4: the object was edited since the run — skip, don't clobber.
+                    row.status = EnhanceRunOperation.Status.SKIPPED
+                    row.error_code = _ERR_STALE
+                    row.error_message = _MSG_STALE
+                    row.before_geometry = _current_geometry(obj)
+                else:
+                    row.before_geometry = _current_geometry(obj)
+                    if self._run_geometry_patch(obj, patch, row):
                         updated_objects.append(obj)
-                except _PatchInvalid as exc:
-                    row.status = EnhanceRunOperation.Status.FAILED
-                    row.error_code = _ERR_VALIDATION
-                    row.error_message = str(exc.errors)
-                except Exception as exc:  # noqa: BLE001
-                    row.status = EnhanceRunOperation.Status.FAILED
-                    row.error_code = _ERR_SAVE
-                    row.error_message = str(exc)
-            op_rows.append(row)
+                op_rows.append(row)
 
-        return self._finalize(
-            floor, request.user, EnhanceRun.Kind.UNDO, source, op_rows, updated_objects
-        )
+            return self._finalize(
+                floor,
+                request.user,
+                EnhanceRun.Kind.UNDO,
+                source,
+                op_rows,
+                updated_objects,
+            )
 
 
 class EnhanceRunRetryView(_EnhanceRunBaseView):
@@ -1582,54 +1746,44 @@ class EnhanceRunRetryView(_EnhanceRunBaseView):
         op_rows: list[EnhanceRunOperation] = []
         updated_objects: list[FloorLayoutObject] = []
 
-        for src_op in source.operations.all():
-            if src_op.status != EnhanceRunOperation.Status.FAILED:
-                continue
-            # Re-attempt the intended target. Prefer the original patch; fall
-            # back to the after_geometry fields when the patch is empty. No
-            # stale check on retry — the failure was object-level, not staleness.
-            patch = src_op.patch or _patch_from_geometry(src_op.after_geometry or {})
-            row = EnhanceRunOperation(
-                object_id=src_op.object_id,
-                patch=patch,
-                reason_codes=src_op.reason_codes,
-            )
-            obj = objmap.get(src_op.object_id)
-            if obj is None:
-                row.status = EnhanceRunOperation.Status.SKIPPED
-                row.error_code = _ERR_NOT_AVAILABLE
-                row.error_message = _MSG_NOT_AVAILABLE
-                row.before_geometry = {}
-            elif not obj.is_active:
-                row.status = EnhanceRunOperation.Status.SKIPPED
-                row.error_code = _ERR_INACTIVE
-                row.error_message = _MSG_INACTIVE
-                row.before_geometry = _current_geometry(obj)
-            else:
-                row.before_geometry = _current_geometry(obj)
-                try:
-                    with transaction.atomic():
-                        ok, errors = self._apply_patch(obj, patch)
-                        if not ok:
-                            raise _PatchInvalid(errors)
-                        row.status = EnhanceRunOperation.Status.APPLIED
-                        row.after_geometry = _current_geometry(obj)
+        # BE-2: object writes + run bookkeeping in one outer transaction.
+        with transaction.atomic():
+            for src_op in source.operations.all():
+                if src_op.status != EnhanceRunOperation.Status.FAILED:
+                    continue
+                # Re-attempt the intended target. Prefer the original patch; fall
+                # back to the after_geometry fields when the patch is empty. No
+                # stale check on retry — the failure was object-level, not staleness.
+                patch = src_op.patch or _patch_from_geometry(
+                    src_op.after_geometry or {}
+                )
+                row = EnhanceRunOperation(
+                    object_id=src_op.object_id,
+                    patch=patch,
+                    reason_codes=src_op.reason_codes,
+                )
+                obj = objmap.get(src_op.object_id)
+                if obj is None:
+                    row.status = EnhanceRunOperation.Status.SKIPPED
+                    row.error_code = _ERR_NOT_AVAILABLE
+                    row.error_message = _MSG_NOT_AVAILABLE
+                    row.before_geometry = {}
+                elif not obj.is_active:
+                    row.status = EnhanceRunOperation.Status.SKIPPED
+                    row.error_code = _ERR_INACTIVE
+                    row.error_message = _MSG_INACTIVE
+                    row.before_geometry = _current_geometry(obj)
+                else:
+                    row.before_geometry = _current_geometry(obj)
+                    if self._run_geometry_patch(obj, patch, row):
                         updated_objects.append(obj)
-                except _PatchInvalid as exc:
-                    row.status = EnhanceRunOperation.Status.FAILED
-                    row.error_code = _ERR_VALIDATION
-                    row.error_message = str(exc.errors)
-                except Exception as exc:  # noqa: BLE001
-                    row.status = EnhanceRunOperation.Status.FAILED
-                    row.error_code = _ERR_SAVE
-                    row.error_message = str(exc)
-            op_rows.append(row)
+                op_rows.append(row)
 
-        return self._finalize(
-            floor,
-            request.user,
-            EnhanceRun.Kind.RETRY,
-            source,
-            op_rows,
-            updated_objects,
-        )
+            return self._finalize(
+                floor,
+                request.user,
+                EnhanceRun.Kind.RETRY,
+                source,
+                op_rows,
+                updated_objects,
+            )
