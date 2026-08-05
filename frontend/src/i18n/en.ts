@@ -617,13 +617,6 @@ export const en = {
       keyboardHintSnap: "Tap arrow keys to move by one grid step.",
     },
     desks: {
-      // Panel
-      panelTitle: "Desk Resource",
-      notDeskCapable: "This object type cannot be set up as a bookable desk.",
-      noDesk: "Not yet set up as a bookable desk.",
-      createAction: "Set up as bookable desk",
-      deactivateAction: "Remove desk",
-
       // Form labels
       nameLabel: "Desk name",
       namePlaceholder: "e.g. Desk A1",
@@ -635,7 +628,6 @@ export const en = {
       notesLabel: "Notes",
       notesPlaceholder: "Any additional notes…",
       submitCreate: "Create desk",
-      editAction: "Edit desk",
       submitEdit: "Save changes",
       cancelEdit: "Cancel",
       editError: "Could not update desk. Please try again.",
@@ -657,7 +649,6 @@ export const en = {
       createError: "Could not create desk. Please try again.",
       createErrorPermission: "You do not have permission to create a desk here.",
       createErrorValidation: "Please check your input and try again.",
-      deactivateError: "Could not remove desk. Please try again.",
     },
     pages: {
       comingSoon: "This feature is coming soon.",

@@ -33,46 +33,46 @@ const A = obj({ id: 1 });
 
 describe("snapToNeighbors", () => {
   it("leaves the position unchanged when there are no other objects", () => {
-    expect(snapToNeighbors(183, 104, 80, 50, [A], 1)).toEqual({ x: 183, y: 104 });
+    expect(snapToNeighbors(183, 104, 80, 50, 0, [A], 1)).toEqual({ x: 183, y: 104 });
   });
 
   it("snaps a desk flush to the right of a neighbour and aligns their tops", () => {
     // Dropped just past A's right edge and a few px below its top.
-    const r = snapToNeighbors(183, 104, 80, 50, [A], 99);
+    const r = snapToNeighbors(183, 104, 80, 50, 0, [A], 99);
     expect(r).toEqual({ x: 180, y: 100 }); // left butts A.right (180); tops align (100)
   });
 
   it("connects objects across a small gap (closes a ~12px gap)", () => {
     // Desk dropped 12px to the right of A's right edge (180) → snaps flush.
-    expect(snapToNeighbors(192, 100, 80, 50, [A], 99)).toEqual({ x: 180, y: 100 });
+    expect(snapToNeighbors(192, 100, 80, 50, 0, [A], 99)).toEqual({ x: 180, y: 100 });
   });
 
   it("aligns left edges and stacks below when dropped under a neighbour", () => {
     // Below A, slightly off: left near A.left (100), top near A.bottom (150).
-    const r = snapToNeighbors(104, 146, 80, 50, [A], 99);
+    const r = snapToNeighbors(104, 146, 80, 50, 0, [A], 99);
     expect(r).toEqual({ x: 100, y: 150 }); // align-left; butt-below
   });
 
   it("aligns centres", () => {
     // A centre = (140,125). A new 80×50 box centred near that → top-left (100,100).
-    const r = snapToNeighbors(97, 100, 80, 50, [A], 99);
+    const r = snapToNeighbors(97, 100, 80, 50, 0, [A], 99);
     expect(r.x).toBe(100); // centre-aligned (oCX - w/2 = 100)
   });
 
   it("does not snap to a far-away object", () => {
-    const r = snapToNeighbors(400, 400, 80, 50, [A], 99);
+    const r = snapToNeighbors(400, 400, 80, 50, 0, [A], 99);
     expect(r).toEqual({ x: 400, y: 400 });
   });
 
   it("ignores the dragged object itself", () => {
     // Only object present is the one being dragged → no snap.
-    expect(snapToNeighbors(183, 104, 80, 50, [A], 1)).toEqual({ x: 183, y: 104 });
+    expect(snapToNeighbors(183, 104, 80, 50, 0, [A], 1)).toEqual({ x: 183, y: 104 });
   });
 });
 
 describe("computeNeighborSnap — guides", () => {
   it("emits guides where the snapped edges meet the neighbour", () => {
-    const { x, y, guides } = computeNeighborSnap(183, 104, 80, 50, [A], 99);
+    const { x, y, guides } = computeNeighborSnap(183, 104, 80, 50, 0, [A], 99);
     expect({ x, y }).toEqual({ x: 180, y: 100 });
     // Vertical guide where our left (180) meets A's right (180).
     expect(guides.some((g) => g.axis === "x" && Math.round(g.position) === 180)).toBe(true);
@@ -81,7 +81,25 @@ describe("computeNeighborSnap — guides", () => {
   });
 
   it("emits no guides when nothing is near", () => {
-    expect(computeNeighborSnap(400, 400, 80, 50, [A], 99).guides).toHaveLength(0);
+    expect(computeNeighborSnap(400, 400, 80, 50, 0, [A], 99).guides).toHaveLength(0);
+  });
+});
+
+describe("computeNeighborSnap — rotation-aware (FE-4)", () => {
+  // A 90°-rotated 80×50 desk has a 50-wide × 80-tall footprint. Its right edge is
+  // at centre.x + 25, so to butt flush against A's right wall (180) its centre.x
+  // must be 155 → top-left x = 155 − 40 = 115 (NOT 100, which the unrotated box
+  // would have given). This is the bug FE-4 fixes.
+  it("snaps a 90°-rotated desk by its rotated footprint, not its stored box", () => {
+    // Drop it a few px off the align-right position (x=115, where the rotated
+    // right edge cx+25 = 180 = A.R). The unrotated box would have targeted x=100.
+    const r = snapToNeighbors(118, 100, 80, 50, 90, [A], 99);
+    expect(r.x).toBeCloseTo(115);
+  });
+
+  it("is identical to the unrotated result at rotation 0 (regression guard)", () => {
+    const rot0 = snapToNeighbors(183, 104, 80, 50, 0, [A], 99);
+    expect(rot0).toEqual({ x: 180, y: 100 });
   });
 });
 

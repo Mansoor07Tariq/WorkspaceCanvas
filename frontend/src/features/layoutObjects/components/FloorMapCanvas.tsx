@@ -327,12 +327,14 @@ export function FloorMapCanvas({
   function handleObjectDragMove(obj: LayoutObject, node: Konva.Node) {
     const w = parseFloat(obj.width);
     const h = parseFloat(obj.height);
+    const rot = parseFloat(obj.rotation) || 0;
     // Node position is the object's centre (group origin); convert to top-left.
     const { x, y, guides } = computeNeighborSnap(
       node.x() - w / 2,
       node.y() - h / 2,
       w,
       h,
+      rot,
       objects,
       obj.id
     );
@@ -747,7 +749,13 @@ export function FloorMapCanvas({
                 rotationSnapTolerance={5}
                 enabledAnchors={selectedIsWallMounted ? ["middle-left", "middle-right"] : undefined}
                 boundBoxFunc={(oldBox, newBox) => {
-                  if (newBox.width < MIN_OBJECT_SIZE || newBox.height < MIN_OBJECT_SIZE) {
+                  // newBox is in absolute (zoom-scaled) screen px; divide out the
+                  // stage scale so the world-space minimum holds at any zoom (FE-6).
+                  const scale = viewport.scale || 1;
+                  if (
+                    newBox.width / scale < MIN_OBJECT_SIZE ||
+                    newBox.height / scale < MIN_OBJECT_SIZE
+                  ) {
                     return oldBox;
                   }
                   return newBox;
@@ -798,11 +806,14 @@ export function FloorMapCanvas({
                 borderStroke={BOUNDARY_HANDLE_COLOR}
                 borderDash={[6, 4]}
                 onTransformEnd={handleBoundaryTransformEnd}
-                boundBoxFunc={(oldBox, newBox) =>
-                  newBox.width < MIN_FLOOR_BOUNDARY || newBox.height < MIN_FLOOR_BOUNDARY
+                boundBoxFunc={(oldBox, newBox) => {
+                  // Zoom-invariant min (FE-6): newBox is in scaled screen px.
+                  const scale = viewport.scale || 1;
+                  return newBox.width / scale < MIN_FLOOR_BOUNDARY ||
+                    newBox.height / scale < MIN_FLOOR_BOUNDARY
                     ? oldBox
-                    : newBox
-                }
+                    : newBox;
+                }}
               />
             </Layer>
           )}

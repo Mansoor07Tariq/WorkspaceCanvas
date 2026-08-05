@@ -1,4 +1,5 @@
 import type { LayoutObject, LayoutObjectType } from "../types/layoutObject.types";
+import { rotatedAabbHalfExtents } from "./rotatedGeometry";
 
 /**
  * Whether `obstacleType` blocks an object of `draggedType` from overlapping it.
@@ -55,24 +56,15 @@ interface Box {
 }
 
 /**
- * Half-width/height of the axis-aligned bounding box that encloses a `w × h`
- * rectangle rotated by `rotation` degrees about its centre. Exact for 0°/90°; a
- * conservative envelope otherwise. This is what makes overlap correct for
- * rotated shapes (a 90° lunch table, a vertical wall stored as 200×10 @ 90°).
+ * Rotation-aware AABB for a top-left box, using the shared exact rotated-extent
+ * primitive (see rotatedGeometry.ts) so the canvas overlap/snap model and the
+ * Tidy engine reason about the same footprint for a rotated object.
  */
-function halfExtents(w: number, h: number, rotation: number): { hw: number; hh: number } {
-  const rad = (rotation * Math.PI) / 180;
-  const c = Math.abs(Math.cos(rad));
-  const s = Math.abs(Math.sin(rad));
-  return { hw: (w / 2) * c + (h / 2) * s, hh: (w / 2) * s + (h / 2) * c };
-}
-
-/** Rotation-aware AABB for a top-left box. */
 function aabb(x: number, y: number, w: number, h: number, rotation: number): Box {
   const cx = x + w / 2;
   const cy = y + h / 2;
-  const { hw, hh } = halfExtents(w, h, rotation);
-  return { L: cx - hw, R: cx + hw, CX: cx, T: cy - hh, B: cy + hh, CY: cy };
+  const { hx, hy } = rotatedAabbHalfExtents(w, h, rotation);
+  return { L: cx - hx, R: cx + hx, CX: cx, T: cy - hy, B: cy + hy, CY: cy };
 }
 
 function boxOf(o: LayoutObject): Box | null {
@@ -101,15 +93,26 @@ export function computeNeighborSnap(
   y: number,
   w: number,
   h: number,
+  rotation: number,
   objects: LayoutObject[],
   excludeId: number,
   threshold: number = NEIGHBOR_SNAP_THRESHOLD,
   proximity: number = NEIGHBOR_PROXIMITY
 ): NeighborSnapResult {
-  const left = x;
-  const right = x + w;
-  const top = y;
-  const bottom = y + h;
+  // The dragged object aligns by its rotated footprint (FE-4), not its stored
+  // axis-aligned box: rotation is about the centre, so an edge candidate is
+  // expressed as the resulting TOP-LEFT (centre ± hx/hy, then − w/2 / h/2). At
+  // rotation 0 (hx = w/2, hy = h/2) every candidate below reduces to the old
+  // axis-aligned value, so unrotated snapping is unchanged.
+  const { hx, hy } = rotatedAabbHalfExtents(w, h, rotation);
+  const halfW = w / 2;
+  const halfH = h / 2;
+  const cx = x + halfW;
+  const cy = y + halfH;
+  const left = cx - hx;
+  const right = cx + hx;
+  const top = cy - hy;
+  const bottom = cy + hy;
 
   const neighbours: Box[] = [];
   for (const o of objects) {
@@ -122,20 +125,33 @@ export function computeNeighborSnap(
     neighbours.push(b);
   }
 
-  // Pass 1 — pick the closest snapping candidate on each axis.
+  // Pass 1 — pick the closest snapping candidate on each axis (align-left,
+  // align-right, align-centre, butt-after, butt-before), as a top-left value.
   let snapX = x;
   let bestDX = threshold + 1;
   let snapY = y;
   let bestDY = threshold + 1;
   for (const b of neighbours) {
-    for (const candX of [b.L, b.R - w, b.CX - w / 2, b.R, b.L - w]) {
+    for (const candX of [
+      b.L + hx - halfW,
+      b.R - hx - halfW,
+      b.CX - halfW,
+      b.R + hx - halfW,
+      b.L - hx - halfW,
+    ]) {
       const d = Math.abs(candX - x);
       if (d < bestDX) {
         bestDX = d;
         snapX = candX;
       }
     }
-    for (const candY of [b.T, b.B - h, b.CY - h / 2, b.B, b.T - h]) {
+    for (const candY of [
+      b.T + hy - halfH,
+      b.B - hy - halfH,
+      b.CY - halfH,
+      b.B + hy - halfH,
+      b.T - hy - halfH,
+    ]) {
       const d = Math.abs(candY - y);
       if (d < bestDY) {
         bestDY = d;
@@ -144,15 +160,17 @@ export function computeNeighborSnap(
     }
   }
 
-  // Pass 2 — with the snapped box, emit a guide at every coincident edge.
+  // Pass 2 — with the snapped box, emit a guide at every coincident AABB edge.
   const EPS = 0.5;
+  const scx = snapX + halfW;
+  const scy = snapY + halfH;
   const self: Box = {
-    L: snapX,
-    R: snapX + w,
-    CX: snapX + w / 2,
-    T: snapY,
-    B: snapY + h,
-    CY: snapY + h / 2,
+    L: scx - hx,
+    R: scx + hx,
+    CX: scx,
+    T: scy - hy,
+    B: scy + hy,
+    CY: scy,
   };
   const xGuides = new Map<number, SnapGuide>();
   const yGuides = new Map<number, SnapGuide>();
@@ -226,7 +244,7 @@ export function resolveOverlap(
   excludeId: number,
   draggedType: LayoutObjectType
 ): { x: number; y: number } {
-  const { hw, hh } = halfExtents(w, h, rotation);
+  const { hx: hw, hy: hh } = rotatedAabbHalfExtents(w, h, rotation);
   let cx = x + w / 2; // work in centre space (rotation is about the centre)
   let cy = y + h / 2;
   for (let iter = 0; iter < 8; iter++) {
@@ -303,6 +321,7 @@ export function snapToNeighbors(
   y: number,
   w: number,
   h: number,
+  rotation: number,
   objects: LayoutObject[],
   excludeId: number,
   threshold: number = NEIGHBOR_SNAP_THRESHOLD,
@@ -313,6 +332,7 @@ export function snapToNeighbors(
     y,
     w,
     h,
+    rotation,
     objects,
     excludeId,
     threshold,

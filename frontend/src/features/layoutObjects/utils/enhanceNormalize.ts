@@ -7,6 +7,7 @@ import {
 } from "./coordinateHelpers";
 import { clipCutoutsToBoundary, getCutoutRects, type Rect } from "./floorShape";
 import { isDeskCapableType } from "../constants/deskCapableTypes";
+import { rotatedAabbHalfExtents } from "./rotatedGeometry";
 import type { LayoutObject } from "../types/layoutObject.types";
 
 /**
@@ -68,16 +69,22 @@ function toWRect(o: LayoutObject): WRect | null {
 const isQuarter = (rot: number) => rot === 90 || rot === 270;
 
 /**
- * Screen-space axis-aligned footprint of a stored rect. For a 90/270 desk the
- * on-screen box is height × width (swapped), centred on the same point. The whole
- * engine works on these AABBs so rotated desks align/pack by what's actually drawn.
+ * Screen-space axis-aligned footprint of a stored rect — the TRUE rotated AABB,
+ * shared with the canvas overlap/clamp model (rotatedGeometry) so the engine and
+ * the canvas agree on a rotated object's footprint.
+ *
+ * For 0/90/180/270 — the only rotations the engine actually packs (isPackableDesk)
+ * — this is byte-for-byte the old height×width swap. For an arbitrary angle it is
+ * the exact diagonal envelope, so a non-quarter obstacle is seen at its real size
+ * and the engine never packs a desk into a rotated corner the canvas would then
+ * reject on drag. Non-quarter objects are obstacles only (never packed), so their
+ * widened footprint never flows to `toStored`/output.
  */
 function toScreenRect(s: WRect): WRect {
   const cx = s.x + s.w / 2;
   const cy = s.y + s.h / 2;
-  const w = isQuarter(s.rot) ? s.h : s.w;
-  const h = isQuarter(s.rot) ? s.w : s.h;
-  return { id: s.id, type: s.type, x: cx - w / 2, y: cy - h / 2, w, h, rot: s.rot };
+  const { hx, hy } = rotatedAabbHalfExtents(s.w, s.h, s.rot);
+  return { id: s.id, type: s.type, x: cx - hx, y: cy - hy, w: hx * 2, h: hy * 2, rot: s.rot };
 }
 
 /** Convert a screen-space AABB back to stored (x, y, width, height). */

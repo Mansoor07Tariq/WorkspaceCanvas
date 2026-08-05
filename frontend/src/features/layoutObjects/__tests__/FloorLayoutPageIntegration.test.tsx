@@ -232,6 +232,13 @@ describe("FloorLayoutPage drag/transform integration", () => {
   });
 
   it("successful transform: calls updateLayoutObject with x/y/width/height/rotation", async () => {
+    // transform button fires onObjectTransformEnd(42, 50, 60, 120, 70, 40).
+    // FE-1: a 120×70 object at 40° near the top-left corner (boundary inset 48) has
+    // rotated half-extents (68.46, 65.38) — larger than the unrotated (60, 35) — so
+    // the rotation-aware clamp pushes it in so its VISUAL corners clear the walls:
+    //   center (110, 95) → clamped to (48+68.46, 48+65.38) = (116.46, 113.38)
+    //   → top-left (56.46, 78.38). At 0° this reduces to the old (50, 60).
+    // Under the old unrotated clamp the top corner sat at y≈29.6, above the wall (48).
     renderPage();
     await waitFor(() => screen.getByTestId("transform-42"));
     screen.getByTestId("transform-42").click();
@@ -241,8 +248,8 @@ describe("FloorLayoutPage drag/transform integration", () => {
         3,
         42,
         expect.objectContaining({
-          x: "50.00",
-          y: "60.00",
+          x: "56.46",
+          y: "78.38",
           width: "120.00",
           height: "70.00",
           rotation: "40.00",
@@ -588,8 +595,12 @@ describe("FloorLayoutPage snap-to-grid", () => {
     //   snapSizeToGrid(120, 70, 20): snapToGrid(120,20)=120, snapToGrid(70,20)=Math.round(3.5)*20=80
     //   snapToGrid(50, 20) = Math.round(2.5)*20 = 60
     //   snapToGrid(60, 20) = 60
-    //   clampObjectTransform(60, 60, 120, 80, 1000, 640) → {x:60, y:60, w:120, h:80}
-    // PATCH: x:"60.00", y:"60.00", width:"120.00", height:"80.00", rotation:"40.00"
+    //   FE-1 rotation-aware clamp of (60, 60, 120, 80) @ 40°, boundary inset 48:
+    //     center (120, 100), rotated half-extents (71.67, 69.21)
+    //     x: 120 ≥ 48+71.67=119.67 → unchanged → top-left x = 60
+    //     y: 100 < 48+69.21=117.21 → clamped → top-left y = 117.21-40 = 77.21
+    //   (old unrotated clamp left y at 60, letting the top corner poke above y=48)
+    // PATCH: x:"60.00", y:"77.21", width:"120.00", height:"80.00", rotation:"40.00"
     renderPage();
     await waitFor(() => screen.getByTestId("transform-42"));
 
@@ -604,7 +615,7 @@ describe("FloorLayoutPage snap-to-grid", () => {
       const payload = call[3] as Record<string, unknown>;
       expect(payload).toMatchObject({
         x: "60.00",
-        y: "60.00",
+        y: "77.21",
         width: "120.00",
         height: "80.00",
         rotation: "40.00",

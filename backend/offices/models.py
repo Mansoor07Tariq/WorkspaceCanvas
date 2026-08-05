@@ -229,7 +229,7 @@ class FloorLayoutObject(models.Model):
             # serializers — any non-serializer write path (shell, bulk op, future
             # service) still cannot persist a zero/negative-sized object.
             models.CheckConstraint(
-                check=Q(width__gt=0) & Q(height__gt=0),
+                condition=Q(width__gt=0) & Q(height__gt=0),
                 name="layout_obj_positive_size",
             ),
         ]
