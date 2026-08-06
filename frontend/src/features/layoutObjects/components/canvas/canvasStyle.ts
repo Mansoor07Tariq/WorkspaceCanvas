@@ -15,6 +15,10 @@ export const WALL_STROKE_WIDTH = 2;
 export const WALL_THICKNESS = BOUNDARY_WALL_THICKNESS;
 
 export const GUIDE_COLOR = "#EC4899"; // pink-500 alignment guides
+// Tidy ghost-preview outline/connector (PR 069). Violet reads as "proposed /
+// enhance" and is distinct from the pink drag guides and the blue boundary handles.
+export const GHOST_COLOR = "#7C3AED"; // violet-600 (dashed outline + connector)
+export const GHOST_FILL = "rgba(124, 58, 237, 0.10)"; // violet-600 @ 10% — subtle ghost fill
 export const BOUNDARY_HANDLE_COLOR = "#2563EB"; // blue-600 room-resize handles
 export const ROOM_WALL_COLOR = "#6B7280"; // gray-500 — thin walls drawn around rooms in enhance
 export const ROOM_WALL_THICKNESS = 5;

@@ -25,6 +25,7 @@ import { FloorObjectsLayer } from "./canvas/FloorObjectsLayer";
 import { RoomFramesLayer } from "./canvas/RoomFramesLayer";
 import { BoundaryResizeLayer } from "./canvas/BoundaryResizeLayer";
 import { DragGuidesLayer, type DragGuidesHandle } from "./canvas/DragGuidesLayer";
+import { GhostPreviewLayer } from "./canvas/GhostPreviewLayer";
 import { WallPlacementLayer } from "./canvas/WallPlacementLayer";
 import { NotesTooltip } from "./canvas/NotesTooltip";
 import { CanvasEmptyState } from "./canvas/CanvasEmptyState";
@@ -52,6 +53,7 @@ export function FloorMapCanvas({
   gridSize = DEFAULT_GRID_SIZE,
   bookableObjectIds,
   enhanced = false,
+  ghostPreview,
   boundary = DEFAULT_FLOOR_BOUNDARY,
   onBoundaryResize,
   mode = "editor",
@@ -260,6 +262,8 @@ export function FloorMapCanvas({
               onTransformEnd={handleBoundaryTransformEnd}
             />
           )}
+          {/* Tidy ghost preview: above objects, below the drag guides (PR 069). */}
+          {ghostPreview && ghostPreview.length > 0 && <GhostPreviewLayer ghosts={ghostPreview} />}
           <DragGuidesLayer ref={guidesRef} />
           {isPlacing && mount && placementConfig && (
             <WallPlacementLayer
