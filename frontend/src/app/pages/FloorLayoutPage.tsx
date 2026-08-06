@@ -38,15 +38,11 @@ import { isWallMountedType } from "@/features/layoutObjects/utils/wallPlacement"
 import { getDefaultSizeForObjectType } from "@/features/layoutObjects/utils/layoutObjectLibrary";
 import {
   createLayoutObject,
-  updateLayoutObject,
   deleteLayoutObject,
 } from "@/features/layoutObjects/api/layoutObjectApi";
 import { getApiErrorMessage } from "@/lib/api/getApiErrorMessage";
 import { LayoutObjectLibrary } from "@/features/layoutObjects/components/LayoutObjectLibrary";
-import {
-  LayoutObjectInspector,
-  type InspectorPatch,
-} from "@/features/layoutObjects/components/LayoutObjectInspector";
+import { LayoutObjectInspector } from "@/features/layoutObjects/components/LayoutObjectInspector";
 import { LayoutCanvasToolbar } from "@/features/layoutObjects/components/LayoutCanvasToolbar";
 import { useDesks } from "@/features/desks/hooks/useDesks";
 import type { LayoutObjectType } from "@/features/layoutObjects/types/layoutObject.types";
@@ -163,6 +159,7 @@ export function FloorLayoutPage() {
   const {
     handleObjectDragEnd,
     handleObjectTransform,
+    handleObjectDetailsSave,
     handleCanvasKeyDown,
     reflowObjectsIntoBoundary,
     applyBoundaryResize,
@@ -338,39 +335,8 @@ export function FloorLayoutPage() {
     [setField, handleQuickAdd]
   );
 
-  // Persist inspector edits (label / size / rotation / notes) with optimistic
-  // rollback. Notes live in metadata, merged so other keys are preserved.
-  const handleSaveDetails = useCallback(
-    async (id: number, patch: InspectorPatch) => {
-      const prev = objects.find((o) => o.id === id);
-      if (!prev) return;
-      const update = {
-        label: patch.label,
-        width: formatCoordinate(parseFloat(patch.width)),
-        height: formatCoordinate(parseFloat(patch.height)),
-        rotation: formatCoordinate(parseFloat(patch.rotation)),
-        metadata: { ...prev.metadata, notes: patch.notes },
-      };
-      updateObjectLocally(id, update);
-      setSaving(id, true);
-      setLayoutSaveError(undefined);
-      try {
-        await updateLayoutObject(officeId, floorId, id, update);
-      } catch (err) {
-        updateObjectLocally(id, {
-          label: prev.label,
-          width: prev.width,
-          height: prev.height,
-          rotation: prev.rotation,
-          metadata: prev.metadata,
-        });
-        setLayoutSaveError(getApiErrorMessage(err));
-      } finally {
-        setSaving(id, false);
-      }
-    },
-    [objects, officeId, floorId, updateObjectLocally, setSaving, setLayoutSaveError]
-  );
+  // Inspector edits (label / size / rotation / notes) persist through the single
+  // optimistic-persistence path in useCanvasInteractions (PR 067 consolidation).
 
   const handleDeleteSelected = useCallback(
     async (id: number) => {
@@ -637,7 +603,7 @@ export function FloorLayoutPage() {
                 canEdit={canManageLayout && !reviewLocked}
                 onSave={
                   selectedObject
-                    ? (patch) => handleSaveDetails(selectedObject.id, patch)
+                    ? (patch) => handleObjectDetailsSave(selectedObject.id, patch)
                     : undefined
                 }
                 onDelete={

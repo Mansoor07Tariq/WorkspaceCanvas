@@ -617,38 +617,8 @@ export const en = {
       keyboardHintSnap: "Tap arrow keys to move by one grid step.",
     },
     desks: {
-      // Form labels
-      nameLabel: "Desk name",
-      namePlaceholder: "e.g. Desk A1",
-      nameRequired: "Desk name is required.",
-      codeLabel: "Code (optional)",
-      codePlaceholder: "e.g. A1",
-      statusLabel: "Status",
-      amenitiesLabel: "Amenities",
-      notesLabel: "Notes",
-      notesPlaceholder: "Any additional notes…",
-      submitCreate: "Create desk",
-      submitEdit: "Save changes",
-      cancelEdit: "Cancel",
-      editError: "Could not update desk. Please try again.",
-      editErrorPermission: "You do not have permission to edit this desk.",
-
-      // Status display
-      statusAvailable: "Available",
-      statusUnavailable: "Unavailable",
-      statusMaintenance: "Maintenance",
-
-      // Amenities checkboxes
-      amenityMonitor: "Monitor",
-      amenityDockingStation: "Docking station",
-      amenityStandingDesk: "Standing desk",
-      amenityNearWindow: "Near window",
-
-      // Feedback
+      // Bookable indicator shown on layout objects with an active linked Desk.
       bookableBadge: "Bookable",
-      createError: "Could not create desk. Please try again.",
-      createErrorPermission: "You do not have permission to create a desk here.",
-      createErrorValidation: "Please check your input and try again.",
     },
     pages: {
       comingSoon: "This feature is coming soon.",

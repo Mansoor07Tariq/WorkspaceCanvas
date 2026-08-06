@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { en } from "@/i18n/en";
 import { ApiError } from "@/lib/api/apiClient";
+import { getApiErrorMessage } from "@/lib/api/getApiErrorMessage";
 import { updateLayoutObject } from "../api/layoutObjectApi";
 import {
   buildMovePatch,
   buildTransformPatch,
   clampObjectToBoundary,
   clampObjectTransformToBoundary,
+  formatCoordinate,
   snapToGrid,
   snapObjectToGrid,
   snapSizeToGrid,
@@ -52,8 +54,28 @@ export interface UseCanvasInteractionsParams {
   enhanced?: boolean;
 }
 
+/**
+ * Inspector edit input (label / size / rotation / notes). Structurally matches the
+ * inspector's `InspectorPatch` so the page can forward it directly, without the
+ * hook depending on a component type.
+ */
+export interface ObjectDetailsInput {
+  label: string;
+  width: string;
+  height: string;
+  rotation: string;
+  notes: string;
+}
+
 export interface UseCanvasInteractionsResult {
   handleObjectMove: (objectId: number, x: number, y: number) => Promise<void>;
+  /**
+   * Optimistic inspector-detail save (label/size/rotation/notes) with rollback.
+   * The single optimistic-persistence path — previously re-implemented inline in
+   * FloorLayoutPage (PR 067). No concurrent-save guard, no "Saved" flash, and it
+   * surfaces the raw API error message (unchanged from the old inline version).
+   */
+  handleObjectDetailsSave: (id: number, patch: ObjectDetailsInput) => Promise<void>;
   /** Returns the final top-left so the canvas can settle/revert the node there. */
   handleObjectDragEnd: (
     objectId: number,
@@ -136,29 +158,55 @@ export function useCanvasInteractions({
     return err instanceof ApiError && err.status === 403 ? c.movePermissionError : c.moveError;
   }
 
+  // ─── Single optimistic-persist primitive (PR 067) ─────────────────────────
+  // Move, transform, and inspector-detail saves all funnel through here: apply the
+  // patch locally, PATCH it, roll back the given `prev` fields on failure, toggle
+  // saving. The flags capture the behavioural differences that predate the
+  // consolidation — drag/transform guard against a concurrent save, flash the
+  // transient "Saved" chip, and use the move/permission error copy; detail saves
+  // (previously inline in FloorLayoutPage) do none of those and surface the raw
+  // API error.
+  const persistObjectPatch = useCallback(
+    async (
+      id: number,
+      patch: Partial<LayoutObject>,
+      prev: Partial<LayoutObject>,
+      opts: { guard: boolean; flash: boolean; errorFor: (err: unknown) => string }
+    ) => {
+      if (opts.guard && savingObjectIds.has(id)) return;
+      updateObjectLocally(id, patch);
+      setSaving(id, true);
+      setLayoutSaveError(undefined);
+      try {
+        await updateLayoutObject(officeId, floorId, id, patch);
+        if (opts.flash) flashSaved(id);
+      } catch (err) {
+        updateObjectLocally(id, prev);
+        setLayoutSaveError(opts.errorFor(err));
+      } finally {
+        setSaving(id, false);
+      }
+    },
+    [officeId, floorId, savingObjectIds, updateObjectLocally, setSaving, flashSaved]
+  );
+
   // ─── Core move PATCH — receives final coordinates (already snapped/clamped) ─
   const handleObjectMove = useCallback(
     async (objectId: number, x: number, y: number) => {
-      if (savingObjectIds.has(objectId)) return;
       const prevObj = objects.find((o) => o.id === objectId);
       if (!prevObj) return;
-
-      const patch = buildMovePatch(x, y);
-      updateObjectLocally(objectId, patch);
-      setSaving(objectId, true);
-      setLayoutSaveError(undefined);
-
-      try {
-        await updateLayoutObject(officeId, floorId, objectId, patch);
-        flashSaved(objectId);
-      } catch (err) {
-        updateObjectLocally(objectId, { x: prevObj.x, y: prevObj.y });
-        setLayoutSaveError(buildMoveError(err));
-      } finally {
-        setSaving(objectId, false);
-      }
+      await persistObjectPatch(
+        objectId,
+        buildMovePatch(x, y),
+        { x: prevObj.x, y: prevObj.y },
+        {
+          guard: true,
+          flash: true,
+          errorFor: buildMoveError,
+        }
+      );
     },
-    [officeId, floorId, objects, savingObjectIds, updateObjectLocally, setSaving, flashSaved]
+    [objects, persistObjectPatch]
   );
 
   // ─── Move a wall AND the doors/windows mounted on it (PR 061) ─────────────
@@ -311,21 +359,44 @@ export function useCanvasInteractions({
       patch: ReturnType<typeof buildTransformPatch>,
       prev: Pick<LayoutObject, "x" | "y" | "width" | "height" | "rotation">
     ) => {
-      if (savingObjectIds.has(id)) return;
-      updateObjectLocally(id, patch);
-      setSaving(id, true);
-      setLayoutSaveError(undefined);
-      try {
-        await updateLayoutObject(officeId, floorId, id, patch);
-        flashSaved(id);
-      } catch (err) {
-        updateObjectLocally(id, prev);
-        setLayoutSaveError(buildMoveError(err));
-      } finally {
-        setSaving(id, false);
-      }
+      await persistObjectPatch(id, patch, prev, {
+        guard: true,
+        flash: true,
+        errorFor: buildMoveError,
+      });
     },
-    [officeId, floorId, savingObjectIds, updateObjectLocally, setSaving, flashSaved]
+    [persistObjectPatch]
+  );
+
+  // ─── Inspector detail save (label/size/rotation/notes) — optimistic + rollback
+  // The single home for optimistic persistence: this was re-implemented inline in
+  // FloorLayoutPage (PR 067). Behaviour is preserved exactly — no concurrent-save
+  // guard, no "Saved" flash, raw API error message; notes merge into metadata.
+  const handleObjectDetailsSave = useCallback(
+    async (id: number, patch: ObjectDetailsInput) => {
+      const prev = objects.find((o) => o.id === id);
+      if (!prev) return;
+      const update = {
+        label: patch.label,
+        width: formatCoordinate(parseFloat(patch.width)),
+        height: formatCoordinate(parseFloat(patch.height)),
+        rotation: formatCoordinate(parseFloat(patch.rotation)),
+        metadata: { ...prev.metadata, notes: patch.notes },
+      };
+      await persistObjectPatch(
+        id,
+        update,
+        {
+          label: prev.label,
+          width: prev.width,
+          height: prev.height,
+          rotation: prev.rotation,
+          metadata: prev.metadata,
+        },
+        { guard: false, flash: false, errorFor: getApiErrorMessage }
+      );
+    },
+    [objects, persistObjectPatch]
   );
 
   // ─── Transform PATCH — applies snap + clamp then persists ─────────────────
@@ -510,6 +581,7 @@ export function useCanvasInteractions({
 
   return {
     handleObjectMove,
+    handleObjectDetailsSave,
     handleObjectDragEnd,
     handleObjectTransform,
     handleCanvasKeyDown,
