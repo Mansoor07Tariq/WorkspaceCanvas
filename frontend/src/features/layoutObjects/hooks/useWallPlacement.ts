@@ -1,7 +1,6 @@
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type Konva from "konva";
 import {
-  getSnapWalls,
   snapToWall,
   getMountDimensions,
   isWallMountedType,
@@ -11,10 +10,10 @@ import {
   openingsOnWall,
   isAlongFree,
   clampAlongWithinGap,
+  type SnapWall,
   type WallPlacement,
 } from "../utils/wallPlacement";
 import { getLayoutObjectRenderConfig } from "../utils/layoutObjectRenderConfig";
-import type { FloorBoundary } from "../utils/coordinateHelpers";
 import type { LayoutObject, LayoutObjectType } from "../types/layoutObject.types";
 
 interface Params {
@@ -22,9 +21,8 @@ interface Params {
   canManageLayout: boolean;
   isBookingMode: boolean;
   objects: LayoutObject[];
-  boundary: FloorBoundary;
-  carveShape: boolean;
-  cutoutRects: ReturnType<typeof import("../utils/floorShape").getCutoutRects>;
+  /** The memoised snap walls (PR 068 — hoisted so it isn't recomputed per object). */
+  snapWalls: SnapWall[];
   onPlaceObject?: (
     type: LayoutObjectType,
     x: number,
@@ -37,18 +35,17 @@ interface Params {
 
 /**
  * Door/window wall-placement mode (hover-to-place ghost + slide-along-wall drag
- * bounds), extracted from FloorMapCanvas (PR 067). Behaviour unchanged — the code
- * is moved verbatim. The orchestrator renders the ghost/capture overlay from the
- * returned state and passes `wallDragBoundFor` to each placed opening node.
+ * bounds). PR 068 (FE-3): the snap walls are now passed in already memoised, so the
+ * O(walls × objects) `getSnapWalls` is computed once per render instead of once per
+ * wall-mounted object, and `wallDragBoundFor` is referentially STABLE (reads the
+ * latest walls/objects via a ref) so it doesn't invalidate the memoised object nodes.
  */
 export function useWallPlacement({
   pendingPlacementType,
   canManageLayout,
   isBookingMode,
   objects,
-  boundary: B,
-  carveShape,
-  cutoutRects,
+  snapWalls,
   onPlaceObject,
 }: Params) {
   const placementType =
@@ -59,6 +56,13 @@ export function useWallPlacement({
   const mount = placementType ? getMountDimensions(placementType) : null;
   const placementConfig = placementType ? getLayoutObjectRenderConfig(placementType) : null;
 
+  // Latest walls/objects for the STABLE wallDragBoundFor below. Synced after commit;
+  // walls do not change during a door drag, so the bound never uses a stale wall set.
+  const latest = useRef({ snapWalls, objects });
+  useEffect(() => {
+    latest.current = { snapWalls, objects };
+  });
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function computeGhost(e: any): WallPlacement | null {
     if (!isPlacing || !mount) return null;
@@ -67,11 +71,10 @@ export function useWallPlacement({
     // placement correct under any pan/zoom.
     const pointer = stage?.getRelativePointerPosition?.();
     if (!pointer) return null;
-    const walls = getSnapWalls(objects, B, carveShape ? cutoutRects : []);
-    const placement = snapToWall(pointer.x, pointer.y, walls, mount.length);
+    const placement = snapToWall(pointer.x, pointer.y, snapWalls, mount.length);
     if (!placement) return null;
     // Disallow placing on top of an existing door/window on the same wall.
-    const host = nearestWall(walls, placement.centerX, placement.centerY);
+    const host = nearestWall(snapWalls, placement.centerX, placement.centerY);
     if (host) {
       const along = projectAlong(host, placement.centerX, placement.centerY);
       if (!isAlongFree(along, mount.length / 2, openingsOnWall(host, objects, -1))) return null;
@@ -81,15 +84,15 @@ export function useWallPlacement({
 
   // Build a Konva dragBoundFunc for a placed door/window so it only slides along
   // its host wall (and never over another opening). Returns undefined when the
-  // object is not on a wall. Captures the object's pre-drag state; obj.x/y do not
-  // change until dragend, so the closure stays valid for the whole drag.
-  function wallDragBoundFor(obj: LayoutObject) {
-    const walls = getSnapWalls(objects, B, carveShape ? cutoutRects : []);
+  // object is not on a wall. STABLE identity (PR 068): reads the latest walls/objects
+  // via `latest`, so the memoised object nodes are not invalidated between renders.
+  const wallDragBoundFor = useCallback((obj: LayoutObject) => {
+    const { snapWalls, objects } = latest.current;
     const w = parseFloat(obj.width);
     const h = parseFloat(obj.height);
     const cx = parseFloat(obj.x) + w / 2;
     const cy = parseFloat(obj.y) + h / 2;
-    const host = nearestWall(walls, cx, cy);
+    const host = nearestWall(snapWalls, cx, cy);
     if (!host) return undefined;
     const halfLen = w / 2;
     const wallHalfLen = host.length / 2;
@@ -113,7 +116,7 @@ export function useWallPlacement({
       const p = pointOnWall(host, along);
       return { x: p.x * scale + ox, y: p.y * scale + oy };
     };
-  }
+  }, []);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function handlePlacementMove(e: any) {

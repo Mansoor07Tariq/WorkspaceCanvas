@@ -24,7 +24,7 @@ import { BoundaryWallsLayer } from "./canvas/BoundaryWallsLayer";
 import { FloorObjectsLayer } from "./canvas/FloorObjectsLayer";
 import { RoomFramesLayer } from "./canvas/RoomFramesLayer";
 import { BoundaryResizeLayer } from "./canvas/BoundaryResizeLayer";
-import { DragGuidesLayer } from "./canvas/DragGuidesLayer";
+import { DragGuidesLayer, type DragGuidesHandle } from "./canvas/DragGuidesLayer";
 import { WallPlacementLayer } from "./canvas/WallPlacementLayer";
 import { NotesTooltip } from "./canvas/NotesTooltip";
 import { CanvasEmptyState } from "./canvas/CanvasEmptyState";
@@ -135,11 +135,14 @@ export function FloorMapCanvas({
     nodeRefs,
   });
 
-  // Live alignment guides while dragging a normal object.
-  const { dragGuides, handleObjectDragMove, handleObjectDragEndChecked } = useDragGuides({
+  // Live alignment guides while dragging a normal object — drawn imperatively
+  // (PR 068), so a drag never triggers a per-frame React re-render.
+  const guidesRef = useRef<DragGuidesHandle>(null);
+  const { handleObjectDragMove, handleObjectDragEndChecked } = useDragGuides({
     objects,
     nodeRefs,
     onObjectDragEnd,
+    guidesRef,
   });
 
   // Door/window hover-to-place mode.
@@ -157,9 +160,7 @@ export function FloorMapCanvas({
     canManageLayout,
     isBookingMode,
     objects,
-    boundary: B,
-    carveShape,
-    cutoutRects,
+    snapWalls,
     onPlaceObject,
   });
 
@@ -259,7 +260,7 @@ export function FloorMapCanvas({
               onTransformEnd={handleBoundaryTransformEnd}
             />
           )}
-          {dragGuides.length > 0 && <DragGuidesLayer guides={dragGuides} />}
+          <DragGuidesLayer ref={guidesRef} />
           {isPlacing && mount && placementConfig && (
             <WallPlacementLayer
               mount={mount}

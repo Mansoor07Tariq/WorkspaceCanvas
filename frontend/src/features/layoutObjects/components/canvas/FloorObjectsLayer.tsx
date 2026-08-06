@@ -1,10 +1,7 @@
+import { useCallback } from "react";
 import { Layer, Transformer } from "react-konva";
 import type Konva from "konva";
-import {
-  alignOpeningToWall,
-  isWallMountedType,
-  type getSnapWalls,
-} from "../../utils/wallPlacement";
+import { alignOpeningToWall, type getSnapWalls } from "../../utils/wallPlacement";
 import { MIN_OBJECT_SIZE } from "../../utils/coordinateHelpers";
 import { makeMinSizeBoundBox } from "../../utils/transformerBounds";
 import { ROTATION_SNAPS } from "./canvasStyle";
@@ -77,6 +74,16 @@ export function FloorObjectsLayer({
   handleObjectDragEndChecked,
   onObjectTransformEnd,
 }: Props) {
+  // Stable node registrar (PR 068): each node reports its Konva group here in an
+  // effect, so the layer never hands a fresh `ref` down that would defeat memo.
+  const registerNode = useCallback(
+    (id: number, node: Konva.Group | null) => {
+      if (node) nodeRefs.current.set(id, node);
+      else nodeRefs.current.delete(id);
+    },
+    [nodeRefs]
+  );
+
   return (
     <Layer>
       {objects.map((obj) => {
@@ -91,24 +98,13 @@ export function FloorObjectsLayer({
         return (
           <LayoutObjectCanvasNode
             key={obj.id}
-            ref={(node) => {
-              if (node) nodeRefs.current.set(obj.id, node);
-              else nodeRefs.current.delete(obj.id);
-            }}
+            registerNode={registerNode}
             obj={displayObj}
             isSelected={!isBookingMode && obj.id === selectedObjectId}
-            onSelect={() => onSelectObject(obj.id)}
+            onSelect={onSelectObject}
             draggable={canManageLayout && !isBookingMode}
-            dragBoundFunc={
-              canManageLayout && !isBookingMode && isWallMountedType(obj.object_type)
-                ? wallDragBoundFor(displayObj)
-                : undefined
-            }
-            onDragMove={
-              canManageLayout && !isBookingMode && !isWallMountedType(obj.object_type)
-                ? (e) => handleObjectDragMove(obj, e.target)
-                : undefined
-            }
+            wallDragBoundFor={wallDragBoundFor}
+            onDragMove={handleObjectDragMove}
             onDragEnd={isBookingMode ? undefined : handleObjectDragEndChecked}
             onTransformEnd={isBookingMode ? undefined : onObjectTransformEnd}
             isSaving={savingObjectIds?.has(obj.id)}
@@ -118,11 +114,7 @@ export function FloorObjectsLayer({
             onHover={notesTooltipEnabled ? setHoveredObjectId : undefined}
             availabilityStatus={availabilityStatus}
             isAvailabilitySelected={isAvailabilitySelected}
-            onAvailabilitySelect={
-              isBookingMode && availabilityStatus !== undefined && onAvailabilityObjectSelect
-                ? () => onAvailabilityObjectSelect(obj.id)
-                : undefined
-            }
+            onAvailabilitySelect={onAvailabilityObjectSelect}
           />
         );
       })}

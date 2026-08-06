@@ -400,7 +400,7 @@ export function useCanvasInteractions({
   );
 
   // ─── Transform PATCH — applies snap + clamp then persists ─────────────────
-  const handleObjectTransform = useCallback(
+  const handleObjectTransformImpl = useCallback(
     async (
       objectId: number,
       rawX: number,
@@ -507,6 +507,26 @@ export function useCanvasInteractions({
       persistTransform(objectId, buildTransformPatch(fx, fy, fw, fh, rot), prevSnapshot);
     },
     [objects, snapEnabled, gridSize, persistTransform, boundary, snapCutouts]
+  );
+
+  // Stable wrapper (PR 068): the transform handler is passed to every memoised object
+  // node, so its identity must not change when `objects` changes (which would re-render
+  // all nodes). The wrapper delegates to the latest impl via a ref — same behaviour,
+  // constant identity.
+  const transformImplRef = useRef(handleObjectTransformImpl);
+  useEffect(() => {
+    transformImplRef.current = handleObjectTransformImpl;
+  });
+  const handleObjectTransform = useCallback(
+    (
+      objectId: number,
+      rawX: number,
+      rawY: number,
+      rawWidth: number,
+      rawHeight: number,
+      rawRotation: number
+    ) => transformImplRef.current(objectId, rawX, rawY, rawWidth, rawHeight, rawRotation),
+    []
   );
 
   // ─── Keyboard handler — axis-specific snap + clamp ────────────────────────
