@@ -19,6 +19,7 @@ import { useFloors } from "@/features/floors/hooks/useFloors";
 import { useCollapseSidebarWhileMounted } from "@/app/layout/SidebarCollapseContext";
 import { getCutoutRects } from "@/features/layoutObjects/utils/floorShape";
 import { useEnhanceTidy } from "@/features/layoutObjects/hooks/useEnhanceTidy";
+import { buildGhostPreview } from "@/features/layoutObjects/enhancePreview/buildGhostPreview";
 import { EnhanceTidyDialog } from "@/features/layoutObjects/components/EnhanceTidyDialog";
 import { useFloorSetupSteps } from "@/features/layoutObjects/wizard/useFloorSetupSteps";
 import { useFloorPublish } from "@/features/layoutObjects/wizard/useFloorPublish";
@@ -217,6 +218,16 @@ export function FloorLayoutPage() {
     buildInput: buildTidyInput,
     onObjectsUpdated: resyncObjects,
   });
+
+  // Ghost preview (PR 069): dashed outlines of the proposed Tidy positions, shown on
+  // the canvas ONLY while the preview is open. Empty in every other phase, so the
+  // canvas renders no ghost layer (zero cost) — and it tracks the live suggestion
+  // selection because `selectedObjectIds` changes as the user toggles suggestions.
+  const ghostPreview = useMemo(
+    () =>
+      tidy.phase === "preview" ? buildGhostPreview(tidy.plan, tidy.selectedObjectIds, objects) : [],
+    [tidy.phase, tidy.plan, tidy.selectedObjectIds, objects]
+  );
 
   // ─── Floor setup wizard (PR 064) ───────────────────────────────────────────
   // The guided flow is the default for managers; "Free editing" drops the
@@ -582,6 +593,7 @@ export function FloorLayoutPage() {
                 gridSize={gridSize}
                 bookableObjectIds={bookableObjectIds}
                 enhanced={reviewLocked ? true : enhanced}
+                ghostPreview={ghostPreview}
                 boundary={boundary}
                 onBoundaryResize={
                   reviewLocked ? undefined : canManageLayout ? handleBoundaryResize : undefined

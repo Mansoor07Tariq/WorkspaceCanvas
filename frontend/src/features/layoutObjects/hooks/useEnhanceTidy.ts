@@ -54,6 +54,8 @@ export interface UseEnhanceTidyResult {
   selectedSuggestionIds: Set<string>;
   /** Toggle one suggestion in/out of the apply set. */
   toggleSuggestion: (id: string) => void;
+  /** Object ids covered by the currently-selected suggestions (for the ghost preview). */
+  selectedObjectIds: ReadonlySet<number>;
   /** Distinct objects covered by the currently-selected suggestions. */
   selectedObjectCount: number;
   /** Operations that would be applied for the current selection. */
@@ -221,6 +223,7 @@ export function useEnhanceTidy({
     suggestions,
     selectedSuggestionIds,
     toggleSuggestion,
+    selectedObjectIds,
     selectedObjectCount: selectedObjectIds.size,
     selectedOperationCount: selectedOperations.length,
     canApply: selectedOperations.length > 0,

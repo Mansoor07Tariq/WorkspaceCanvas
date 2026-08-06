@@ -76,6 +76,12 @@ export function EnhanceTidyDialog({ tidy }: { tidy: UseEnhanceTidyResult }) {
   const changed = plan?.operations.length ?? 0;
   const isClean = isPreview && changed === 0;
 
+  // PR 069: while previewing a plan with ghosts on the map, dock the dialog to the
+  // right and lighten the backdrop so the map (and its ghost outlines) stay visible.
+  // Purely presentational — apply/cancel/close behaviour is unchanged, and the result
+  // and "already tidy" states keep the normal centred modal.
+  const dockForGhosts = isPreview && !isClean;
+
   return (
     <Dialog
       open
@@ -83,6 +89,10 @@ export function EnhanceTidyDialog({ tidy }: { tidy: UseEnhanceTidyResult }) {
       maxWidth="sm"
       fullWidth
       aria-labelledby="enhance-tidy-title"
+      sx={dockForGhosts ? { "& .MuiDialog-container": { justifyContent: "flex-end" } } : undefined}
+      slotProps={
+        dockForGhosts ? { backdrop: { sx: { backgroundColor: "rgba(0, 0, 0, 0.18)" } } } : undefined
+      }
     >
       <DialogTitle id="enhance-tidy-title">
         {isPreview ? (isClean ? c.tidyDialogTitle : c.tidySuggestTitle) : resultTitle}

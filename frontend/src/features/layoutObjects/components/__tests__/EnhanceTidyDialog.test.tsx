@@ -12,6 +12,7 @@ function makeTidy(over: Partial<UseEnhanceTidyResult> = {}): UseEnhanceTidyResul
     suggestions: [],
     selectedSuggestionIds: new Set(),
     toggleSuggestion: vi.fn(),
+    selectedObjectIds: new Set(),
     selectedObjectCount: 0,
     selectedOperationCount: 0,
     canApply: false,

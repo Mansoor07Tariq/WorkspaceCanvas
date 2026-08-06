@@ -1,6 +1,7 @@
 import type { FloorBoundary } from "../utils/coordinateHelpers";
 import type { LayoutObject, LayoutObjectType } from "../types/layoutObject.types";
 import type { DeskAvailabilityStatus } from "@/features/bookings/utils/bookingAvailability";
+import type { GhostPreview } from "../enhancePreview/buildGhostPreview";
 
 /** Public props contract for {@link FloorMapCanvas}. Unchanged by PR 067. */
 export interface FloorMapCanvasProps {
@@ -29,6 +30,12 @@ export interface FloorMapCanvasProps {
   bookableObjectIds?: ReadonlySet<number>;
   /** When true, objects render with isometric assets instead of simple boxes. */
   enhanced?: boolean;
+  /**
+   * Tidy ghost-preview overlay (PR 069): dashed outlines of where the selected Tidy
+   * suggestions would move/resize/rotate objects. Absent or empty → no ghost layer is
+   * rendered (zero cost when not previewing).
+   */
+  ghostPreview?: GhostPreview[];
 
   // ── Editable floor boundary ────────────────────────────────────────────────
   /** The room rectangle. Defaults to the fixed boundary when not provided. */
