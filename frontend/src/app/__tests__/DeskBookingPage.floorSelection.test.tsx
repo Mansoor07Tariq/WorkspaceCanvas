@@ -78,6 +78,8 @@ const FLOOR_A: Floor = {
   status: "published",
 };
 const FLOOR_B: Floor = { ...FLOOR_A, id: 20, name: "Floor B", slug: "floor-b", level_number: 1 };
+// Floor C has bookable desks but NO drawn layout objects (PR 070 friction #6).
+const FLOOR_C: Floor = { ...FLOOR_A, id: 30, name: "Floor C", slug: "floor-c", level_number: 2 };
 
 function makeDesk(id: number, name: string, layoutObjectId: number): Desk {
   return {
@@ -122,10 +124,12 @@ function makeLayoutObject(id: number, label: string): LayoutObject {
 const DESKS_BY_FLOOR: Record<number, Desk[]> = {
   10: [makeDesk(101, "Desk A1", 11)],
   20: [makeDesk(201, "Desk B1", 21)],
+  30: [makeDesk(301, "Desk C1", 31)], // desks but no layout objects
 };
 const OBJECTS_BY_FLOOR: Record<number, LayoutObject[]> = {
   10: [makeLayoutObject(11, "Desk A1")],
   20: [makeLayoutObject(21, "Desk B1")],
+  // floor 30 intentionally omitted → no layout objects
 };
 
 // ─── Hook mocks ─────────────────────────────────────────────────────────────────
@@ -156,7 +160,7 @@ vi.mock("@/features/offices/hooks/useOffices", () => ({
 
 vi.mock("@/features/floors/hooks/useFloors", () => ({
   useFloors: (officeId: number) => ({
-    floors: officeId === 1 ? [FLOOR_A, FLOOR_B] : [],
+    floors: officeId === 1 ? [FLOOR_A, FLOOR_B, FLOOR_C] : [],
     loading: false,
     error: null,
     refresh: vi.fn(),
@@ -312,5 +316,44 @@ describe("DeskBookingPage — floor selection (TD-033)", () => {
       DESKS_BY_FLOOR[20] = [makeDesk(201, "Desk B1", 21)];
       OBJECTS_BY_FLOOR[20] = [makeLayoutObject(21, "Desk B1")];
     }
+  });
+
+  it("shows a 'map not available' note for a floor with desks but no layout (PR 070 #6)", async () => {
+    renderPage();
+    await selectOption("office-select", /^HQ$/);
+    await selectOption("floor-select", /^Floor C$/);
+
+    await waitFor(() => expect(screen.getByText("Desk C1")).toBeInTheDocument());
+    expect(screen.getByText(/floor map isn't available for this floor/i)).toBeInTheDocument();
+    // The map block is replaced by the note, not silently hidden.
+    expect(screen.queryByTestId("mock-booking-floor-map")).not.toBeInTheDocument();
+  });
+
+  it("auto-selects office/floor/desk from a 'book again' deep-link (PR 070 #3)", async () => {
+    mockUseAuth.mockReturnValue(baseAuth);
+    render(
+      <MemoryRouter initialEntries={["/app/bookings?office=1&floor=10&desk=101"]}>
+        <DeskBookingPage />
+      </MemoryRouter>
+    );
+    // Floor A's data loads and desk 101 is preselected (shown on the map mock).
+    await waitFor(() =>
+      expect(screen.getByTestId("mock-booking-floor-map")).toHaveAttribute(
+        "data-selected-desk",
+        "101"
+      )
+    );
+    // "Desk A1" appears on both the availability card and the selected-desk panel.
+    expect(screen.getAllByText("Desk A1").length).toBeGreaterThan(0);
+  });
+
+  it("shows a rebook-fail note when the deep-linked desk is gone (PR 070 #3)", async () => {
+    mockUseAuth.mockReturnValue(baseAuth);
+    render(
+      <MemoryRouter initialEntries={["/app/bookings?office=1&floor=10&desk=999"]}>
+        <DeskBookingPage />
+      </MemoryRouter>
+    );
+    await waitFor(() => expect(screen.getByText(/that desk isn't available/i)).toBeInTheDocument());
   });
 });

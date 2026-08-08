@@ -26,6 +26,24 @@ export function myBookingsPath(): string {
   return "/app/bookings/my";
 }
 
+/**
+ * Desk-booking page, optionally deep-linked with office/floor/desk so the picker
+ * auto-selects them (PR 070 "book again"). Omitted parts are simply not added.
+ */
+export function deskBookingPath(prefill?: {
+  office?: number;
+  floor?: number;
+  desk?: number;
+}): string {
+  if (!prefill) return ROUTES.bookings;
+  const params = new URLSearchParams();
+  if (prefill.office != null) params.set("office", String(prefill.office));
+  if (prefill.floor != null) params.set("floor", String(prefill.floor));
+  if (prefill.desk != null) params.set("desk", String(prefill.desk));
+  const qs = params.toString();
+  return qs ? `${ROUTES.bookings}?${qs}` : ROUTES.bookings;
+}
+
 export function inviteAcceptPath(token: string): string {
   return `/invite/${token}`;
 }

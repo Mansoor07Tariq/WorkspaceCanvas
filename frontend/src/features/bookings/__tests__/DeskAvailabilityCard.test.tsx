@@ -264,7 +264,7 @@ describe("DeskAvailabilityCard", () => {
         cancelLoading={false}
       />
     );
-    expect(screen.getByRole("button", { name: /Book desk Desk A1/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Book.*Desk A1/i })).toBeInTheDocument();
   });
 
   it("Cancel button has accessible name containing desk name", () => {
@@ -282,9 +282,7 @@ describe("DeskAvailabilityCard", () => {
         cancelLoading={false}
       />
     );
-    expect(
-      screen.getByRole("button", { name: /Cancel booking for desk Desk A1/i })
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Cancel booking.*Desk A1/i })).toBeInTheDocument();
   });
 
   it("Book button is disabled when bookingLoading prop is true", () => {
@@ -301,7 +299,7 @@ describe("DeskAvailabilityCard", () => {
         cancelLoading={false}
       />
     );
-    expect(screen.getByRole("button", { name: /Book desk Desk A1/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Book.*Desk A1/i })).toBeDisabled();
   });
 
   it("Cancel button is disabled when cancelLoading prop is true", () => {
@@ -319,6 +317,41 @@ describe("DeskAvailabilityCard", () => {
         cancelLoading={true}
       />
     );
-    expect(screen.getByRole("button", { name: /Cancel booking for desk Desk A1/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /Cancel booking.*Desk A1/i })).toBeDisabled();
+  });
+
+  it("surfaces a booking error on the card when the `error` prop is set (PR 070 #7)", () => {
+    const item = makeItem();
+    render(
+      <DeskAvailabilityCard
+        item={item}
+        selected={false}
+        onSelect={vi.fn()}
+        onBook={vi.fn()}
+        onCancel={vi.fn()}
+        canBook={true}
+        bookingLoading={false}
+        cancelLoading={false}
+        error="This desk is already booked for this date."
+      />
+    );
+    const alert = screen.getByTestId("card-booking-error-1");
+    expect(alert).toHaveTextContent("This desk is already booked for this date.");
+  });
+
+  it("shows no card error when the `error` prop is absent", () => {
+    render(
+      <DeskAvailabilityCard
+        item={makeItem()}
+        selected={false}
+        onSelect={vi.fn()}
+        onBook={vi.fn()}
+        onCancel={vi.fn()}
+        canBook={true}
+        bookingLoading={false}
+        cancelLoading={false}
+      />
+    );
+    expect(screen.queryByTestId("card-booking-error-1")).not.toBeInTheDocument();
   });
 });
