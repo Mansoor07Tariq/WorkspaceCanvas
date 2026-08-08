@@ -101,7 +101,8 @@ describe("MyBookingsPage", () => {
   });
 
   it("shows booking cards when bookings exist", () => {
-    const booking = makeBooking({ desk_name: "Desk B3" });
+    // Future-dated so it lands in the default "Upcoming" tab (PR 070).
+    const booking = makeBooking({ desk_name: "Desk B3", booking_date: "2099-01-01" });
     mockUseMyBookings.mockReturnValue({
       bookings: [booking],
       loading: false,
@@ -112,8 +113,8 @@ describe("MyBookingsPage", () => {
     expect(screen.getByText("Desk B3")).toBeInTheDocument();
   });
 
-  it("cancel button triggers cancel flow and calls cancelMyBooking", async () => {
-    const booking = makeBooking({ id: 42 });
+  it("cancel button opens confirmation, then calls cancelMyBooking on confirm", async () => {
+    const booking = makeBooking({ id: 42, booking_date: "2099-01-01" });
     mockUseMyBookings.mockReturnValue({
       bookings: [booking],
       loading: false,
@@ -124,16 +125,17 @@ describe("MyBookingsPage", () => {
 
     renderPage();
 
-    const cancelBtn = screen.getByRole("button", {
-      name: /cancel booking for desk a1/i,
-    });
-    fireEvent.click(cancelBtn);
+    // The card's cancel button opens the confirmation dialog (PR 070).
+    fireEvent.click(screen.getByRole("button", { name: /cancel booking — Desk A1/i }));
+    expect(mockCancelMyBooking).not.toHaveBeenCalled();
+    // The dialog's confirm button (exact "Cancel booking") runs the cancel.
+    fireEvent.click(screen.getByRole("button", { name: "Cancel booking" }));
 
     await waitFor(() => expect(mockCancelMyBooking).toHaveBeenCalledWith(42));
   });
 
-  it("shows success message after cancel", async () => {
-    const booking = makeBooking({ id: 10 });
+  it("shows success message after confirming a cancel", async () => {
+    const booking = makeBooking({ id: 10, booking_date: "2099-01-01" });
     mockUseMyBookings.mockReturnValue({
       bookings: [booking],
       loading: false,
@@ -144,7 +146,8 @@ describe("MyBookingsPage", () => {
 
     renderPage();
 
-    fireEvent.click(screen.getByRole("button", { name: /cancel booking for desk a1/i }));
+    fireEvent.click(screen.getByRole("button", { name: /cancel booking — Desk A1/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Cancel booking" }));
 
     await waitFor(() =>
       expect(screen.getByText("Booking cancelled successfully.")).toBeInTheDocument()
@@ -170,5 +173,61 @@ describe("MyBookingsPage", () => {
     });
     renderPage();
     expect(screen.getByText("Failed to load")).toBeInTheDocument();
+  });
+
+  it("splits bookings across Upcoming / Past / Cancelled tabs (PR 070)", () => {
+    mockUseMyBookings.mockReturnValue({
+      bookings: [
+        makeBooking({ id: 1, desk_name: "Future Desk", booking_date: "2099-01-01" }),
+        makeBooking({ id: 2, desk_name: "Old Desk", booking_date: "2000-01-01" }),
+        makeBooking({
+          id: 3,
+          desk_name: "Gone Desk",
+          booking_date: "2099-02-02",
+          status: "cancelled",
+        }),
+      ],
+      loading: false,
+      error: undefined,
+      refresh: mockRefresh,
+    });
+    renderPage();
+
+    // Default = Upcoming
+    expect(screen.getByText("Future Desk")).toBeInTheDocument();
+    expect(screen.queryByText("Old Desk")).not.toBeInTheDocument();
+    expect(screen.queryByText("Gone Desk")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("tab", { name: /Past/ }));
+    expect(screen.getByText("Old Desk")).toBeInTheDocument();
+    expect(screen.queryByText("Future Desk")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("tab", { name: /Cancelled/ }));
+    expect(screen.getByText("Gone Desk")).toBeInTheDocument();
+    expect(screen.queryByText("Old Desk")).not.toBeInTheDocument();
+  });
+
+  it("'Book again' deep-links the picker with office/floor/desk", () => {
+    mockUseMyBookings.mockReturnValue({
+      bookings: [makeBooking({ id: 7, office: 2, floor: 3, desk: 4, booking_date: "2099-01-01" })],
+      loading: false,
+      error: undefined,
+      refresh: mockRefresh,
+    });
+    renderPage();
+    fireEvent.click(screen.getByRole("button", { name: /Book again/i }));
+    expect(mockNavigate).toHaveBeenCalledWith("/app/bookings?office=2&floor=3&desk=4");
+  });
+
+  it("shows the Past empty state on the Past tab when there are none", () => {
+    mockUseMyBookings.mockReturnValue({
+      bookings: [makeBooking({ booking_date: "2099-01-01" })],
+      loading: false,
+      error: undefined,
+      refresh: mockRefresh,
+    });
+    renderPage();
+    fireEvent.click(screen.getByRole("tab", { name: /Past/ }));
+    expect(screen.getByText("No past bookings")).toBeInTheDocument();
   });
 });

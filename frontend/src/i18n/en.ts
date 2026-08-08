@@ -717,8 +717,18 @@ export const en = {
   myBookings: {
     pageTitle: "My Bookings",
     bookDeskAction: "Book a desk",
+    tabUpcoming: "Upcoming",
+    tabPast: "Past",
+    tabCancelled: "Cancelled",
     emptyTitle: "No upcoming bookings",
     emptyDesc: "You don't have any active desk bookings.",
+    emptyPastTitle: "No past bookings",
+    emptyPastDesc: "Desks you've booked in the past will show up here.",
+    emptyCancelledTitle: "No cancelled bookings",
+    emptyCancelledDesc: "Bookings you cancel will show up here.",
+    cancelAction: "Cancel booking",
+    bookAgainAction: "Book again",
+    cancelSuccess: "Booking cancelled successfully.",
   },
   bookings: {
     pageTitle: "Desk Booking",
@@ -737,6 +747,23 @@ export const en = {
     noDesksAdminDesc: "Build the floor map and mark desks as bookable.",
     noDesksAdminAction: "Build floor map",
     noDesksMemberDesc: "No desks are available to book on this floor yet. Contact your admin.",
+    bookAction: "Book",
+    cancelAction: "Cancel booking",
+    codeLabel: "Code:",
+    mapHeading: "Floor map",
+    deskListEmpty: "No desks found for this floor.",
+    // Shown when a floor has bookable desks but no drawn layout (PR 070, friction #6).
+    mapUnavailableNote:
+      "A floor map isn't available for this floor yet — use the desk list below to book.",
+    // "Book again" deep-link landed on a floor where the original desk is gone (PR 070).
+    rebookDeskGoneTitle: "That desk isn't available",
+    rebookDeskGoneDesc:
+      "The desk from your previous booking is no longer bookable on this floor. Pick another desk below.",
+    // Cancel-booking confirmation (shared by My Bookings and the picker, PR 070).
+    cancelConfirmTitle: "Cancel this booking?",
+    cancelConfirmMessage: "This releases the desk for others. You can't undo this.",
+    cancelConfirmConfirm: "Cancel booking",
+    cancelConfirmDismiss: "Keep booking",
   },
   common: {
     somethingWentWrong: "Something went wrong. Please try again.",

@@ -1,4 +1,5 @@
 import { Box, Grid, Typography } from "@mui/material";
+import { en } from "@/i18n/en";
 import type { DeskAvailabilityItem, DeskAvailabilityStatus } from "../utils/bookingAvailability";
 import { DeskAvailabilityCard } from "./DeskAvailabilityCard";
 
@@ -18,6 +19,9 @@ interface Props {
   hasMyBooking: boolean;
   bookingLoading: boolean;
   cancelLoading: boolean;
+  /** Booking error + which desk it belongs to, so it shows on the clicked card. */
+  bookingError?: string | null;
+  bookingErrorDeskId?: number | null;
 }
 
 export function DeskAvailabilityList({
@@ -29,11 +33,13 @@ export function DeskAvailabilityList({
   hasMyBooking,
   bookingLoading,
   cancelLoading,
+  bookingError,
+  bookingErrorDeskId,
 }: Props) {
   if (items.length === 0) {
     return (
       <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
-        No desks found for this floor.
+        {en.bookings.deskListEmpty}
       </Typography>
     );
   }
@@ -54,6 +60,7 @@ export function DeskAvailabilityList({
               canBook={item.status === "available" && !hasMyBooking}
               bookingLoading={bookingLoading}
               cancelLoading={cancelLoading}
+              error={bookingErrorDeskId === item.desk.id ? bookingError : undefined}
             />
           </Grid>
         ))}

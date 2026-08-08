@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   Alert,
+  AlertTitle,
   Box,
   Container,
   FormControl,
@@ -11,8 +12,9 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { LoadingState } from "@/components/feedback/LoadingState";
+import { ConfirmDialog } from "@/components/feedback/ConfirmDialog";
 import { ErrorAlert } from "@/components/feedback/ErrorAlert";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { BusinessOutlined, LayersOutlined, WeekendOutlined } from "@mui/icons-material";
@@ -78,8 +80,19 @@ export function DeskBookingPage() {
   const { selectedMembership, selectedOrganizationId } = useSelectedOrganization();
   const isOwnerOrAdmin = canManageWorkspaceContent(selectedMembership?.role);
 
-  const [selectedOfficeId, setSelectedOfficeId] = useState<number | "">("");
-  const [selectedFloorId, setSelectedFloorId] = useState<number | "">("");
+  // Book-again deep-link (PR 070): office/floor initialise the selectors from the URL,
+  // the desk is preselected once the floor's data loads (see the effect below). Read as
+  // initial state — no setState-in-effect.
+  const [searchParams] = useSearchParams();
+  const paramId = (key: string): number | null => {
+    const n = Number(searchParams.get(key));
+    return Number.isFinite(n) && n > 0 ? n : null;
+  };
+
+  const [selectedOfficeId, setSelectedOfficeId] = useState<number | "">(
+    () => paramId("office") ?? ""
+  );
+  const [selectedFloorId, setSelectedFloorId] = useState<number | "">(() => paramId("floor") ?? "");
   const [selectedDate, setSelectedDate] = useState<string>(getTodayLocalDate());
   const [selectedDeskId, setSelectedDeskId] = useState<number | null>(null);
 
@@ -89,6 +102,14 @@ export function DeskBookingPage() {
   const [cancelError, setCancelError] = useState<string | null>(null);
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [cancelSuccess, setCancelSuccess] = useState(false);
+  // Which desk a booking error belongs to, so it shows on that card (friction #7).
+  const [bookingErrorDeskId, setBookingErrorDeskId] = useState<number | null>(null);
+  // Cancel-confirmation target (PR 070) — set by card/panel, resolved by the dialog.
+  const [pendingCancelBookingId, setPendingCancelBookingId] = useState<number | null>(null);
+  // "Book again" deep-link whose desk is gone on this floor (friction #3 rebook-fail).
+  const [rebookDeskGone, setRebookDeskGone] = useState(false);
+  // Desk to preselect from the deep-link, consumed once the floor's data has loaded.
+  const prefillDeskRef = useRef<number | null>(paramId("desk"));
 
   const {
     offices,
@@ -143,12 +164,18 @@ export function DeskBookingPage() {
   const selectedItem =
     selectedDeskId !== null ? (items.find((i) => i.desk.id === selectedDeskId) ?? null) : null;
 
-  function handleSelectDesk(deskId: number) {
-    setSelectedDeskId(deskId);
+  // Reset the transient booking/cancel feedback (shared by the selection handlers).
+  function clearBookingFeedback() {
     setBookingSuccess(false);
     setCancelSuccess(false);
     setBookingError(null);
+    setBookingErrorDeskId(null);
     setCancelError(null);
+  }
+
+  function handleSelectDesk(deskId: number) {
+    setSelectedDeskId(deskId);
+    clearBookingFeedback();
   }
 
   // Reset floor/desk when office changes
@@ -156,35 +183,29 @@ export function DeskBookingPage() {
     setSelectedOfficeId(officeId);
     setSelectedFloorId("");
     setSelectedDeskId(null);
-    setBookingSuccess(false);
-    setCancelSuccess(false);
-    setBookingError(null);
-    setCancelError(null);
+    setRebookDeskGone(false);
+    clearBookingFeedback();
   }
 
   // Reset desk when floor changes
   function handleFloorChange(floorId: number | "") {
     setSelectedFloorId(floorId);
     setSelectedDeskId(null);
-    setBookingError(null);
-    setCancelError(null);
-    setBookingSuccess(false);
-    setCancelSuccess(false);
+    setRebookDeskGone(false);
+    clearBookingFeedback();
   }
 
   function handleDateChange(date: string) {
     setSelectedDate(date);
     setSelectedDeskId(null);
-    setBookingError(null);
-    setCancelError(null);
-    setBookingSuccess(false);
-    setCancelSuccess(false);
+    clearBookingFeedback();
   }
 
   async function handleBook(deskId: number) {
     if (typeof selectedOfficeId !== "number" || typeof selectedFloorId !== "number") return;
     setBookingLoading(true);
     setBookingError(null);
+    setBookingErrorDeskId(null);
     setBookingSuccess(false);
     try {
       await createDeskBooking(selectedOfficeId, selectedFloorId, {
@@ -197,6 +218,7 @@ export function DeskBookingPage() {
       bookingTimerRef.current = setTimeout(() => setBookingSuccess(false), 3000);
     } catch (err: unknown) {
       setBookingError(extractBookingError(err));
+      setBookingErrorDeskId(deskId); // surface on the card that was clicked (friction #7)
     } finally {
       setBookingLoading(false);
     }
@@ -220,6 +242,14 @@ export function DeskBookingPage() {
     }
   }
 
+  // Resolve the cancel confirmation: run the cancel, then close the dialog.
+  async function confirmCancel() {
+    const id = pendingCancelBookingId;
+    if (id === null) return;
+    await handleCancel(id);
+    setPendingCancelBookingId(null);
+  }
+
   const floorSelected = typeof selectedFloorId === "number" && selectedFloorId > 0;
   const dataLoading = desksLoading || layoutLoading || bookingsLoading;
 
@@ -229,6 +259,16 @@ export function DeskBookingPage() {
   // No-floors empty state — shown when an office is selected but has no floors
   const officeSelected = typeof selectedOfficeId === "number" && selectedOfficeId > 0;
   const noFloorsReady = officeSelected && !floorsLoading && !floorsError && floors.length === 0;
+
+  // Once the deep-linked floor's data has loaded, select the requested desk — or, if
+  // it is gone / no longer bookable, surface a clear "that desk isn't available" note.
+  useEffect(() => {
+    const desk = prefillDeskRef.current;
+    if (desk === null || !floorSelected || dataLoading) return;
+    prefillDeskRef.current = null; // consume once
+    if (items.some((i) => i.desk.id === desk)) setSelectedDeskId(desk);
+    else setRebookDeskGone(true);
+  }, [items, floorSelected, dataLoading]);
 
   return (
     <Container maxWidth="xl" sx={{ py: { xs: 2, sm: 3 } }}>
@@ -357,6 +397,13 @@ export function DeskBookingPage() {
                 />
               )}
 
+              {rebookDeskGone && (
+                <Alert severity="warning" role="alert" sx={{ mb: 2 }}>
+                  <AlertTitle>{c.rebookDeskGoneTitle}</AlertTitle>
+                  {c.rebookDeskGoneDesc}
+                </Alert>
+              )}
+
               {items.length > 0 && (
                 <BookingSummaryCards
                   availableCount={counts.available}
@@ -366,20 +413,26 @@ export function DeskBookingPage() {
                 />
               )}
 
-              {layoutObjects.length > 0 && items.length > 0 && (
-                <Box sx={{ mb: 3 }}>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
-                    Floor map
-                  </Typography>
-                  <BookingFloorMap
-                    items={items}
-                    layoutObjects={layoutObjects}
-                    selectedDeskId={selectedDeskId}
-                    onDeskSelect={handleSelectDesk}
-                    boundary={selectedFloorBoundary}
-                  />
-                </Box>
-              )}
+              {items.length > 0 &&
+                (layoutObjects.length > 0 ? (
+                  <Box sx={{ mb: 3 }}>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
+                      {c.mapHeading}
+                    </Typography>
+                    <BookingFloorMap
+                      items={items}
+                      layoutObjects={layoutObjects}
+                      selectedDeskId={selectedDeskId}
+                      onDeskSelect={handleSelectDesk}
+                      boundary={selectedFloorBoundary}
+                    />
+                  </Box>
+                ) : (
+                  // Floor has bookable desks but no drawn layout (friction #6).
+                  <Alert severity="info" sx={{ mb: 3 }}>
+                    {c.mapUnavailableNote}
+                  </Alert>
+                ))}
 
               {items.length > 0 && (
                 <Grid container spacing={3}>
@@ -389,10 +442,12 @@ export function DeskBookingPage() {
                       selectedDeskId={selectedDeskId}
                       onSelectDesk={handleSelectDesk}
                       onBookDesk={handleBook}
-                      onCancelBooking={handleCancel}
+                      onCancelBooking={(id) => setPendingCancelBookingId(id)}
                       hasMyBooking={myBooking !== null}
                       bookingLoading={bookingLoading}
                       cancelLoading={cancelLoading}
+                      bookingError={bookingError}
+                      bookingErrorDeskId={bookingErrorDeskId}
                     />
                   </Grid>
                   <Grid size={{ xs: 12, md: 4 }}>
@@ -401,7 +456,7 @@ export function DeskBookingPage() {
                       selectedDate={selectedDate}
                       hasMyBooking={myBooking !== null}
                       onBook={handleBook}
-                      onCancel={handleCancel}
+                      onCancel={(id) => setPendingCancelBookingId(id)}
                       bookingLoading={bookingLoading}
                       cancelLoading={cancelLoading}
                       bookingError={bookingError}
@@ -431,6 +486,18 @@ export function DeskBookingPage() {
           </Typography>
         </Box>
       )}
+
+      <ConfirmDialog
+        open={pendingCancelBookingId !== null}
+        title={c.cancelConfirmTitle}
+        message={c.cancelConfirmMessage}
+        confirmLabel={c.cancelConfirmConfirm}
+        cancelLabel={c.cancelConfirmDismiss}
+        destructive
+        loading={cancelLoading}
+        onConfirm={confirmCancel}
+        onClose={() => setPendingCancelBookingId(null)}
+      />
     </Container>
   );
 }
