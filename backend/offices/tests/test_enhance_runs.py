@@ -12,7 +12,7 @@ from offices.models import (
     FloorLayoutObject,
     Office,
 )
-from offices.views import _EnhanceRunBaseView
+from offices.services.enhance_run_service import EnhanceRunService
 
 User = get_user_model()
 
@@ -586,7 +586,7 @@ def test_retry_reapplies_and_succeeds(owner_client, active_office, floor):
         ],
     }
     with mock_patch.object(
-        _EnhanceRunBaseView, "_apply_patch", return_value=(False, {"detail": ["boom"]})
+        EnhanceRunService, "_apply_patch", return_value=(False, {"detail": ["boom"]})
     ):
         res = owner_client.post(
             enhance_runs_url(active_office.id, floor.id), body, format="json"
