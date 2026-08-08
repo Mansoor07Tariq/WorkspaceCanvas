@@ -17,13 +17,16 @@ from accounts.models import Invitation, Membership
 
 from .models import (
     DESK_CAPABLE_TYPES,
+    ROOM_CAPABLE_TYPES,
     Desk,
     DeskBooking,
     EnhanceRun,
     EnhanceRunOperation,
     Floor,
     FloorLayoutObject,
+    MeetingRoom,
     Office,
+    RoomBooking,
 )
 from .permissions import (
     get_first_active_membership,
@@ -38,16 +41,21 @@ from .serializers import (
     CreateDeskSerializer,
     CreateFloorSerializer,
     CreateLayoutObjectSerializer,
+    CreateMeetingRoomSerializer,
     CreateOfficeSerializer,
+    CreateRoomBookingSerializer,
     DeskBookingResponseSerializer,
     DeskResponseSerializer,
     FloorResponseSerializer,
     LayoutObjectResponseSerializer,
+    MeetingRoomResponseSerializer,
     OfficeResponseSerializer,
     OrganizationSummarySerializer,
+    RoomBookingResponseSerializer,
     UpdateDeskSerializer,
     UpdateFloorSerializer,
     UpdateLayoutObjectSerializer,
+    resolve_office_zone,
 )
 from .services.booking_service import (
     BookingDeskNotAvailableError,
@@ -59,6 +67,13 @@ from .services.booking_service import (
 from .services.enhance_run_service import (
     EnhanceRunNotFoundError,
     EnhanceRunService,
+)
+from .services.room_booking_service import (
+    RoomBookingAlreadyCancelledError,
+    RoomBookingService,
+    RoomFloorNotPublishedError,
+    RoomNotAvailableError,
+    RoomSlotConflictError,
 )
 
 logger = logging.getLogger(__name__)
@@ -1221,7 +1236,11 @@ class MyBookingsView(APIView):
 
         from_date_str = request.query_params.get("from")
         to_date_str = request.query_params.get("to")
-        today = tz.now().date()
+        # "Today" for the default active window uses the configured booking
+        # timezone, not raw server-UTC — otherwise a user just west of UTC loses
+        # a still-current booking from the default list during their evening (the
+        # BE-3 rule; cross-org view, so the global default is the honest basis).
+        today = tz.now().astimezone(resolve_office_zone(None)).date()
 
         if from_date_str:
             try:
@@ -1283,6 +1302,316 @@ class MyBookingCancelView(APIView):
         )
         serializer = DeskBookingResponseSerializer(
             booking, context={"request": request}
+        )
+        return Response(serializer.data)
+
+
+# ─── Meeting rooms (PR 073) ───────────────────────────────────────────────────
+
+_NO_ROOM_CAPABLE = (
+    "This layout object's type cannot host a meeting room. "
+    "Only room-capable objects (room, meeting room, meeting pod, phone booth, "
+    "quiet room, focus zone) are supported."
+)
+_ROOM_ALREADY_EXISTS = "This layout object already has an active meeting room."
+
+
+class MeetingRoomListCreateView(APIView):
+    """List active meeting rooms on a floor (any member), or create one (admin).
+
+    Rooms are NOT auto-provisioned (unlike desks): creation is the explicit
+    "bookable" step. A room may be created only on a room-capable layout object,
+    and at most one active room per object (mirrors the desk resource pattern)."""
+
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [_DeskWriteThrottle]
+
+    def get(self, request: Request, office_id: int, floor_id: int) -> Response:
+        office, membership = get_office_for_user(request.user, office_id)
+        if office is None:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+        floor = get_floor_for_office(office, floor_id)
+        if floor is None:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+        rooms = MeetingRoom.objects.filter(floor=floor, is_active=True).select_related(
+            "layout_object"
+        )
+        return Response(MeetingRoomResponseSerializer(rooms, many=True).data)
+
+    def post(self, request: Request, office_id: int, floor_id: int) -> Response:
+        office, membership = get_office_for_user(request.user, office_id)
+        if office is None:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+        floor = get_floor_for_office(office, floor_id)
+        if floor is None:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+        if not user_can_manage_offices(membership):
+            return Response(
+                {"detail": _NO_MANAGE_OFFICES}, status=status.HTTP_403_FORBIDDEN
+            )
+
+        serializer = CreateMeetingRoomSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        data = serializer.validated_data
+
+        try:
+            layout_object = FloorLayoutObject.objects.get(
+                pk=data["layout_object"], floor=floor, is_active=True
+            )
+        except FloorLayoutObject.DoesNotExist:
+            return Response(
+                {"layout_object": ["Layout object not found on this floor."]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if layout_object.object_type not in ROOM_CAPABLE_TYPES:
+            return Response(
+                {"layout_object": [_NO_ROOM_CAPABLE]},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if MeetingRoom.objects.filter(
+            layout_object=layout_object, is_active=True
+        ).exists():
+            return Response(
+                {"layout_object": [_ROOM_ALREADY_EXISTS]},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        try:
+            room = MeetingRoom.objects.create(
+                organization=membership.organization,
+                office=office,
+                floor=floor,
+                layout_object=layout_object,
+                name=data["name"],
+                capacity=data.get("capacity", 1),
+                amenities=data.get("amenities", {}),
+                notes=data.get("notes", ""),
+            )
+        except IntegrityError as exc:
+            if "unique_active_room_per_layout_object" in str(exc):
+                return Response(
+                    {"layout_object": [_ROOM_ALREADY_EXISTS]},
+                    status=status.HTTP_409_CONFLICT,
+                )
+            raise
+        return Response(
+            MeetingRoomResponseSerializer(room).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class RoomBookingListCreateView(APIView):
+    """List a floor's active room bookings for a date, or create a slot booking."""
+
+    permission_classes = [IsAuthenticated]
+
+    def get_throttles(self):
+        if self.request.method == "POST":
+            return [_DeskBookingWriteThrottle()]
+        return [_DeskBookingReadThrottle()]
+
+    def get(self, request: Request, office_id: int, floor_id: int) -> Response:
+        office, membership = get_office_for_user(request.user, office_id)
+        if office is None:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+        floor = get_floor_for_office(office, floor_id)
+        if floor is None:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        date_str = request.query_params.get("date")
+        if not date_str:
+            return Response(
+                {"detail": "date query parameter is required (YYYY-MM-DD)."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            booking_date = datetime.date.fromisoformat(date_str)
+        except ValueError:
+            return Response(
+                {"detail": "Invalid date format. Use YYYY-MM-DD."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        bookings = (
+            RoomBooking.objects.filter(
+                floor=floor,
+                booking_date=booking_date,
+                status=RoomBooking.Status.ACTIVE,
+            )
+            .select_related("room", "user", "cancelled_by", "office", "floor")
+            .order_by("room__name", "start_at")
+        )
+        page_qs, meta = _maybe_paginate_qs(request, bookings)
+        data = RoomBookingResponseSerializer(
+            page_qs, many=True, context={"request": request, "membership": membership}
+        ).data
+        if meta is None:
+            return Response(data)
+        return Response({"results": data, **meta})
+
+    def post(self, request: Request, office_id: int, floor_id: int) -> Response:
+        office, membership = get_office_for_user(request.user, office_id)
+        if office is None:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+        floor = get_floor_for_office(office, floor_id)
+        if floor is None:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = CreateRoomBookingSerializer(
+            data=request.data, context={"office": office}
+        )
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        validated = serializer.validated_data
+
+        try:
+            booking = RoomBookingService().create_booking(
+                organization=membership.organization,
+                office=office,
+                floor=floor,
+                room_id=validated["room"],
+                user=request.user,
+                booking_date=validated["booking_date"],
+                start_at=validated["start_at"],
+                end_at=validated["end_at"],
+            )
+        except MeetingRoom.DoesNotExist:
+            return Response(
+                {"detail": "Room not found on this floor."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        except RoomFloorNotPublishedError:
+            return Response(
+                {"detail": "This floor is not published for booking yet."},
+                status=status.HTTP_409_CONFLICT,
+            )
+        except RoomNotAvailableError:
+            return Response(
+                {"detail": "Room is not available for booking."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        except RoomSlotConflictError:
+            return Response(
+                {"detail": "This room is already booked for an overlapping time."},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        return Response(
+            RoomBookingResponseSerializer(
+                booking, context={"request": request, "membership": membership}
+            ).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class RoomBookingCancelView(APIView):
+    """Cancel a room booking (owner or a manager)."""
+
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [_DeskBookingWriteThrottle]
+
+    def post(
+        self, request: Request, office_id: int, floor_id: int, booking_id: int
+    ) -> Response:
+        office, membership = get_office_for_user(request.user, office_id)
+        if office is None:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+        floor = get_floor_for_office(office, floor_id)
+        if floor is None:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            booking = RoomBooking.objects.select_related(
+                "room", "user", "cancelled_by"
+            ).get(id=booking_id, floor=floor)
+        except RoomBooking.DoesNotExist:
+            return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        is_own = booking.user == request.user
+        if not is_own and not user_can_manage_offices(membership):
+            return Response(
+                {"detail": "You do not have permission to cancel this booking."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        try:
+            RoomBookingService().cancel_booking(booking, cancelled_by=request.user)
+        except RoomBookingAlreadyCancelledError:
+            return Response(
+                {"detail": "Booking is already cancelled."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response(
+            RoomBookingResponseSerializer(
+                booking, context={"request": request, "membership": membership}
+            ).data
+        )
+
+
+class MyRoomBookingsView(APIView):
+    """The current user's room bookings across their active organizations."""
+
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [_DeskBookingReadThrottle]
+
+    def get(self, request: Request) -> Response:
+        active_org_ids = Membership.objects.filter(
+            user=request.user, status="active"
+        ).values_list("organization_id", flat=True)
+
+        qs = RoomBooking.objects.filter(
+            user=request.user, organization__in=active_org_ids
+        ).select_related("room", "office", "floor", "cancelled_by")
+
+        status_param = request.query_params.get("status", "active")
+        if status_param == "cancelled":
+            qs = qs.filter(status=RoomBooking.Status.CANCELLED)
+        elif status_param == "all":
+            pass
+        else:
+            # Any unrecognized value defaults to active (never leak cancelled).
+            status_param = "active"
+            qs = qs.filter(status=RoomBooking.Status.ACTIVE)
+
+        # "Today" for the default active window uses the configured booking
+        # timezone, not raw server-UTC (mirrors the BE-3 rule; this is a cross-org
+        # view with no single office, so the global default is the honest basis).
+        today = tz.now().astimezone(resolve_office_zone(None)).date()
+
+        from_date_str = request.query_params.get("from")
+        to_date_str = request.query_params.get("to")
+        if from_date_str:
+            try:
+                from_date = datetime.date.fromisoformat(from_date_str)
+            except ValueError:
+                return Response(
+                    {"detail": "Invalid from date format. Use YYYY-MM-DD."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            qs = qs.filter(booking_date__gte=from_date)
+        elif status_param == "active":
+            qs = qs.filter(booking_date__gte=today)
+
+        if to_date_str:
+            try:
+                to_date = datetime.date.fromisoformat(to_date_str)
+            except ValueError:
+                return Response(
+                    {"detail": "Invalid to date format. Use YYYY-MM-DD."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            qs = qs.filter(booking_date__lte=to_date)
+
+        if status_param == "active":
+            qs = qs.order_by("booking_date", "start_at")
+        else:
+            qs = qs.order_by("-booking_date", "start_at")
+
+        serializer = RoomBookingResponseSerializer(
+            qs, many=True, context={"request": request}
         )
         return Response(serializer.data)
 

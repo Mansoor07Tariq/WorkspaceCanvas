@@ -3,10 +3,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from django.conf import settings
+from django.contrib.postgres.constraints import ExclusionConstraint
+from django.contrib.postgres.fields import DateTimeRangeField, RangeOperators
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
-from django.db.models import Q
+from django.db.models import F, Func, Q, Value
 from django.utils.text import slugify
 
 if TYPE_CHECKING:
@@ -246,6 +248,23 @@ DESK_CAPABLE_TYPES: frozenset[str] = frozenset(
         FloorLayoutObject.ObjectType.STANDING_DESK,
         FloorLayoutObject.ObjectType.HOT_DESK,
         FloorLayoutObject.ObjectType.PRIVATE_DESK,
+    }
+)
+
+# Layout object types that MAY host a bookable MeetingRoom (PR 073). Unlike desks
+# (which auto-provision), "capable" only means an admin is *allowed* to create a
+# MeetingRoom on this object — bookability still requires that explicit step. The
+# broader set is intentional: including a type here costs nothing until a room is
+# created, and avoids a later migration if more room types become bookable. Zone
+# types (lobby/kitchen/bathroom) are deliberately excluded.
+ROOM_CAPABLE_TYPES: frozenset[str] = frozenset(
+    {
+        FloorLayoutObject.ObjectType.ROOM,
+        FloorLayoutObject.ObjectType.MEETING_ROOM,
+        FloorLayoutObject.ObjectType.QUIET_ROOM,
+        FloorLayoutObject.ObjectType.FOCUS_ZONE,
+        FloorLayoutObject.ObjectType.PHONE_BOOTH,
+        FloorLayoutObject.ObjectType.MEETING_POD,
     }
 )
 
@@ -563,3 +582,230 @@ class EnhanceRunOperation(models.Model):
             f"EnhanceRunOperation {self.id} "
             f"(run {self.enhance_run_id}, object {self.object_id}, {self.status})"
         )
+
+
+# ─── Meeting rooms (PR 073) ───────────────────────────────────────────────────
+
+
+class TsTzRange(Func):
+    """``tstzrange(start, end, bounds)`` as an ORM expression.
+
+    Used by the RoomBooking overlap ExclusionConstraint to build a half-open
+    ``[start, end)`` range from the two UTC-instant columns. Kept as a named
+    subclass so the migration serializer can reference it.
+    """
+
+    function = "TSTZRANGE"
+    output_field = DateTimeRangeField()
+
+
+class MeetingRoom(models.Model):
+    """A bookable meeting-room resource linked to a room-capable FloorLayoutObject.
+
+    Mirrors :class:`Desk` (resource separate from the purely-visual layout object)
+    but is booked for time slots, not whole days. Unlike desks, rooms are NOT
+    auto-provisioned: an admin explicitly creates one (supplying capacity + name),
+    which is the "bookable" step deferred until meeting rooms (PR 073). A
+    room-capable object with an active MeetingRoom is bookable; without one it is
+    not.
+    """
+
+    class Status(models.TextChoices):
+        AVAILABLE = "available", "Available"
+        UNAVAILABLE = "unavailable", "Unavailable"
+        MAINTENANCE = "maintenance", "Maintenance"
+
+    organization = models.ForeignKey(
+        "accounts.Organization",
+        on_delete=models.CASCADE,
+        related_name="meeting_rooms",
+    )
+    office = models.ForeignKey(
+        "offices.Office",
+        on_delete=models.CASCADE,
+        related_name="meeting_rooms",
+    )
+    floor = models.ForeignKey(
+        "offices.Floor",
+        on_delete=models.CASCADE,
+        related_name="meeting_rooms",
+    )
+    layout_object = models.ForeignKey(
+        "offices.FloorLayoutObject",
+        on_delete=models.CASCADE,
+        related_name="meeting_rooms",
+    )
+    name = models.CharField(max_length=120)
+    capacity = models.PositiveIntegerField(default=1, validators=[MinValueValidator(1)])
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.AVAILABLE,
+    )
+    amenities = models.JSONField(default=dict, blank=True)
+    notes = models.TextField(blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["name"]
+        indexes = [
+            models.Index(
+                fields=["office", "is_active"],
+                name="room_office_active_idx",
+            ),
+            models.Index(
+                fields=["floor", "is_active"],
+                name="room_floor_active_idx",
+            ),
+            models.Index(fields=["status"], name="room_status_idx"),
+        ]
+        constraints = [
+            # At most one active meeting room per layout object (mirrors Desk).
+            models.UniqueConstraint(
+                fields=["layout_object"],
+                condition=Q(is_active=True),
+                name="unique_active_room_per_layout_object",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.name} (cap {self.capacity}, {self.office})"
+
+
+class RoomBooking(models.Model):
+    """A time-slot booking of a MeetingRoom.
+
+    Time is stored as UTC instants (``start_at``/``end_at``); ``booking_date`` is
+    the office-local calendar day (denormalized for cheap day-filtering, grouping,
+    and display identity). Overlap of two active bookings for the same room is
+    made impossible at the DB level by a GiST ExclusionConstraint over
+    ``tstzrange(start_at, end_at, '[)')`` (requires the ``btree_gist`` extension).
+    """
+
+    class Status(models.TextChoices):
+        ACTIVE = "active", "Active"
+        CANCELLED = "cancelled", "Cancelled"
+
+    organization = models.ForeignKey(
+        "accounts.Organization",
+        on_delete=models.CASCADE,
+        related_name="room_bookings",
+    )
+    office = models.ForeignKey(
+        "offices.Office",
+        on_delete=models.CASCADE,
+        related_name="room_bookings",
+    )
+    floor = models.ForeignKey(
+        "offices.Floor",
+        on_delete=models.CASCADE,
+        related_name="room_bookings",
+    )
+    room = models.ForeignKey(
+        "offices.MeetingRoom",
+        on_delete=models.PROTECT,
+        related_name="bookings",
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="room_bookings",
+    )
+    # Office-local calendar day of the slot (for filtering/grouping/display).
+    booking_date = models.DateField()
+    # UTC instants (USE_TZ=True). The overlap constraint is built from these.
+    start_at = models.DateTimeField()
+    end_at = models.DateTimeField()
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.ACTIVE,
+    )
+    cancelled_at = models.DateTimeField(null=True, blank=True)
+    cancelled_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="cancelled_room_bookings",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-booking_date", "start_at"]
+        indexes = [
+            models.Index(
+                fields=["organization", "booking_date", "status"],
+                name="rb_org_date_status_idx",
+            ),
+            models.Index(
+                fields=["floor", "booking_date", "status"],
+                name="rb_flr_date_status_idx",
+            ),
+            models.Index(
+                fields=["room", "booking_date", "status"],
+                name="rb_room_date_status_idx",
+            ),
+            models.Index(
+                fields=["user", "booking_date", "status"],
+                name="rb_usr_date_status_idx",
+            ),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(end_at__gt=F("start_at")),
+                name="room_booking_end_after_start",
+            ),
+            # BE-lesson (PR 065): the business rule "no two active bookings for a
+            # room may overlap" is backed by a DB constraint, not only app logic.
+            # Needs the btree_gist extension so `room` equality can share a GiST
+            # index with range overlap.
+            ExclusionConstraint(
+                name="room_booking_no_overlap",
+                expressions=[
+                    ("room", RangeOperators.EQUAL),
+                    (
+                        TsTzRange("start_at", "end_at", Value("[)")),
+                        RangeOperators.OVERLAPS,
+                    ),
+                ],
+                condition=Q(status="active"),
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return (
+            f"RoomBooking {self.id}: user {self.user_id} @ room {self.room_id} "
+            f"{self.start_at:%Y-%m-%d %H:%M}–{self.end_at:%H:%M}"
+        )
+
+    def clean(self) -> None:
+        # Mirrors DeskBooking.clean: guard room state + FK consistency at the
+        # model layer (not only the serializer), so any write path is protected.
+        if self.start_at and self.end_at and self.end_at <= self.start_at:
+            raise ValidationError("Booking end must be after its start.")
+
+        if not self.room_id:
+            return
+
+        room = self.room  # cached instance when set via RoomBooking(room=room_obj)
+
+        if not room.is_active:
+            raise ValidationError("Cannot book an inactive room.")
+        if room.status != MeetingRoom.Status.AVAILABLE:
+            raise ValidationError(
+                f"Cannot book a room with status '{room.get_status_display()}'."
+            )
+        if self.organization_id and room.organization_id != self.organization_id:
+            raise ValidationError(
+                "Booking organization does not match the room's organization."
+            )
+        if self.office_id and room.office_id != self.office_id:
+            raise ValidationError("Booking office does not match the room's office.")
+        if self.floor_id and room.floor_id != self.floor_id:
+            raise ValidationError("Booking floor does not match the room's floor.")

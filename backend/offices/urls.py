@@ -13,8 +13,11 @@ from .views import (
     FloorListCreateView,
     LayoutObjectDetailView,
     LayoutObjectListCreateView,
+    MeetingRoomListCreateView,
     OfficeListCreateView,
     OrganizationSummaryView,
+    RoomBookingCancelView,
+    RoomBookingListCreateView,
 )
 
 urlpatterns = [
@@ -79,5 +82,20 @@ urlpatterns = [
         "<int:office_id>/floors/<int:floor_id>/bookings/<int:booking_id>/cancel/",
         DeskBookingCancelView.as_view(),
         name="desk-booking-cancel",
+    ),
+    path(
+        "<int:office_id>/floors/<int:floor_id>/rooms/",
+        MeetingRoomListCreateView.as_view(),
+        name="meeting-room-list-create",
+    ),
+    path(
+        "<int:office_id>/floors/<int:floor_id>/room-bookings/",
+        RoomBookingListCreateView.as_view(),
+        name="room-booking-list-create",
+    ),
+    path(
+        "<int:office_id>/floors/<int:floor_id>/room-bookings/<int:booking_id>/cancel/",
+        RoomBookingCancelView.as_view(),
+        name="room-booking-cancel",
     ),
 ]
