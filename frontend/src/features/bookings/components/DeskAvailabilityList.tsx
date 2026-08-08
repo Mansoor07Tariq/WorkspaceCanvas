@@ -19,6 +19,8 @@ interface Props {
   hasMyBooking: boolean;
   bookingLoading: boolean;
   cancelLoading: boolean;
+  /** Disables the Book action (e.g. the selected date is invalid, PR 071). */
+  bookingDisabled?: boolean;
   /** Booking error + which desk it belongs to, so it shows on the clicked card. */
   bookingError?: string | null;
   bookingErrorDeskId?: number | null;
@@ -33,6 +35,7 @@ export function DeskAvailabilityList({
   hasMyBooking,
   bookingLoading,
   cancelLoading,
+  bookingDisabled,
   bookingError,
   bookingErrorDeskId,
 }: Props) {
@@ -59,6 +62,7 @@ export function DeskAvailabilityList({
               onCancel={onCancelBooking}
               canBook={item.status === "available" && !hasMyBooking}
               bookingLoading={bookingLoading}
+              bookingDisabled={bookingDisabled}
               cancelLoading={cancelLoading}
               error={bookingErrorDeskId === item.desk.id ? bookingError : undefined}
             />

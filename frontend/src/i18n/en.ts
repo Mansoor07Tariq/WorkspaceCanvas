@@ -676,6 +676,7 @@ export const en = {
       noBookingTodayMessage: "You don't have a desk booked for today.",
       bookDeskAction: "Book a desk",
       viewMyBookings: "View my bookings",
+      bookAnotherDesk: "Book another desk",
       upcomingTitle: "Upcoming",
       loadingBookings: "Loading your bookings…",
       bookingFloorLabel: "Floor",
@@ -752,6 +753,13 @@ export const en = {
     codeLabel: "Code:",
     mapHeading: "Floor map",
     deskListEmpty: "No desks found for this floor.",
+    // Date selector (PR 071)
+    dateLabel: "Booking date",
+    dateToday: "Today",
+    dateTomorrow: "Tomorrow",
+    dateErrorInvalid: "Enter a valid date.",
+    dateErrorPast: "That date is in the past.",
+    dateErrorTooFar: "You can only book up to a year ahead.",
     // Shown when a floor has bookable desks but no drawn layout (PR 070, friction #6).
     mapUnavailableNote:
       "A floor map isn't available for this floor yet — use the desk list below to book.",

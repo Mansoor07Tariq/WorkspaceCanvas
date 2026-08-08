@@ -18,7 +18,7 @@ import { MyBookingsList } from "@/features/bookings/components/MyBookingsList";
 import { groupMyBookings, type MyBookingsTab } from "@/features/bookings/utils/groupMyBookings";
 import { ConfirmDialog } from "@/components/feedback/ConfirmDialog";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { ROUTES, deskBookingPath } from "@/routes/paths";
+import { deskBookingPath } from "@/routes/paths";
 import { getApiErrorMessage } from "@/lib/api/getApiErrorMessage";
 import { en } from "@/i18n/en";
 import type { DeskBooking } from "@/features/bookings/types/booking.types";
@@ -96,7 +96,7 @@ export function MyBookingsPage() {
         <Typography component="h1" variant="h4" sx={{ fontWeight: 700 }}>
           {c.pageTitle}
         </Typography>
-        <Button variant="contained" onClick={() => navigate(ROUTES.bookings)}>
+        <Button variant="contained" onClick={() => navigate(deskBookingPath())}>
           {c.bookDeskAction}
         </Button>
       </Stack>
@@ -150,7 +150,7 @@ export function MyBookingsPage() {
           title={emptyCopy[tab].title}
           description={emptyCopy[tab].desc}
           actionLabel={tab === "upcoming" ? c.bookDeskAction : undefined}
-          onAction={tab === "upcoming" ? () => navigate(ROUTES.bookings) : undefined}
+          onAction={tab === "upcoming" ? () => navigate(deskBookingPath()) : undefined}
         />
       )}
 

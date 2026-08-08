@@ -4,7 +4,42 @@ import {
   isPastBookingDate,
   todayLocalDate,
   formatBookingDate,
+  tomorrowLocalDate,
+  maxBookingDate,
+  validateBookingDate,
+  shiftLocalDate,
 } from "../utils/bookingValidation";
+
+describe("validateBookingDate (PR 071)", () => {
+  it("returns null for today and tomorrow", () => {
+    expect(validateBookingDate(todayLocalDate())).toBeNull();
+    expect(validateBookingDate(tomorrowLocalDate())).toBeNull();
+  });
+  it('flags a malformed date as "invalid"', () => {
+    expect(validateBookingDate("not-a-date")).toBe("invalid");
+    expect(validateBookingDate("2026-13-40")).toBe("invalid");
+  });
+  it('flags a past date as "past"', () => {
+    expect(validateBookingDate(shiftLocalDate(-1))).toBe("past");
+  });
+  it('flags a date beyond the 365-day horizon as "tooFar"', () => {
+    expect(validateBookingDate(shiftLocalDate(366))).toBe("tooFar");
+  });
+  it("accepts the exact max horizon (today + 365)", () => {
+    expect(validateBookingDate(maxBookingDate())).toBeNull();
+  });
+});
+
+describe("tomorrowLocalDate / maxBookingDate", () => {
+  it("tomorrow is today + 1 and valid", () => {
+    expect(tomorrowLocalDate()).toBe(shiftLocalDate(1));
+    expect(isValidBookingDate(tomorrowLocalDate())).toBe(true);
+  });
+  it("max horizon is today + 365 and after today", () => {
+    expect(maxBookingDate()).toBe(shiftLocalDate(365));
+    expect(maxBookingDate() > todayLocalDate()).toBe(true);
+  });
+});
 
 describe("isValidBookingDate", () => {
   it('returns true for a valid date "2026-06-01"', () => {

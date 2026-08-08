@@ -1,8 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, within, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import { DeskBookingPage } from "../pages/DeskBookingPage";
+import { en } from "@/i18n/en";
+import { tomorrowLocalDate } from "@/features/bookings/utils/bookingValidation";
 import type { AuthContextValue } from "@/features/auth/types/authState.types";
 import type { CurrentUser, MembershipInline } from "@/features/auth/types/auth.types";
 import type { Desk } from "@/features/desks/types/desk.types";
@@ -232,10 +234,27 @@ function renderPage() {
   );
 }
 
+// Surfaces the current URL search string so tests can assert selection→URL sync.
+function LocationProbe() {
+  const loc = useLocation();
+  return <div data-testid="location-search">{loc.search}</div>;
+}
+
+function renderAt(url: string) {
+  mockUseAuth.mockReturnValue(baseAuth);
+  return render(
+    <MemoryRouter initialEntries={[url]}>
+      <DeskBookingPage />
+      <LocationProbe />
+    </MemoryRouter>
+  );
+}
+
 describe("DeskBookingPage — floor selection (TD-033)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     deskBookingsCalls.length = 0;
+    window.localStorage.clear();
   });
 
   it("renders the selected floor's desks and map, and updates when the floor changes", async () => {
@@ -355,5 +374,65 @@ describe("DeskBookingPage — floor selection (TD-033)", () => {
       </MemoryRouter>
     );
     await waitFor(() => expect(screen.getByText(/that desk isn't available/i)).toBeInTheDocument());
+  });
+
+  // ─── PR 071: date in URL, selection→URL sync, remembered pair ───────────────────
+
+  it("reads a valid ?date= from the URL on arrival", async () => {
+    const inRange = tomorrowLocalDate(); // valid + within the 365-day horizon
+    renderAt(`/app/bookings?office=1&floor=10&date=${inRange}`);
+    await waitFor(() => expect(screen.getByLabelText("Booking date")).toHaveValue(inRange));
+  });
+
+  it("falls back to today when the ?date= param is invalid", async () => {
+    renderAt("/app/bookings?date=not-a-date");
+    await waitFor(() => {
+      const input = screen.getByLabelText("Booking date") as HTMLInputElement;
+      expect(input.value).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(input.value).not.toBe("not-a-date");
+    });
+  });
+
+  it("syncs office/floor/date to the URL when the user selects (replace-based)", async () => {
+    renderAt("/app/bookings");
+    await selectOption("office-select", /^HQ$/);
+    await selectOption("floor-select", /^Floor A$/);
+    await waitFor(() => {
+      const search = screen.getByTestId("location-search").textContent ?? "";
+      expect(search).toContain("office=1");
+      expect(search).toContain("floor=10");
+      expect(search).toContain("date=");
+    });
+  });
+
+  it("restores the remembered office/floor when arriving with no params", async () => {
+    window.localStorage.setItem(
+      "wc.booking.lastOfficeFloor.v1",
+      JSON.stringify({ v: 1, office: 1, floor: 10 })
+    );
+    renderAt("/app/bookings");
+    // Floor A (id 10) is restored → its desk renders.
+    await waitFor(() => expect(screen.getByText("Desk A1")).toBeInTheDocument());
+  });
+
+  it("silently ignores a stale remembered floor id", async () => {
+    window.localStorage.setItem(
+      "wc.booking.lastOfficeFloor.v1",
+      JSON.stringify({ v: 1, office: 1, floor: 9999 })
+    );
+    renderAt("/app/bookings");
+    // Office restored, but the stale floor is not selected → the select prompt shows.
+    await waitFor(() => expect(screen.getByText(en.bookings.selectPrompt)).toBeInTheDocument());
+    expect(screen.queryByText("Desk A1")).not.toBeInTheDocument();
+  });
+
+  it("URL params beat the remembered pair", async () => {
+    window.localStorage.setItem(
+      "wc.booking.lastOfficeFloor.v1",
+      JSON.stringify({ v: 1, office: 1, floor: 20 }) // remembered = Floor B
+    );
+    renderAt("/app/bookings?office=1&floor=10"); // URL = Floor A
+    await waitFor(() => expect(screen.getByText("Desk A1")).toBeInTheDocument());
+    expect(screen.queryByText("Desk B1")).not.toBeInTheDocument();
   });
 });

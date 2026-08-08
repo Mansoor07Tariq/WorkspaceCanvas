@@ -19,6 +19,8 @@ interface Props {
   onBook: (deskId: number) => void;
   onCancel: (bookingId: number) => void;
   bookingLoading: boolean;
+  /** Disables the Book action (e.g. the selected date is invalid, PR 071). */
+  bookingDisabled?: boolean;
   cancelLoading: boolean;
   bookingError: string | null;
   cancelError: string | null;
@@ -33,6 +35,7 @@ export function SelectedDeskBookingPanel({
   onBook,
   onCancel,
   bookingLoading,
+  bookingDisabled,
   cancelLoading,
   bookingError,
   cancelError,
@@ -158,7 +161,7 @@ export function SelectedDeskBookingPanel({
             <Button
               variant="contained"
               onClick={() => onBook(item.desk.id)}
-              disabled={bookingLoading}
+              disabled={bookingLoading || bookingDisabled}
               startIcon={
                 bookingLoading ? <CircularProgress size={16} color="inherit" /> : undefined
               }

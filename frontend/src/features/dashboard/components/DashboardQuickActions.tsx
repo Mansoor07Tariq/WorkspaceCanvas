@@ -10,7 +10,7 @@ import { Link } from "react-router-dom";
 import type { ReactNode } from "react";
 import type { Office } from "@/features/offices/types/office.types";
 import type { Floor } from "@/features/floors/types/floor.types";
-import { ROUTES, floorLayoutPath } from "@/routes/paths";
+import { ROUTES, floorLayoutPath, deskBookingPath } from "@/routes/paths";
 import { en } from "@/i18n/en";
 
 interface QuickAction {
@@ -33,7 +33,7 @@ export function DashboardQuickActions({ isOwnerOrAdmin, firstOffice, firstFloor 
   const adminActions: QuickAction[] = [
     {
       label: en.app.dashboard.actionBookDesk,
-      to: ROUTES.bookings,
+      to: deskBookingPath(),
       icon: <BookmarkAddOutlined />,
       variant: "contained",
     },
@@ -66,7 +66,7 @@ export function DashboardQuickActions({ isOwnerOrAdmin, firstOffice, firstFloor 
   const memberActions: QuickAction[] = [
     {
       label: en.app.dashboard.actionBookDesk,
-      to: ROUTES.bookings,
+      to: deskBookingPath(),
       icon: <BookmarkAddOutlined />,
       variant: "contained",
     },

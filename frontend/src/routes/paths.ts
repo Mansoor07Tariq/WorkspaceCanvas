@@ -27,19 +27,22 @@ export function myBookingsPath(): string {
 }
 
 /**
- * Desk-booking page, optionally deep-linked with office/floor/desk so the picker
- * auto-selects them (PR 070 "book again"). Omitted parts are simply not added.
+ * Desk-booking page, optionally deep-linked with office/floor/desk/date so the
+ * picker auto-selects them (PR 070 "book again"; PR 071 adds date + full
+ * deep-linking). Omitted parts are simply not added.
  */
 export function deskBookingPath(prefill?: {
   office?: number;
   floor?: number;
   desk?: number;
+  date?: string;
 }): string {
   if (!prefill) return ROUTES.bookings;
   const params = new URLSearchParams();
   if (prefill.office != null) params.set("office", String(prefill.office));
   if (prefill.floor != null) params.set("floor", String(prefill.floor));
   if (prefill.desk != null) params.set("desk", String(prefill.desk));
+  if (prefill.date != null && prefill.date !== "") params.set("date", prefill.date);
   const qs = params.toString();
   return qs ? `${ROUTES.bookings}?${qs}` : ROUTES.bookings;
 }
