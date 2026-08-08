@@ -63,6 +63,11 @@ const DeskBookingPage = lazy(() =>
     default: m.DeskBookingPage,
   }))
 );
+const RoomBookingPage = lazy(() =>
+  import("@/app/pages/RoomBookingPage").then((m) => ({
+    default: m.RoomBookingPage,
+  }))
+);
 const MyBookingsPage = lazy(() =>
   import("@/app/pages/MyBookingsPage").then((m) => ({
     default: m.MyBookingsPage,
@@ -167,6 +172,7 @@ export function AppRouter() {
                 <Route path={ROUTES.officeDetail} element={<OfficeDetailPage />} />
                 <Route path={ROUTES.floorLayout} element={<FloorLayoutPage />} />
                 <Route path={ROUTES.bookings} element={<DeskBookingPage />} />
+                <Route path={ROUTES.rooms} element={<RoomBookingPage />} />
                 <Route path={ROUTES.myBookings} element={<MyBookingsPage />} />
                 <Route path={ROUTES.people} element={<PeoplePage />} />
               </Route>

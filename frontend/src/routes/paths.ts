@@ -9,6 +9,7 @@ export const ROUTES = {
   officeDetail: "/app/offices/:officeId",
   floorLayout: "/app/offices/:officeId/floors/:floorId/layout",
   bookings: "/app/bookings",
+  rooms: "/app/bookings/rooms",
   myBookings: "/app/bookings/my",
   people: "/app/people",
   inviteAccept: "/invite/:token",
@@ -45,6 +46,25 @@ export function deskBookingPath(prefill?: {
   if (prefill.date != null && prefill.date !== "") params.set("date", prefill.date);
   const qs = params.toString();
   return qs ? `${ROUTES.bookings}?${qs}` : ROUTES.bookings;
+}
+
+/**
+ * Room-booking page, optionally deep-linked with office/floor/date (PR 074) so the
+ * picker restores that selection. Mirrors `deskBookingPath` (no `desk`/`room` prefill
+ * in this slice).
+ */
+export function roomBookingPath(prefill?: {
+  office?: number;
+  floor?: number;
+  date?: string;
+}): string {
+  if (!prefill) return ROUTES.rooms;
+  const params = new URLSearchParams();
+  if (prefill.office != null) params.set("office", String(prefill.office));
+  if (prefill.floor != null) params.set("floor", String(prefill.floor));
+  if (prefill.date != null && prefill.date !== "") params.set("date", prefill.date);
+  const qs = params.toString();
+  return qs ? `${ROUTES.rooms}?${qs}` : ROUTES.rooms;
 }
 
 export function inviteAcceptPath(token: string): string {

@@ -15,6 +15,7 @@ import {
   BookmarksOutlined,
   BusinessOutlined,
   GridViewOutlined,
+  MeetingRoomOutlined,
   PeopleOutlined,
   WeekendOutlined,
 } from "@mui/icons-material";
@@ -40,6 +41,7 @@ const NAV_ITEMS: NavItem[] = [
   },
   { label: en.app.sidebar.offices, Icon: BusinessOutlined, path: ROUTES.offices },
   { label: en.app.sidebar.deskBooking, Icon: WeekendOutlined, path: ROUTES.bookings },
+  { label: en.app.sidebar.roomBooking, Icon: MeetingRoomOutlined, path: ROUTES.rooms },
   { label: en.app.sidebar.myBookings, Icon: BookmarksOutlined, path: ROUTES.myBookings },
   { label: en.app.sidebar.people, Icon: PeopleOutlined, path: ROUTES.people },
 ];
