@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { WeekendOutlined } from "@mui/icons-material";
 import { EmptyState } from "@/components/ui/EmptyState";
 import type { DeskBooking } from "@/features/bookings/types/booking.types";
-import { ROUTES } from "@/routes/paths";
+import { ROUTES, deskBookingPath } from "@/routes/paths";
 import { en } from "@/i18n/en";
 
 interface Props {
@@ -41,7 +41,7 @@ export function TodayBookingCard({ booking, loading, error }: Props) {
             title={en.app.dashboard.noBookingTodayTitle}
             description={en.app.dashboard.noBookingTodayMessage}
             actionLabel={en.app.dashboard.bookDeskAction}
-            onAction={() => navigate(ROUTES.bookings)}
+            onAction={() => navigate(deskBookingPath())}
           />
         )}
 
@@ -80,6 +80,19 @@ export function TodayBookingCard({ booking, loading, error }: Props) {
                 }}
               >
                 {en.app.dashboard.viewMyBookings}
+              </Typography>
+              {/* PR 071: deep-link the picker to today's booking office/floor (context). */}
+              <Typography
+                component={Link}
+                to={deskBookingPath({ office: booking.office, floor: booking.floor })}
+                variant="body2"
+                sx={{
+                  color: "primary.main",
+                  textDecoration: "none",
+                  "&:hover": { textDecoration: "underline" },
+                }}
+              >
+                {en.app.dashboard.bookAnotherDesk}
               </Typography>
             </Box>
           </Box>

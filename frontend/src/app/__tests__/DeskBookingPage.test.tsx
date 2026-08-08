@@ -131,7 +131,7 @@ describe("DeskBookingPage", () => {
 
   it("renders the booking date input", () => {
     renderPage();
-    expect(screen.getByLabelText("Booking Date")).toBeInTheDocument();
+    expect(screen.getByLabelText("Booking date")).toBeInTheDocument();
   });
 
   it("shows prompt to select office and floor when none selected", () => {

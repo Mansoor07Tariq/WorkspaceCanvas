@@ -22,6 +22,8 @@ interface Props {
   onCancel: (bookingId: number) => void;
   canBook: boolean;
   bookingLoading: boolean;
+  /** Disables the Book button (e.g. the selected date is invalid, PR 071). */
+  bookingDisabled?: boolean;
   cancelLoading: boolean;
   /** Booking error to surface ON this card (set only for the desk that was clicked). */
   error?: string | null;
@@ -42,6 +44,7 @@ export function DeskAvailabilityCard({
   onCancel,
   canBook,
   bookingLoading,
+  bookingDisabled,
   cancelLoading,
   error,
 }: Props) {
@@ -96,7 +99,7 @@ export function DeskAvailabilityCard({
             size="small"
             variant="contained"
             onClick={() => onBook(item.desk.id)}
-            disabled={bookingLoading}
+            disabled={bookingLoading || bookingDisabled}
             startIcon={bookingLoading ? <CircularProgress size={14} color="inherit" /> : undefined}
             aria-label={`${c.bookAction} — ${item.desk.name}`}
             data-testid={`book-desk-${item.desk.id}`}
