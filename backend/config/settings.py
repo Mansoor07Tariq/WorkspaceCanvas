@@ -35,6 +35,10 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    # Required for the meeting-room overlap ExclusionConstraint (GiST) and the
+    # btree_gist extension migration (PR 073). Bundled with Django — not a new
+    # dependency.
+    "django.contrib.postgres",
     # Third-party
     "rest_framework",
     "rest_framework_simplejwt.token_blacklist",
@@ -248,6 +252,12 @@ SUPPORTED_LOCALES: frozenset[str] = frozenset({"en", "en-IE", "en-GB", "en-US"})
 # no timezone configured. Offices should set their own timezone; this is the
 # global fallback so booking validation never depends on raw server-UTC (BE-3).
 BOOKING_DEFAULT_TIMEZONE = os.environ.get("BOOKING_DEFAULT_TIMEZONE", "UTC")
+
+# Meeting-room slot bounds (PR 073). v1 slots are intra-day; these bound a single
+# booking's duration. Kept as settings constants so there are no magic numbers in
+# the serializer/service.
+ROOM_BOOKING_MIN_MINUTES = int(os.environ.get("ROOM_BOOKING_MIN_MINUTES", "15"))
+ROOM_BOOKING_MAX_MINUTES = int(os.environ.get("ROOM_BOOKING_MAX_MINUTES", str(8 * 60)))
 
 
 # Email

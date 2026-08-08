@@ -1,6 +1,14 @@
 from django.contrib import admin
 
-from .models import Desk, DeskBooking, Floor, FloorLayoutObject, Office
+from .models import (
+    Desk,
+    DeskBooking,
+    Floor,
+    FloorLayoutObject,
+    MeetingRoom,
+    Office,
+    RoomBooking,
+)
 
 
 @admin.register(Office)
@@ -105,6 +113,70 @@ class DeskBookingAdmin(admin.ModelAdmin):
         "desk",
         "user",
         "booking_date",
+        "cancelled_at",
+        "cancelled_by",
+        "created_at",
+        "updated_at",
+    ]
+    ordering = ["-created_at"]
+
+
+@admin.register(MeetingRoom)
+class MeetingRoomAdmin(admin.ModelAdmin):
+    list_display = [
+        "id",
+        "name",
+        "capacity",
+        "office",
+        "floor",
+        "status",
+        "is_active",
+        "updated_at",
+    ]
+    list_filter = ["status", "is_active", "office", "floor"]
+    search_fields = ["name", "office__name", "floor__name", "layout_object__label"]
+    readonly_fields = [
+        "organization",
+        "office",
+        "floor",
+        "layout_object",
+        "created_at",
+        "updated_at",
+    ]
+
+
+@admin.register(RoomBooking)
+class RoomBookingAdmin(admin.ModelAdmin):
+    list_display = [
+        "id",
+        "user",
+        "room",
+        "office",
+        "floor",
+        "booking_date",
+        "start_at",
+        "end_at",
+        "status",
+    ]
+    list_select_related = ["room", "office", "floor", "user"]
+    list_filter = ["status", "booking_date", "office", "floor"]
+    search_fields = [
+        "user__email",
+        "user__first_name",
+        "user__last_name",
+        "room__name",
+        "office__name",
+        "floor__name",
+    ]
+    readonly_fields = [
+        "organization",
+        "office",
+        "floor",
+        "room",
+        "user",
+        "booking_date",
+        "start_at",
+        "end_at",
         "cancelled_at",
         "cancelled_by",
         "created_at",

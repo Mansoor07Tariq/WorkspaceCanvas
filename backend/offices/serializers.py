@@ -1,14 +1,22 @@
 from __future__ import annotations
 
 import zoneinfo
-from datetime import timedelta
+from datetime import datetime, timedelta
 from decimal import Decimal
 
 from django.conf import settings
 from django.utils import timezone
 from rest_framework import serializers
 
-from .models import Desk, DeskBooking, Floor, FloorLayoutObject, Office
+from .models import (
+    Desk,
+    DeskBooking,
+    Floor,
+    FloorLayoutObject,
+    MeetingRoom,
+    Office,
+    RoomBooking,
+)
 from .permissions import user_can_manage_offices
 
 _VALID_TIMEZONES: frozenset[str] = frozenset(zoneinfo.available_timezones())
@@ -28,22 +36,58 @@ _GEOMETRY_FIELD_NAMES: frozenset[str] = frozenset(
 )
 
 
+def resolve_office_zone(office) -> zoneinfo.ZoneInfo:
+    """Return the office's timezone (BE-3), falling back to the configured
+    ``BOOKING_DEFAULT_TIMEZONE`` and finally UTC. Accepts ``None`` (→ default)."""
+    tzname = (getattr(office, "timezone", "") or "").strip()
+    if tzname not in _VALID_TIMEZONES:
+        tzname = settings.BOOKING_DEFAULT_TIMEZONE
+    try:
+        return zoneinfo.ZoneInfo(tzname)
+    except Exception:  # pragma: no cover - guarded by _VALID_TIMEZONES above
+        return zoneinfo.ZoneInfo("UTC")
+
+
 def resolve_office_today(office: Office):
     """Return "today" in the office's timezone.
 
     Booking dates must be judged against the office's local day, not raw UTC —
     otherwise a user west of UTC is wrongly told the current local day is in the
-    past during their evening (BE-3). Falls back to the configured
-    ``BOOKING_DEFAULT_TIMEZONE`` when the office has no timezone set.
+    past during their evening (BE-3).
     """
-    tzname = (getattr(office, "timezone", "") or "").strip()
-    if tzname not in _VALID_TIMEZONES:
-        tzname = settings.BOOKING_DEFAULT_TIMEZONE
-    try:
-        zone = zoneinfo.ZoneInfo(tzname)
-    except Exception:  # pragma: no cover - guarded by _VALID_TIMEZONES above
-        zone = zoneinfo.ZoneInfo("UTC")
-    return timezone.now().astimezone(zone).date()
+    return timezone.now().astimezone(resolve_office_zone(office)).date()
+
+
+def office_local_to_utc(office, date_, time_):
+    """Convert an office-local calendar date + wall-clock time into a UTC-aware
+    instant (PR 073). Rooms store UTC instants but users pick local times.
+
+    Rejects DST-invalid local times so a slot can never be persisted with an
+    ambiguous or nonexistent instant:
+      * nonexistent (spring-forward gap) — the wall time does not exist locally;
+      * ambiguous (fall-back repeat) — the wall time occurs twice.
+    """
+    zone = resolve_office_zone(office)
+    naive = datetime.combine(date_, time_)
+
+    # Nonexistent: round-tripping through UTC changes the wall clock.
+    aware = naive.replace(tzinfo=zone)
+    roundtrip = aware.astimezone(zoneinfo.ZoneInfo("UTC")).astimezone(zone)
+    if roundtrip.replace(tzinfo=None) != naive:
+        raise serializers.ValidationError(
+            "That start/end time does not exist on this date in the office "
+            "timezone (daylight-saving change)."
+        )
+    # Ambiguous: fold=0 and fold=1 resolve to different UTC offsets.
+    if (
+        naive.replace(tzinfo=zone, fold=0).utcoffset()
+        != naive.replace(tzinfo=zone, fold=1).utcoffset()
+    ):
+        raise serializers.ValidationError(
+            "That start/end time is ambiguous on this date in the office "
+            "timezone (daylight-saving change)."
+        )
+    return aware.astimezone(zoneinfo.ZoneInfo("UTC"))
 
 
 class _LayoutObjectGeometryMixin:
@@ -466,6 +510,205 @@ class DeskBookingResponseSerializer(serializers.ModelSerializer):
             return True
         if obj.user_id is None:
             # Nothing to hide when user has been deleted.
+            return True
+        if obj.user_id == request.user.id:
+            return True
+        if membership and user_can_manage_offices(membership):
+            return True
+        return False
+
+    def get_user_name(self, obj):
+        if obj.user is None:
+            return "Former user"
+        if self._can_see_identity(obj):
+            return obj.user.get_full_name() or obj.user.email
+        return "Reserved"
+
+    def get_is_mine(self, obj):
+        if obj.user is None:
+            return False
+        request = self.context.get("request")
+        if not request:
+            return False
+        return obj.user_id == request.user.id
+
+    def get_office_name(self, obj) -> str:
+        return obj.office.name if obj.office_id else ""
+
+    def get_floor_name(self, obj) -> str:
+        return obj.floor.name if obj.floor_id else ""
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        if not self._can_see_identity(instance):
+            data.pop("user", None)
+            data.pop("cancelled_by", None)
+        return data
+
+
+# ─── Meeting rooms (PR 073) ───────────────────────────────────────────────────
+
+
+class CreateMeetingRoomSerializer(serializers.Serializer):
+    """Admin creates a bookable room on a room-capable layout object. ``capacity``
+    defaults to 1; the view resolves/validates the layout object + room-capability."""
+
+    layout_object = serializers.IntegerField()
+    name = serializers.CharField(max_length=120)
+    capacity = serializers.IntegerField(min_value=1, required=False, default=1)
+    amenities = serializers.DictField(required=False, default=dict)
+    notes = serializers.CharField(**_OPT_STR)
+
+    def validate_name(self, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise serializers.ValidationError("Name cannot be blank.")
+        return cleaned
+
+
+class MeetingRoomResponseSerializer(serializers.ModelSerializer):
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+    layout_object_type = serializers.CharField(
+        source="layout_object.object_type", read_only=True
+    )
+    layout_object_label = serializers.CharField(
+        source="layout_object.label", read_only=True
+    )
+
+    class Meta:
+        model = MeetingRoom
+        fields = [
+            "id",
+            "organization",
+            "office",
+            "floor",
+            "layout_object",
+            "layout_object_type",
+            "layout_object_label",
+            "name",
+            "capacity",
+            "status",
+            "status_display",
+            "amenities",
+            "notes",
+            "is_active",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = fields
+
+
+class CreateRoomBookingSerializer(serializers.Serializer):
+    """Create a room slot booking. The user submits an office-LOCAL date + start/
+    end times; ``validate`` converts them to UTC instants and enforces the slot
+    rules (intra-day, min/max duration, not past, within the 365-day horizon).
+    Office is passed via context for the timezone resolution (BE-3)."""
+
+    room = serializers.IntegerField()
+    booking_date = serializers.DateField()
+    start = serializers.TimeField()
+    end = serializers.TimeField()
+
+    def validate(self, attrs: dict) -> dict:
+        office = self.context.get("office")
+        booking_date = attrs["booking_date"]
+        start = attrs["start"]
+        end = attrs["end"]
+
+        # Intra-day: both times share booking_date, so end after start suffices.
+        if end <= start:
+            raise serializers.ValidationError(
+                {"end": "End time must be after start time."}
+            )
+
+        today = resolve_office_today(office)
+        if booking_date < today:
+            raise serializers.ValidationError(
+                {"booking_date": "Booking date cannot be in the past."}
+            )
+        if booking_date > today + timedelta(days=365):
+            raise serializers.ValidationError(
+                {
+                    "booking_date": (
+                        "Booking date cannot be more than 365 days in the future."
+                    )
+                }
+            )
+
+        # Local wall-clock → UTC instants (rejects DST-invalid times).
+        start_at = office_local_to_utc(office, booking_date, start)
+        end_at = office_local_to_utc(office, booking_date, end)
+
+        duration_min = (end_at - start_at).total_seconds() / 60
+        if duration_min < settings.ROOM_BOOKING_MIN_MINUTES:
+            raise serializers.ValidationError(
+                f"Booking must be at least {settings.ROOM_BOOKING_MIN_MINUTES} "
+                "minutes long."
+            )
+        if duration_min > settings.ROOM_BOOKING_MAX_MINUTES:
+            raise serializers.ValidationError(
+                f"Booking cannot exceed {settings.ROOM_BOOKING_MAX_MINUTES} minutes."
+            )
+
+        if start_at < timezone.now():
+            raise serializers.ValidationError(
+                {"start": "Booking start time cannot be in the past."}
+            )
+
+        attrs["start_at"] = start_at
+        attrs["end_at"] = end_at
+        return attrs
+
+
+class RoomBookingResponseSerializer(serializers.ModelSerializer):
+    room_name = serializers.CharField(source="room.name", read_only=True)
+    room_capacity = serializers.IntegerField(source="room.capacity", read_only=True)
+    layout_object = serializers.IntegerField(
+        source="room.layout_object_id", read_only=True
+    )
+    user_name = serializers.SerializerMethodField()
+    is_mine = serializers.SerializerMethodField()
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+    office_name = serializers.SerializerMethodField()
+    floor_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = RoomBooking
+        fields = [
+            "id",
+            "organization",
+            "office",
+            "office_name",
+            "floor",
+            "floor_name",
+            "room",
+            "room_name",
+            "room_capacity",
+            "layout_object",
+            "user",
+            "user_name",
+            "is_mine",
+            "booking_date",
+            "start_at",
+            "end_at",
+            "status",
+            "status_display",
+            "cancelled_at",
+            "cancelled_by",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = fields
+
+    # Identity masking mirrors DeskBookingResponseSerializer verbatim (self /
+    # manager / admin-shell / deleted-user); duplicated rather than shared to keep
+    # this PR from touching the desk serializer (scope discipline).
+    def _can_see_identity(self, obj):
+        request = self.context.get("request")
+        membership = self.context.get("membership")
+        if not request:
+            return True
+        if obj.user_id is None:
             return True
         if obj.user_id == request.user.id:
             return True
