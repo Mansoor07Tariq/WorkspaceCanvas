@@ -169,10 +169,7 @@ function setupDefaultHooks() {
     bookings: [],
     loading: false,
     error: undefined,
-    cancelSuccess: undefined,
-    cancelError: undefined,
     refresh: vi.fn(),
-    cancelBooking: vi.fn(),
   });
   mockListFloors.mockResolvedValue([]);
   mockListDesks.mockResolvedValue([]);
@@ -375,10 +372,7 @@ describe("DashboardPage — booking cards", () => {
       bookings: [],
       loading: false,
       error: undefined,
-      cancelSuccess: undefined,
-      cancelError: undefined,
       refresh: vi.fn(),
-      cancelBooking: vi.fn(),
     });
     mockListFloors.mockResolvedValue([]);
     mockListDesks.mockResolvedValue([]);
@@ -399,10 +393,7 @@ describe("DashboardPage — booking cards", () => {
       bookings: [booking],
       loading: false,
       error: undefined,
-      cancelSuccess: undefined,
-      cancelError: undefined,
       refresh: vi.fn(),
-      cancelBooking: vi.fn(),
     });
     mockListFloors.mockResolvedValue([]);
     mockListDesks.mockResolvedValue([]);
@@ -424,10 +415,7 @@ describe("DashboardPage — booking cards", () => {
       bookings: [booking],
       loading: false,
       error: undefined,
-      cancelSuccess: undefined,
-      cancelError: undefined,
       refresh: vi.fn(),
-      cancelBooking: vi.fn(),
     });
     mockListFloors.mockResolvedValue([]);
     mockListDesks.mockResolvedValue([]);
@@ -445,10 +433,7 @@ describe("DashboardPage — booking cards", () => {
       bookings: [],
       loading: false,
       error: "Failed to load bookings.",
-      cancelSuccess: undefined,
-      cancelError: undefined,
       refresh: vi.fn(),
-      cancelBooking: vi.fn(),
     });
     mockListFloors.mockResolvedValue([]);
     mockListDesks.mockResolvedValue([]);
@@ -473,10 +458,7 @@ describe("DashboardPage — loading state", () => {
       bookings: [],
       loading: true,
       error: undefined,
-      cancelSuccess: undefined,
-      cancelError: undefined,
       refresh: vi.fn(),
-      cancelBooking: vi.fn(),
     });
     mockListFloors.mockResolvedValue([]);
     mockListDesks.mockResolvedValue([]);
@@ -498,10 +480,7 @@ describe("DashboardPage — admin checklist items", () => {
       bookings: [],
       loading: false,
       error: undefined,
-      cancelSuccess: undefined,
-      cancelError: undefined,
       refresh: vi.fn(),
-      cancelBooking: vi.fn(),
     });
     mockListFloors.mockResolvedValue([]);
     mockListDesks.mockResolvedValue([]);
@@ -521,10 +500,7 @@ describe("DashboardPage — admin checklist items", () => {
       bookings: [],
       loading: false,
       error: undefined,
-      cancelSuccess: undefined,
-      cancelError: undefined,
       refresh: vi.fn(),
-      cancelBooking: vi.fn(),
     });
     mockListFloors.mockResolvedValue([]);
     mockListDesks.mockResolvedValue([]);
@@ -580,10 +556,7 @@ describe("DashboardPage — member workspace not ready", () => {
       bookings: [],
       loading: false,
       error: undefined,
-      cancelSuccess: undefined,
-      cancelError: undefined,
       refresh: vi.fn(),
-      cancelBooking: vi.fn(),
     });
     mockListFloors.mockResolvedValue([]);
     mockListDesks.mockResolvedValue([]);
@@ -606,10 +579,7 @@ describe("DashboardPage — member workspace not ready", () => {
       bookings: [],
       loading: false,
       error: undefined,
-      cancelSuccess: undefined,
-      cancelError: undefined,
       refresh: vi.fn(),
-      cancelBooking: vi.fn(),
     });
     mockListFloors.mockResolvedValue([]);
     mockListDesks.mockResolvedValue([]);
@@ -632,10 +602,7 @@ describe("DashboardPage — member workspace not ready", () => {
       bookings: [],
       loading: false,
       error: undefined,
-      cancelSuccess: undefined,
-      cancelError: undefined,
       refresh: vi.fn(),
-      cancelBooking: vi.fn(),
     });
     mockListFloors.mockResolvedValue([]);
     mockListDesks.mockResolvedValue([]);

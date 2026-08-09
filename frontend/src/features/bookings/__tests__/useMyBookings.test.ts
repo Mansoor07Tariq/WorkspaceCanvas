@@ -2,9 +2,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, act, waitFor } from "@testing-library/react";
 
 vi.mock("../api/bookingApi");
-import { listMyBookings, cancelMyBooking } from "../api/bookingApi";
+import { listMyBookings } from "../api/bookingApi";
 const mockListMyBookings = vi.mocked(listMyBookings);
-const mockCancelMyBooking = vi.mocked(cancelMyBooking);
 
 vi.mock("@/lib/api/getApiErrorMessage", () => ({
   getApiErrorMessage: (err: unknown) => {
@@ -98,41 +97,9 @@ describe("useMyBookings", () => {
     expect(mockListMyBookings).toHaveBeenCalledTimes(2);
   });
 
-  it("cancelBooking calls cancelMyBooking with the correct id and refreshes", async () => {
-    const booking = makeBooking({ id: 7 });
-    const cancelled = makeBooking({ id: 7, status: "cancelled", status_display: "Cancelled" });
-    mockListMyBookings.mockResolvedValueOnce([booking]).mockResolvedValueOnce([cancelled]);
-    mockCancelMyBooking.mockResolvedValue(cancelled);
-
-    const { result } = renderHook(() => useMyBookings());
-
-    await waitFor(() => expect(result.current.loading).toBe(false));
-
-    await act(async () => {
-      await result.current.cancelBooking(7);
-    });
-
-    expect(mockCancelMyBooking).toHaveBeenCalledWith(7);
-    expect(result.current.cancelSuccess).toBe("Booking cancelled successfully.");
-    await waitFor(() => expect(result.current.bookings).toEqual([cancelled]));
-  });
-
-  it("cancelBooking sets cancelError when cancel API call fails", async () => {
-    const booking = makeBooking({ id: 3 });
-    mockListMyBookings.mockResolvedValue([booking]);
-    mockCancelMyBooking.mockRejectedValue(new Error("cancel failed"));
-
-    const { result } = renderHook(() => useMyBookings());
-
-    await waitFor(() => expect(result.current.loading).toBe(false));
-
-    await act(async () => {
-      await result.current.cancelBooking(3);
-    });
-
-    expect(result.current.cancelError).toBe("cancel failed");
-    expect(result.current.cancelSuccess).toBeUndefined();
-  });
+  // PR 076: the hook's unused cancelBooking/cancelSuccess/cancelError were dead
+  // code (MyBookingsPage cancels via the api directly) and were removed; their two
+  // tests are removed with them.
 
   // ─── TD-044: caching ─────────────────────────────────────────────────────────
 

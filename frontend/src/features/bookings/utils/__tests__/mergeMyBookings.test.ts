@@ -33,6 +33,7 @@ function room(id: number): RoomBooking {
     room: id,
     room_name: `Room ${id}`,
     room_capacity: 6,
+    office_timezone: "UTC",
     layout_object: id,
     user_name: "Me",
     is_mine: true,

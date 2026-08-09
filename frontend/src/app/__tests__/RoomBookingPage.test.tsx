@@ -130,6 +130,7 @@ function makeBooking(overrides: Partial<RoomBooking> = {}): RoomBooking {
     room: 100,
     room_name: "Boardroom",
     room_capacity: 8,
+    office_timezone: "UTC",
     layout_object: 5,
     user_name: "Reserved",
     is_mine: false,

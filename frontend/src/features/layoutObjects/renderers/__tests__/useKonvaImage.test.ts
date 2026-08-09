@@ -91,6 +91,24 @@ describe("useKonvaImage", () => {
     expect(result.current.status).toBe("loading");
   });
 
+  it("dedupes concurrent mounts of the same uncached src into ONE underlying load (FE-11)", () => {
+    const a = renderHook(() => useKonvaImage("/shared.svg"));
+    const b = renderHook(() => useKonvaImage("/shared.svg"));
+
+    // Both hooks share a single Image element, not one each.
+    expect(FakeImage.instances).toHaveLength(1);
+
+    act(() => {
+      FakeImage.instances[0].onload?.();
+    });
+
+    // …and both resolve to loaded from that one load.
+    expect(a.result.current.status).toBe("loaded");
+    expect(b.result.current.status).toBe("loaded");
+    expect(a.result.current.image).toBe(FakeImage.instances[0]);
+    expect(b.result.current.image).toBe(FakeImage.instances[0]);
+  });
+
   it("drops the stale image when src changes and shows loading for the new src", () => {
     const { result, rerender } = renderHook(({ src }) => useKonvaImage(src), {
       initialProps: { src: "/a.svg" },

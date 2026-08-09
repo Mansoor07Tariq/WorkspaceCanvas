@@ -33,6 +33,8 @@ export interface RoomBooking {
   room: number;
   room_name: string;
   room_capacity: number;
+  /** Office IANA timezone for rendering start_at/end_at in office-local time (PR 076). */
+  office_timezone: string;
   layout_object: number;
   // Masked for non-owners/non-managers: `user` is absent and `user_name` is
   // "Reserved". Never reconstruct an identity the API did not return.

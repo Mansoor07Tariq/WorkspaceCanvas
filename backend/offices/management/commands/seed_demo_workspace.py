@@ -21,7 +21,14 @@ from django.core.management.base import BaseCommand
 from django.utils import timezone
 
 from accounts.models import Invitation, MemberRole, Membership, Organization
-from offices.models import Desk, DeskBooking, Floor, FloorLayoutObject, Office
+from offices.models import (
+    Desk,
+    DeskBooking,
+    Floor,
+    FloorLayoutObject,
+    MeetingRoom,
+    Office,
+)
 
 User = get_user_model()
 
@@ -423,6 +430,30 @@ class Command(BaseCommand):
             )
             desks[spec["code"]] = desk
             ok(f"{spec['name']} [{spec['code']}] status={spec['status']}", created)
+
+        # ── Meeting rooms ─────────────────────────────────────────────────────
+        # Rooms are admin-curated (not auto-provisioned), so seed one explicitly on
+        # the meeting-pod object → a fresh demo has a bookable room (PR 076).
+        log("\nMeeting rooms:")
+
+        pod_obj = layout_objs.get("Meeting Pod")
+        if pod_obj is not None:
+            room, created = MeetingRoom.objects.get_or_create(
+                layout_object=pod_obj,
+                is_active=True,
+                defaults={
+                    "organization": org,
+                    "office": office,
+                    "floor": floor,
+                    "name": "Focus Pod",
+                    "capacity": 4,
+                    "status": MeetingRoom.Status.AVAILABLE,
+                    "amenities": {"whiteboard": True, "screen": False},
+                },
+            )
+            ok(f"{room.name} (cap {room.capacity})", created)
+        else:
+            log("  [skip ] Meeting Pod object not found — skipped")
 
         # ── Bookings ──────────────────────────────────────────────────────────
         log("\nBookings:")

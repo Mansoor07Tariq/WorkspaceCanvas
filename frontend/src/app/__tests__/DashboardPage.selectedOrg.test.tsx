@@ -103,10 +103,7 @@ beforeEach(() => {
     bookings: [],
     loading: false,
     error: undefined,
-    cancelSuccess: undefined,
-    cancelError: undefined,
     refresh: vi.fn(),
-    cancelBooking: vi.fn(),
   });
   mockListFloors.mockResolvedValue([]);
   mockUseTeamMembers.mockReturnValue({

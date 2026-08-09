@@ -34,18 +34,6 @@ vi.mock("@/features/rooms/hooks/useMyRoomBookings", () => ({
     refresh: vi.fn(),
   }),
 }));
-vi.mock("@/features/offices/hooks/useOffices", () => ({
-  useOffices: () => ({
-    offices: [{ id: 2, name: "HQ", timezone: "UTC" }],
-    loading: false,
-    error: null,
-    refresh: vi.fn(),
-  }),
-}));
-vi.mock("@/features/organizations/context/SelectedOrganizationProvider", () => ({
-  useSelectedOrganization: () => ({ selectedOrganizationId: 10, selectedMembership: null }),
-}));
-
 const mockCancelMyBooking = vi.fn();
 vi.mock("@/features/bookings/api/bookingApi", () => ({
   cancelMyBooking: (...a: unknown[]) => mockCancelMyBooking(...a),
@@ -91,6 +79,7 @@ function makeRoom(o: Partial<RoomBooking> = {}): RoomBooking {
     room: 9,
     room_name: "Meeting Room X",
     room_capacity: 8,
+    office_timezone: "UTC",
     layout_object: 20,
     user_name: "Me",
     is_mine: true,
