@@ -11,6 +11,7 @@ export const ROUTES = {
   bookings: "/app/bookings",
   rooms: "/app/bookings/rooms",
   myBookings: "/app/bookings/my",
+  linkChat: "/app/link-chat",
   people: "/app/people",
   inviteAccept: "/invite/:token",
 } as const;
