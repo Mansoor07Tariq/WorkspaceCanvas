@@ -154,3 +154,48 @@ class RoomBookingService:
             update_fields=["status", "cancelled_at", "cancelled_by", "updated_at"]
         )
         return booking
+
+
+def list_my_room_bookings(
+    user, *, status: str = "active", date_from=None, date_to=None
+):
+    """The user's room bookings across their ACTIVE organizations (extracted from
+    ``MyRoomBookingsView`` verbatim — same filters, ordering, select_related).
+
+    ``status`` normalization + the default active window mirror
+    ``list_my_desk_bookings`` (PR 077). ``date_from``/``date_to`` are ``date`` objects
+    or None (the view still owns query-param parsing + its 400s).
+    """
+    from accounts.models import Membership
+    from offices.serializers import resolve_office_zone
+
+    active_org_ids = Membership.objects.filter(user=user, status="active").values_list(
+        "organization_id", flat=True
+    )
+
+    qs = RoomBooking.objects.filter(
+        user=user, organization__in=active_org_ids
+    ).select_related("room", "office", "floor", "cancelled_by")
+
+    if status == "cancelled":
+        qs = qs.filter(status=RoomBooking.Status.CANCELLED)
+        normalized = "cancelled"
+    elif status == "all":
+        normalized = "all"
+    else:
+        normalized = "active"
+        qs = qs.filter(status=RoomBooking.Status.ACTIVE)
+
+    today = tz.now().astimezone(resolve_office_zone(None)).date()
+
+    if date_from is not None:
+        qs = qs.filter(booking_date__gte=date_from)
+    elif normalized == "active":
+        qs = qs.filter(booking_date__gte=today)
+
+    if date_to is not None:
+        qs = qs.filter(booking_date__lte=date_to)
+
+    if normalized == "active":
+        return qs.order_by("booking_date", "start_at")
+    return qs.order_by("-booking_date", "start_at")

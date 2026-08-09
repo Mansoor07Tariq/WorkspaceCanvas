@@ -4,7 +4,6 @@ import datetime
 import logging
 
 from django.db import IntegrityError, transaction
-from django.utils import timezone as tz
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
@@ -55,14 +54,17 @@ from .serializers import (
     UpdateDeskSerializer,
     UpdateFloorSerializer,
     UpdateLayoutObjectSerializer,
-    resolve_office_zone,
 )
 from .services.booking_service import (
     BookingDeskNotAvailableError,
     BookingFloorNotPublishedError,
+    DeskBookingAlreadyCancelledError,
     DuplicateBookingError,
     cancel_active_bookings_for_desk,
+    cancel_desk_booking,
     create_booking_for_user,
+    get_my_desk_booking,
+    list_my_desk_bookings,
 )
 from .services.enhance_run_service import (
     EnhanceRunNotFoundError,
@@ -74,6 +76,7 @@ from .services.room_booking_service import (
     RoomFloorNotPublishedError,
     RoomNotAvailableError,
     RoomSlotConflictError,
+    list_my_room_bookings,
 )
 
 logger = logging.getLogger(__name__)
@@ -1190,18 +1193,13 @@ class DeskBookingCancelView(APIView):
                 {"detail": "You do not have permission to cancel this booking."},
                 status=status.HTTP_403_FORBIDDEN,
             )
-        if booking.status == DeskBooking.Status.CANCELLED:
+        try:
+            cancel_desk_booking(booking, cancelled_by=request.user)
+        except DeskBookingAlreadyCancelledError:
             return Response(
                 {"detail": "Booking is already cancelled."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-
-        booking.status = DeskBooking.Status.CANCELLED
-        booking.cancelled_at = tz.now()
-        booking.cancelled_by = request.user
-        booking.save(
-            update_fields=["status", "cancelled_at", "cancelled_by", "updated_at"]
-        )
         serializer = DeskBookingResponseSerializer(
             booking, context={"request": request, "membership": membership}
         )
@@ -1213,35 +1211,11 @@ class MyBookingsView(APIView):
     throttle_classes = [_DeskBookingReadThrottle]
 
     def get(self, request: Request) -> Response:
-        active_org_ids = Membership.objects.filter(
-            user=request.user, status="active"
-        ).values_list("organization_id", flat=True)
-
-        qs = DeskBooking.objects.filter(
-            user=request.user, organization__in=active_org_ids
-        ).select_related(
-            "desk", "desk__layout_object", "office", "floor", "cancelled_by"
-        )
-
         status_param = request.query_params.get("status", "active")
-        if status_param == "cancelled":
-            qs = qs.filter(status=DeskBooking.Status.CANCELLED)
-        elif status_param == "all":
-            pass  # explicit: no status filter
-        else:
-            # BE-16: "active" and any UNRECOGNIZED value default to active — an
-            # unknown status must never silently leak cancelled bookings.
-            status_param = "active"
-            qs = qs.filter(status=DeskBooking.Status.ACTIVE)
-
         from_date_str = request.query_params.get("from")
         to_date_str = request.query_params.get("to")
-        # "Today" for the default active window uses the configured booking
-        # timezone, not raw server-UTC — otherwise a user just west of UTC loses
-        # a still-current booking from the default list during their evening (the
-        # BE-3 rule; cross-org view, so the global default is the honest basis).
-        today = tz.now().astimezone(resolve_office_zone(None)).date()
 
+        from_date = None
         if from_date_str:
             try:
                 from_date = datetime.date.fromisoformat(from_date_str)
@@ -1250,11 +1224,7 @@ class MyBookingsView(APIView):
                     {"detail": "Invalid from date format. Use YYYY-MM-DD."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            qs = qs.filter(booking_date__gte=from_date)
-        elif status_param == "active":
-            # Default: active bookings from today onward
-            qs = qs.filter(booking_date__gte=today)
-
+        to_date = None
         if to_date_str:
             try:
                 to_date = datetime.date.fromisoformat(to_date_str)
@@ -1263,13 +1233,13 @@ class MyBookingsView(APIView):
                     {"detail": "Invalid to date format. Use YYYY-MM-DD."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            qs = qs.filter(booking_date__lte=to_date)
 
-        if status_param == "active":
-            qs = qs.order_by("booking_date")
-        else:
-            qs = qs.order_by("-booking_date")
-
+        qs = list_my_desk_bookings(
+            request.user,
+            status=status_param,
+            date_from=from_date,
+            date_to=to_date,
+        )
         serializer = DeskBookingResponseSerializer(
             qs, many=True, context={"request": request}
         )
@@ -1281,25 +1251,17 @@ class MyBookingCancelView(APIView):
     throttle_classes = [_DeskBookingWriteThrottle]
 
     def post(self, request: Request, booking_id: int) -> Response:
-        try:
-            booking = DeskBooking.objects.select_related(
-                "desk", "desk__layout_object", "office", "floor", "cancelled_by"
-            ).get(id=booking_id, user=request.user)
-        except DeskBooking.DoesNotExist:
+        booking = get_my_desk_booking(request.user, booking_id)
+        if booking is None:
             return Response({"detail": "Not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        if booking.status != DeskBooking.Status.ACTIVE:
+        try:
+            cancel_desk_booking(booking, cancelled_by=request.user)
+        except DeskBookingAlreadyCancelledError:
             return Response(
                 {"detail": "This booking is already cancelled."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-
-        booking.status = DeskBooking.Status.CANCELLED
-        booking.cancelled_at = tz.now()
-        booking.cancelled_by = request.user
-        booking.save(
-            update_fields=["status", "cancelled_at", "cancelled_by", "updated_at"]
-        )
         serializer = DeskBookingResponseSerializer(
             booking, context={"request": request}
         )
@@ -1558,31 +1520,11 @@ class MyRoomBookingsView(APIView):
     throttle_classes = [_DeskBookingReadThrottle]
 
     def get(self, request: Request) -> Response:
-        active_org_ids = Membership.objects.filter(
-            user=request.user, status="active"
-        ).values_list("organization_id", flat=True)
-
-        qs = RoomBooking.objects.filter(
-            user=request.user, organization__in=active_org_ids
-        ).select_related("room", "office", "floor", "cancelled_by")
-
         status_param = request.query_params.get("status", "active")
-        if status_param == "cancelled":
-            qs = qs.filter(status=RoomBooking.Status.CANCELLED)
-        elif status_param == "all":
-            pass
-        else:
-            # Any unrecognized value defaults to active (never leak cancelled).
-            status_param = "active"
-            qs = qs.filter(status=RoomBooking.Status.ACTIVE)
-
-        # "Today" for the default active window uses the configured booking
-        # timezone, not raw server-UTC (mirrors the BE-3 rule; this is a cross-org
-        # view with no single office, so the global default is the honest basis).
-        today = tz.now().astimezone(resolve_office_zone(None)).date()
-
         from_date_str = request.query_params.get("from")
         to_date_str = request.query_params.get("to")
+
+        from_date = None
         if from_date_str:
             try:
                 from_date = datetime.date.fromisoformat(from_date_str)
@@ -1591,10 +1533,7 @@ class MyRoomBookingsView(APIView):
                     {"detail": "Invalid from date format. Use YYYY-MM-DD."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            qs = qs.filter(booking_date__gte=from_date)
-        elif status_param == "active":
-            qs = qs.filter(booking_date__gte=today)
-
+        to_date = None
         if to_date_str:
             try:
                 to_date = datetime.date.fromisoformat(to_date_str)
@@ -1603,13 +1542,13 @@ class MyRoomBookingsView(APIView):
                     {"detail": "Invalid to date format. Use YYYY-MM-DD."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            qs = qs.filter(booking_date__lte=to_date)
 
-        if status_param == "active":
-            qs = qs.order_by("booking_date", "start_at")
-        else:
-            qs = qs.order_by("-booking_date", "start_at")
-
+        qs = list_my_room_bookings(
+            request.user,
+            status=status_param,
+            date_from=from_date,
+            date_to=to_date,
+        )
         serializer = RoomBookingResponseSerializer(
             qs, many=True, context={"request": request}
         )

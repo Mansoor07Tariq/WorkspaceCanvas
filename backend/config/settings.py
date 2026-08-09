@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     "users",
     "accounts",
     "offices",
+    "chat",
 ]
 
 AUTH_USER_MODEL = "users.User"
@@ -258,6 +259,18 @@ BOOKING_DEFAULT_TIMEZONE = os.environ.get("BOOKING_DEFAULT_TIMEZONE", "UTC")
 # the serializer/service.
 ROOM_BOOKING_MIN_MINUTES = int(os.environ.get("ROOM_BOOKING_MIN_MINUTES", "15"))
 ROOM_BOOKING_MAX_MINUTES = int(os.environ.get("ROOM_BOOKING_MAX_MINUTES", str(8 * 60)))
+
+# ─── Chat bot (PR 077) ───────────────────────────────────────────────────────
+# Platform-independent core. Secrets are ENV-ONLY (never in code/DB); the Slack
+# adapter (Slice 2) reads these — empty by default so nothing breaks without them.
+SLACK_SIGNING_SECRET = os.environ.get("SLACK_SIGNING_SECRET", "")
+SLACK_BOT_TOKEN = os.environ.get("SLACK_BOT_TOKEN", "")
+# TTLs. The account-link code is short-lived (single-use); the write-confirm token
+# gives the user a brief window to press Confirm before it expires.
+CHAT_LINK_TOKEN_TTL_MINUTES = int(os.environ.get("CHAT_LINK_TOKEN_TTL_MINUTES", "10"))
+CHAT_CONFIRM_TOKEN_TTL_MINUTES = int(
+    os.environ.get("CHAT_CONFIRM_TOKEN_TTL_MINUTES", "5")
+)
 
 
 # Email

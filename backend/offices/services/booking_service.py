@@ -27,6 +27,10 @@ class DuplicateBookingError(Exception):
         super().__init__(constraint)
 
 
+class DeskBookingAlreadyCancelledError(Exception):
+    """Raised when cancelling a desk booking that is already cancelled."""
+
+
 def cancel_active_bookings_for_desk(desk: Desk, *, cancelled_by=None) -> int:
     """
     Cancel all active bookings for *desk*.
@@ -128,3 +132,96 @@ def create_booking_for_user(
             raise
 
         return booking
+
+
+# ─── Read + cancel helpers (extracted for the bot glue, PR 077) ────────────────
+
+
+def get_my_desk_booking(user, booking_id: int) -> DeskBooking | None:
+    """Fetch the user's own desk booking by id (any status), or None.
+
+    Same scoping + select_related as ``MyBookingCancelView`` — a booking that
+    exists but belongs to someone else returns None (no cross-user leak).
+    """
+    try:
+        return DeskBooking.objects.select_related(
+            "desk", "desk__layout_object", "office", "floor", "cancelled_by"
+        ).get(id=booking_id, user=user)
+    except DeskBooking.DoesNotExist:
+        return None
+
+
+def cancel_desk_booking(booking: DeskBooking, *, cancelled_by) -> DeskBooking:
+    """Cancel an active desk booking (the mutation shared by the desk cancel
+    views and the bot). Raises ``DeskBookingAlreadyCancelledError`` if not active.
+    Callers map the exception to their own message/status."""
+    if booking.status == DeskBooking.Status.CANCELLED:
+        raise DeskBookingAlreadyCancelledError()
+    booking.status = DeskBooking.Status.CANCELLED
+    booking.cancelled_at = tz.now()
+    booking.cancelled_by = cancelled_by
+    booking.save(update_fields=["status", "cancelled_at", "cancelled_by", "updated_at"])
+    return booking
+
+
+def list_my_desk_bookings(
+    user, *, status: str = "active", date_from=None, date_to=None
+):
+    """The user's desk bookings across their ACTIVE organizations (extracted from
+    ``MyBookingsView`` verbatim — same filters, ordering, select_related).
+
+    ``status`` is normalized: "cancelled"/"all" as given, anything else → "active"
+    (never leak cancelled on an unknown value). ``date_from``/``date_to`` are
+    ``date`` objects or None (the view still owns query-param parsing + its 400s).
+    The default active window starts at "today" in the configured booking timezone.
+    """
+    from accounts.models import Membership
+    from offices.serializers import resolve_office_zone
+
+    active_org_ids = Membership.objects.filter(user=user, status="active").values_list(
+        "organization_id", flat=True
+    )
+
+    qs = DeskBooking.objects.filter(
+        user=user, organization__in=active_org_ids
+    ).select_related("desk", "desk__layout_object", "office", "floor", "cancelled_by")
+
+    if status == "cancelled":
+        qs = qs.filter(status=DeskBooking.Status.CANCELLED)
+        normalized = "cancelled"
+    elif status == "all":
+        normalized = "all"
+    else:
+        normalized = "active"
+        qs = qs.filter(status=DeskBooking.Status.ACTIVE)
+
+    today = tz.now().astimezone(resolve_office_zone(None)).date()
+
+    if date_from is not None:
+        qs = qs.filter(booking_date__gte=date_from)
+    elif normalized == "active":
+        qs = qs.filter(booking_date__gte=today)
+
+    if date_to is not None:
+        qs = qs.filter(booking_date__lte=date_to)
+
+    if normalized == "active":
+        return qs.order_by("booking_date")
+    return qs.order_by("-booking_date")
+
+
+def resolve_usual_desk(user, *, organization) -> Desk | None:
+    """The user's "usual" desk = the desk of their most-recently-created booking in
+    ``organization`` whose desk resource is still active (PR 077). None if they have
+    never booked. Pure query, no schema change; a saved favourite can supersede this
+    later. The returned Desk carries its office/floor for the bot to book against.
+    """
+    booking = (
+        DeskBooking.objects.filter(
+            user=user, organization=organization, desk__is_active=True
+        )
+        .select_related("desk", "desk__floor", "desk__office")
+        .order_by("-created_at")
+        .first()
+    )
+    return booking.desk if booking else None

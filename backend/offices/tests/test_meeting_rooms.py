@@ -1046,7 +1046,10 @@ def test_my_bookings_default_window_uses_booking_timezone(
         status=DeskBooking.Status.ACTIVE,
     )
     client.force_authenticate(user=member_user)
-    with mock.patch("offices.views.tz.now", return_value=fake_now):
+    # PR 077: the default-window "today" computation moved out of the view into
+    # list_my_desk_bookings, so the tz.now patch target moves with it (assertions
+    # unchanged). See review/25 Discrepancies.
+    with mock.patch("offices.services.booking_service.tz.now", return_value=fake_now):
         res = client.get("/api/bookings/my/")
     assert res.status_code == 200
     # Under raw-UTC 'today' (the 16th) this booking would be filtered out.

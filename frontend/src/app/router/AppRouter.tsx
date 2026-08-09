@@ -73,6 +73,11 @@ const MyBookingsPage = lazy(() =>
     default: m.MyBookingsPage,
   }))
 );
+const LinkChatPage = lazy(() =>
+  import("@/app/pages/LinkChatPage").then((m) => ({
+    default: m.LinkChatPage,
+  }))
+);
 const NotFoundPage = lazy(() =>
   import("@/app/pages/NotFoundPage").then((m) => ({
     default: m.NotFoundPage,
@@ -165,6 +170,9 @@ export function AppRouter() {
               <Route path={ROUTES.app} element={<DashboardPage />} />
               <Route path={ROUTES.mfaSetup} element={<MfaSetupPage />} />
               <Route path={ROUTES.offices} element={<AppOfficesPage />} />
+              {/* Chat-account linking is not workspace-gated: any authenticated
+                  user can link; bot commands fail closed without a membership. */}
+              <Route path={ROUTES.linkChat} element={<LinkChatPage />} />
 
               {/* Workspace-dependent: redirect to /app when there is no active
                   organization membership (PR 057, Error 4). */}
