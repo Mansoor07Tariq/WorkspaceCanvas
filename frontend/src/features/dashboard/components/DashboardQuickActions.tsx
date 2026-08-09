@@ -4,13 +4,14 @@ import {
   BusinessOutlined,
   CalendarMonthOutlined,
   EditOutlined,
+  MeetingRoomOutlined,
   PeopleOutlined,
 } from "@mui/icons-material";
 import { Link } from "react-router-dom";
 import type { ReactNode } from "react";
 import type { Office } from "@/features/offices/types/office.types";
 import type { Floor } from "@/features/floors/types/floor.types";
-import { ROUTES, floorLayoutPath, deskBookingPath } from "@/routes/paths";
+import { ROUTES, floorLayoutPath, deskBookingPath, roomBookingPath } from "@/routes/paths";
 import { en } from "@/i18n/en";
 
 interface QuickAction {
@@ -36,6 +37,12 @@ export function DashboardQuickActions({ isOwnerOrAdmin, firstOffice, firstFloor 
       to: deskBookingPath(),
       icon: <BookmarkAddOutlined />,
       variant: "contained",
+    },
+    {
+      label: en.app.dashboard.actionBookRoom,
+      to: roomBookingPath(),
+      icon: <MeetingRoomOutlined />,
+      variant: "outlined",
     },
     {
       label: en.app.dashboard.actionMyBookings,
@@ -69,6 +76,12 @@ export function DashboardQuickActions({ isOwnerOrAdmin, firstOffice, firstFloor 
       to: deskBookingPath(),
       icon: <BookmarkAddOutlined />,
       variant: "contained",
+    },
+    {
+      label: en.app.dashboard.actionBookRoom,
+      to: roomBookingPath(),
+      icon: <MeetingRoomOutlined />,
+      variant: "outlined",
     },
     {
       label: en.app.dashboard.actionMyBookings,

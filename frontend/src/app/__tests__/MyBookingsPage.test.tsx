@@ -18,9 +18,31 @@ vi.mock("@/features/bookings/hooks/useMyBookings", () => ({
   useMyBookings: (...args: unknown[]) => mockUseMyBookings(...args),
 }));
 
+// PR 075: My Bookings merges desk + room endpoints. These dependencies are new
+// and are mocked here (declared): the room-bookings hook, offices (for room
+// timezones), the selected-org context, and the room cancel api.
+const mockRefreshRooms = vi.fn();
+const mockUseMyRoomBookings = vi.fn();
+vi.mock("@/features/rooms/hooks/useMyRoomBookings", () => ({
+  useMyRoomBookings: (...args: unknown[]) => mockUseMyRoomBookings(...args),
+}));
+
+vi.mock("@/features/offices/hooks/useOffices", () => ({
+  useOffices: () => ({ offices: [], loading: false, error: null, refresh: vi.fn() }),
+}));
+
+vi.mock("@/features/organizations/context/SelectedOrganizationProvider", () => ({
+  useSelectedOrganization: () => ({ selectedOrganizationId: 10, selectedMembership: null }),
+}));
+
 const mockCancelMyBooking = vi.fn();
 vi.mock("@/features/bookings/api/bookingApi", () => ({
   cancelMyBooking: (...args: unknown[]) => mockCancelMyBooking(...args),
+}));
+
+const mockCancelRoomBooking = vi.fn();
+vi.mock("@/features/rooms/api/roomApi", () => ({
+  cancelRoomBooking: (...args: unknown[]) => mockCancelRoomBooking(...args),
 }));
 
 vi.mock("@/lib/api/getApiErrorMessage", () => ({
@@ -76,6 +98,12 @@ describe("MyBookingsPage", () => {
       error: undefined,
       refresh: mockRefresh,
     });
+    mockUseMyRoomBookings.mockReturnValue({
+      bookings: [],
+      loading: false,
+      error: undefined,
+      refresh: mockRefreshRooms,
+    });
   });
 
   it("renders the page title 'My Bookings'", () => {
@@ -97,7 +125,10 @@ describe("MyBookingsPage", () => {
   it("shows empty state when there are no bookings", () => {
     renderPage();
     expect(screen.getByText("No upcoming bookings")).toBeInTheDocument();
-    expect(screen.getByText("You don't have any active desk bookings.")).toBeInTheDocument();
+    // PR 075: empty-state copy now covers both desks and rooms.
+    expect(
+      screen.getByText("You don't have any upcoming desk or room bookings.")
+    ).toBeInTheDocument();
   });
 
   it("shows booking cards when bookings exist", () => {
@@ -164,7 +195,9 @@ describe("MyBookingsPage", () => {
     expect(mockNavigate).toHaveBeenCalledWith("/app/bookings");
   });
 
-  it("shows an error alert when the hook returns an error", () => {
+  it("shows a partial-failure alert when the desk endpoint errors (PR 075)", () => {
+    // The page no longer surfaces the raw hook error; it shows a resource-specific
+    // partial-failure message so the loaded half still renders.
     mockUseMyBookings.mockReturnValue({
       bookings: [],
       loading: false,
@@ -172,7 +205,9 @@ describe("MyBookingsPage", () => {
       refresh: mockRefresh,
     });
     renderPage();
-    expect(screen.getByText("Failed to load")).toBeInTheDocument();
+    expect(
+      screen.getByText("Couldn't load your desk bookings. Showing room bookings only.")
+    ).toBeInTheDocument();
   });
 
   it("splits bookings across Upcoming / Past / Cancelled tabs (PR 070)", () => {

@@ -43,6 +43,8 @@ interface Props {
   loading: boolean;
   /** Server error to surface on THIS room's card. */
   error: string | null;
+  /** Highlight this card (selected from the floor map). */
+  highlighted?: boolean;
   onBook: (roomId: number, start: string, end: string) => void;
   onCancel: (bookingId: number) => void;
 }
@@ -57,6 +59,7 @@ export function RoomBookingCard({
   bookingDisabled,
   loading,
   error,
+  highlighted = false,
   onBook,
   onCancel,
 }: Props) {
@@ -87,7 +90,14 @@ export function RoomBookingCard({
   }
 
   return (
-    <Card variant="outlined" data-testid={`room-card-${room.id}`}>
+    <Card
+      variant="outlined"
+      data-testid={`room-card-${room.id}`}
+      sx={{
+        borderColor: highlighted ? "primary.main" : "divider",
+        borderWidth: highlighted ? 2 : 1,
+      }}
+    >
       <CardContent>
         <Stack
           direction="row"

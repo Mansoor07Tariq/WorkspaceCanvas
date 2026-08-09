@@ -60,3 +60,11 @@ export interface CreateRoomBookingPayload {
 }
 
 export type CancelRoomBookingResponse = RoomBooking;
+
+export type MyRoomBookingStatusFilter = "active" | "cancelled" | "all";
+
+export interface MyRoomBookingQueryParams {
+  from?: string;
+  to?: string;
+  status?: MyRoomBookingStatusFilter;
+}
