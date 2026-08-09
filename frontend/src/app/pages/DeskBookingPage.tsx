@@ -20,12 +20,11 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { BusinessOutlined, LayersOutlined, WeekendOutlined } from "@mui/icons-material";
 import { canManageWorkspaceContent } from "@/features/organizations/utils/membershipUtils";
 import { useSelectedOrganization } from "@/features/organizations/context/SelectedOrganizationProvider";
-import { useOffices } from "@/features/offices/hooks/useOffices";
-import { useFloors } from "@/features/floors/hooks/useFloors";
 import { useDesks } from "@/features/desks/hooks/useDesks";
 import { useLayoutObjects } from "@/features/layoutObjects/hooks/useLayoutObjects";
 import { makeFloorBoundary } from "@/features/layoutObjects/utils/coordinateHelpers";
 import { useDeskBookings } from "@/features/bookings/hooks/useDeskBookings";
+import { useBookingLocationSelection } from "@/features/bookings/hooks/useBookingLocationSelection";
 import { createDeskBooking, cancelDeskBooking } from "@/features/bookings/api/bookingApi";
 import { useBookingAvailability } from "@/features/bookings/hooks/useBookingAvailability";
 import { BookingDateSelector } from "@/features/bookings/components/BookingDateSelector";
@@ -40,10 +39,6 @@ import {
   todayLocalDate,
   maxBookingDate,
 } from "@/features/bookings/utils/bookingValidation";
-import {
-  loadLastOfficeFloor,
-  saveLastOfficeFloor,
-} from "@/features/bookings/utils/lastOfficeFloor";
 import { en } from "@/i18n/en";
 
 function extractBookingError(err: unknown): string {
@@ -79,29 +74,35 @@ export function DeskBookingPage() {
   const { selectedMembership, selectedOrganizationId } = useSelectedOrganization();
   const isOwnerOrAdmin = canManageWorkspaceContent(selectedMembership?.role);
 
-  // Book-again deep-link (PR 070): office/floor initialise the selectors from the URL,
-  // the desk is preselected once the floor's data loads (see the effect below). Read as
-  // initial state — no setState-in-effect.
-  const [searchParams, setSearchParams] = useSearchParams();
-  const paramId = (key: string): number | null => {
-    const n = Number(searchParams.get(key));
-    return Number.isFinite(n) && n > 0 ? n : null;
-  };
-  // Did the URL carry an office/floor selection on arrival? If so it wins over the
-  // remembered pair (captured once — before the sync effect rewrites the URL).
-  const arrivedWithSelectionRef = useRef(searchParams.has("office") || searchParams.has("floor"));
+  // Office/floor/date selection, URL deep-linking + remembered pair — shared with the
+  // room booking page (PR 074). Behaviour is identical to the inline PR 070/071 logic.
+  const {
+    offices,
+    officesLoading,
+    officesError,
+    floors,
+    floorsLoading,
+    floorsError,
+    selectedOfficeId,
+    selectedFloorId,
+    selectedDate,
+    selectedFloor,
+    officeSelected,
+    floorSelected,
+    selectOffice,
+    selectFloor,
+    selectDate,
+  } = useBookingLocationSelection(selectedOrganizationId);
 
-  const [selectedOfficeId, setSelectedOfficeId] = useState<number | "">(
-    () => paramId("office") ?? ""
+  // Desk "book again" deep-link param (PR 070) — page-specific; office/floor/date are
+  // owned by the shared hook. The desk is preselected once the floor's data loads.
+  const [searchParams] = useSearchParams();
+  const deskParam = Number(searchParams.get("desk"));
+  const prefillDeskRef = useRef<number | null>(
+    Number.isFinite(deskParam) && deskParam > 0 ? deskParam : null
   );
-  const [selectedFloorId, setSelectedFloorId] = useState<number | "">(() => paramId("floor") ?? "");
-  // Date from the URL if it is valid + in range; otherwise fall back to today (PR 071).
-  const [selectedDate, setSelectedDate] = useState<string>(() => {
-    const d = searchParams.get("date");
-    return d && validateBookingDate(d) === null ? d : todayLocalDate();
-  });
-  const [selectedDeskId, setSelectedDeskId] = useState<number | null>(null);
 
+  const [selectedDeskId, setSelectedDeskId] = useState<number | null>(null);
   const [bookingLoading, setBookingLoading] = useState(false);
   const [cancelLoading, setCancelLoading] = useState(false);
   const [bookingError, setBookingError] = useState<string | null>(null);
@@ -114,23 +115,11 @@ export function DeskBookingPage() {
   const [pendingCancelBookingId, setPendingCancelBookingId] = useState<number | null>(null);
   // "Book again" deep-link whose desk is gone on this floor (friction #3 rebook-fail).
   const [rebookDeskGone, setRebookDeskGone] = useState(false);
-  // Desk to preselect from the deep-link, consumed once the floor's data has loaded.
-  const prefillDeskRef = useRef<number | null>(paramId("desk"));
-  // Guards the one-shot remembered-pair restore (PR 071).
-  const restoredRef = useRef(false);
-
-  const {
-    offices,
-    loading: officesLoading,
-    error: officesError,
-  } = useOffices(selectedOrganizationId);
 
   const floorOfficeId = typeof selectedOfficeId === "number" ? selectedOfficeId : 0;
-  const { floors, loading: floorsLoading, error: floorsError } = useFloors(floorOfficeId);
-
   const deskFloorId = typeof selectedFloorId === "number" ? selectedFloorId : 0;
+
   // Render the booking map at the floor's saved room size (read-only here).
-  const selectedFloor = floors.find((f) => f.id === deskFloorId);
   const selectedFloorBoundary =
     selectedFloor &&
     Number.isFinite(Number(selectedFloor.boundary_width)) &&
@@ -186,29 +175,24 @@ export function DeskBookingPage() {
     clearBookingFeedback();
   }
 
-  // Reset floor/desk when office changes
+  // Reset floor/desk when office changes (the shared hook resets the floor).
   function handleOfficeChange(officeId: number | "") {
-    setSelectedOfficeId(officeId);
-    setSelectedFloorId("");
+    selectOffice(officeId);
     setSelectedDeskId(null);
     setRebookDeskGone(false);
     clearBookingFeedback();
   }
 
-  // Reset desk when floor changes
+  // Reset desk when floor changes (the shared hook remembers the office/floor pair).
   function handleFloorChange(floorId: number | "") {
-    setSelectedFloorId(floorId);
+    selectFloor(floorId);
     setSelectedDeskId(null);
     setRebookDeskGone(false);
     clearBookingFeedback();
-    // Remember the actively-chosen office/floor pair (PR 071) — only on real selection.
-    if (typeof floorId === "number" && typeof selectedOfficeId === "number") {
-      saveLastOfficeFloor(selectedOfficeId, floorId);
-    }
   }
 
   function handleDateChange(date: string) {
-    setSelectedDate(date);
+    selectDate(date);
     setSelectedDeskId(null);
     clearBookingFeedback();
   }
@@ -263,7 +247,6 @@ export function DeskBookingPage() {
     setPendingCancelBookingId(null);
   }
 
-  const floorSelected = typeof selectedFloorId === "number" && selectedFloorId > 0;
   const dataLoading = desksLoading || layoutLoading || bookingsLoading;
 
   // Inline date validation (PR 071): mirror the backend rules, block booking until fixed.
@@ -280,7 +263,6 @@ export function DeskBookingPage() {
   const noOfficesReady = !officesLoading && !officesError && offices.length === 0;
 
   // No-floors empty state — shown when an office is selected but has no floors
-  const officeSelected = typeof selectedOfficeId === "number" && selectedOfficeId > 0;
   const noFloorsReady = officeSelected && !floorsLoading && !floorsError && floors.length === 0;
 
   // Once the deep-linked floor's data has loaded, select the requested desk — or, if
@@ -292,41 +274,6 @@ export function DeskBookingPage() {
     if (items.some((i) => i.desk.id === desk)) setSelectedDeskId(desk);
     else setRebookDeskGone(true);
   }, [items, floorSelected, dataLoading]);
-
-  // Keep the URL in sync with the current office/floor/date (PR 071) so the page is
-  // shareable + refresh-safe. `replace` (not push) so Back leaves the page in one hit.
-  useEffect(() => {
-    const next = new URLSearchParams();
-    if (typeof selectedOfficeId === "number") next.set("office", String(selectedOfficeId));
-    if (typeof selectedFloorId === "number") next.set("floor", String(selectedFloorId));
-    if (selectedDate) next.set("date", selectedDate);
-    setSearchParams(next, { replace: true });
-  }, [selectedOfficeId, selectedFloorId, selectedDate, setSearchParams]);
-
-  // Restore the last-used office/floor when arriving WITHOUT url params (PR 071). Runs
-  // in two passes (office once offices load, then floor once that office's floors load);
-  // stale ids fall back to empty selection silently. URL params always win. This is a
-  // genuine "set state after async lists load" — it can't be a lazy initialiser because
-  // the offices/floors aren't loaded at mount — hence the targeted rule suppression.
-  useEffect(() => {
-    if (arrivedWithSelectionRef.current || restoredRef.current) return;
-    const remembered = loadLastOfficeFloor();
-    if (!remembered) {
-      restoredRef.current = true;
-      return;
-    }
-    if (selectedOfficeId === "") {
-      if (officesLoading) return;
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      if (offices.some((o) => o.id === remembered.office)) setSelectedOfficeId(remembered.office);
-      else restoredRef.current = true; // stale office → give up silently
-      return;
-    }
-    if (selectedOfficeId === remembered.office && !floorsLoading) {
-      if (floors.some((f) => f.id === remembered.floor)) setSelectedFloorId(remembered.floor);
-      restoredRef.current = true; // done (floor found or not)
-    }
-  }, [offices, officesLoading, floors, floorsLoading, selectedOfficeId]);
 
   return (
     <Container maxWidth="xl" sx={{ py: { xs: 2, sm: 3 } }}>

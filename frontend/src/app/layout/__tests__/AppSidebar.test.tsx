@@ -51,6 +51,7 @@ function renderSidebar(user: CurrentUser | null = incompleteUser, initialPath = 
 const PRODUCT_LABELS = [
   en.app.sidebar.offices,
   en.app.sidebar.deskBooking,
+  en.app.sidebar.roomBooking,
   en.app.sidebar.myBookings,
   en.app.sidebar.people,
 ];
