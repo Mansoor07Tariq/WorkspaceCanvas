@@ -22,6 +22,7 @@ function booking(overrides: Partial<RoomBooking>): RoomBooking {
     room: 1,
     room_name: "Room A",
     room_capacity: 6,
+    office_timezone: "UTC",
     layout_object: 1,
     user_name: "Reserved",
     is_mine: false,

@@ -179,6 +179,7 @@ function booking(id: number, roomId: number, start: string, end: string): RoomBo
     room: roomId,
     room_name: `Room ${roomId}`,
     room_capacity: 6,
+    office_timezone: "UTC",
     layout_object: 0,
     user_name: "Reserved",
     is_mine: false,
