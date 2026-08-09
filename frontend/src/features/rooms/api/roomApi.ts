@@ -4,6 +4,7 @@ import type {
   CancelRoomBookingResponse,
   CreateRoomBookingPayload,
   MeetingRoom,
+  MyRoomBookingQueryParams,
   RoomBooking,
 } from "../types/room.types";
 
@@ -18,11 +19,12 @@ function roomBookingsUrl(officeId: number, floorId: number): string {
 /**
  * Mirrors `invalidateBookingCaches` (bookingApi.ts): a room booking create/cancel
  * changes availability wherever that day's bookings are shown, so clear the whole
- * `roomBookings:` namespace (broad-but-safe). Room *resources* (the `rooms:`
- * namespace) don't change on a booking, so they are left cached.
+ * `roomBookings:` (floor-day view) and `myRoomBookings:` (My Bookings) namespaces.
+ * Room *resources* (the `rooms:` namespace) don't change on a booking → left cached.
  */
 export function invalidateRoomBookingCaches(): void {
   invalidateCache("roomBookings:");
+  invalidateCache("myRoomBookings:");
 }
 
 export function listMeetingRooms(officeId: number, floorId: number): Promise<MeetingRoom[]> {
@@ -59,4 +61,13 @@ export async function cancelRoomBooking(
   );
   invalidateRoomBookingCaches();
   return response;
+}
+
+export function listMyRoomBookings(params?: MyRoomBookingQueryParams): Promise<RoomBooking[]> {
+  const query = new URLSearchParams();
+  if (params?.from) query.set("from", params.from);
+  if (params?.to) query.set("to", params.to);
+  if (params?.status) query.set("status", params.status);
+  const qs = query.toString();
+  return api.get<RoomBooking[]>(`/api/bookings/my/rooms/${qs ? "?" + qs : ""}`);
 }

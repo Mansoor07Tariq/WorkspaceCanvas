@@ -708,6 +708,7 @@ export const en = {
       actionManageOffices: "Manage offices",
       actionBuildFloorMap: "Build floor map",
       actionBookDesk: "Book a desk",
+      actionBookRoom: "Book a room",
       actionMyBookings: "My bookings",
       actionCreateOrg: "Create workspace",
       actionInvitePeople: "Invite people",
@@ -723,14 +724,17 @@ export const en = {
     tabPast: "Past",
     tabCancelled: "Cancelled",
     emptyTitle: "No upcoming bookings",
-    emptyDesc: "You don't have any active desk bookings.",
+    emptyDesc: "You don't have any upcoming desk or room bookings.",
     emptyPastTitle: "No past bookings",
-    emptyPastDesc: "Desks you've booked in the past will show up here.",
+    emptyPastDesc: "Desks and rooms you've booked in the past will show up here.",
     emptyCancelledTitle: "No cancelled bookings",
     emptyCancelledDesc: "Bookings you cancel will show up here.",
     cancelAction: "Cancel booking",
     bookAgainAction: "Book again",
     cancelSuccess: "Booking cancelled successfully.",
+    // Partial-failure notices (one endpoint down, the other still shown) — PR 075.
+    deskLoadError: "Couldn't load your desk bookings. Showing room bookings only.",
+    roomLoadError: "Couldn't load your room bookings. Showing desk bookings only.",
   },
   bookings: {
     pageTitle: "Desk Booking",
@@ -806,6 +810,8 @@ export const en = {
     // Slot picker
     startLabel: "Start time",
     durationLabel: "Duration",
+    // Floor-map availability slot (PR 075) — colors rooms free/reserved/yours.
+    mapSlotLabel: "Show room availability for:",
     bookAction: "Book",
     conflictReason: "That time overlaps an existing booking on this room.",
     dateInvalidNote: "Fix the booking date above before booking a room.",

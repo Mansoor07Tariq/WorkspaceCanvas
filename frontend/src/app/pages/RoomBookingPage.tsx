@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Alert,
   Box,
@@ -18,6 +18,8 @@ import { ErrorAlert } from "@/components/feedback/ErrorAlert";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { canManageWorkspaceContent } from "@/features/organizations/utils/membershipUtils";
 import { useSelectedOrganization } from "@/features/organizations/context/SelectedOrganizationProvider";
+import { useLayoutObjects } from "@/features/layoutObjects/hooks/useLayoutObjects";
+import { makeFloorBoundary } from "@/features/layoutObjects/utils/coordinateHelpers";
 import { useBookingLocationSelection } from "@/features/bookings/hooks/useBookingLocationSelection";
 import { BookingDateSelector } from "@/features/bookings/components/BookingDateSelector";
 import {
@@ -29,10 +31,25 @@ import { useMeetingRooms } from "@/features/rooms/hooks/useMeetingRooms";
 import { useRoomBookings } from "@/features/rooms/hooks/useRoomBookings";
 import { createRoomBooking, cancelRoomBooking } from "@/features/rooms/api/roomApi";
 import { RoomBookingCard } from "@/features/rooms/components/RoomBookingCard";
+import { RoomBookingFloorMap } from "@/features/rooms/components/RoomBookingFloorMap";
+import {
+  buildRoomAvailabilityByLayoutObjectId,
+  findRoomIdByLayoutObjectId,
+} from "@/features/rooms/utils/roomAvailability";
+import {
+  durationOptionsFor,
+  endTimeLabel,
+  formatDuration,
+  startTimeOptions,
+  timeLabelToMinutes,
+  MIN_DURATION_MIN,
+} from "@/features/rooms/utils/roomTimeline";
 import type { RoomBooking } from "@/features/rooms/types/room.types";
 import { getApiErrorMessage } from "@/lib/api/getApiErrorMessage";
 import { ROUTES, officeDetailPath } from "@/routes/paths";
 import { en } from "@/i18n/en";
+
+const mapStartOptions = startTimeOptions();
 
 const c = en.rooms;
 const bc = en.bookings;
@@ -52,6 +69,7 @@ export function RoomBookingPage() {
     selectedOfficeId,
     selectedFloorId,
     selectedDate,
+    selectedFloor,
     officeSelected,
     floorSelected,
     selectOffice,
@@ -76,6 +94,17 @@ export function RoomBookingPage() {
     error: bookingsError,
     refresh: refreshBookings,
   } = useRoomBookings(floorOfficeId, roomFloorId, selectedDate);
+  const { objects: layoutObjects } = useLayoutObjects(floorOfficeId, roomFloorId);
+
+  const boundary =
+    selectedFloor &&
+    Number.isFinite(Number(selectedFloor.boundary_width)) &&
+    Number.isFinite(Number(selectedFloor.boundary_height))
+      ? makeFloorBoundary(
+          Number(selectedFloor.boundary_width),
+          Number(selectedFloor.boundary_height)
+        )
+      : undefined;
 
   const [actionRoomId, setActionRoomId] = useState<number | null>(null);
   const [bookingLoading, setBookingLoading] = useState(false);
@@ -83,6 +112,64 @@ export function RoomBookingPage() {
   const [bookingErrorRoomId, setBookingErrorRoomId] = useState<number | null>(null);
   const [cancelLoading, setCancelLoading] = useState(false);
   const [pendingCancel, setPendingCancel] = useState<RoomBooking | null>(null);
+
+  // Page-level "show availability for" slot that colors the floor map (map only;
+  // per-room booking still uses each card's own picker). Recolors on slot change.
+  const [mapStart, setMapStart] = useState<string>(mapStartOptions[0] ?? "06:00");
+  const [mapDuration, setMapDuration] = useState<number>(60);
+  const [selectedRoomId, setSelectedRoomId] = useState<number | null>(null);
+
+  const mapStartMin = timeLabelToMinutes(mapStart);
+  const mapDurationOptions = durationOptionsFor(mapStartMin);
+  const effectiveMapDuration = mapDurationOptions.includes(mapDuration)
+    ? mapDuration
+    : (mapDurationOptions[mapDurationOptions.length - 1] ?? MIN_DURATION_MIN);
+
+  // Memoized so the canvas gets a STABLE availability prop: recomputed only when the
+  // rooms/bookings/timezone/slot change — never per render/frame (PR 068 perf rule).
+  // Deps are raw state/hook values (not derived consts) so React Compiler can keep
+  // the manual memo (the review/13 lesson).
+  const roomAvailabilityByLayoutObjectId = useMemo(() => {
+    const startMin = timeLabelToMinutes(mapStart);
+    const opts = durationOptionsFor(startMin);
+    const dur = opts.includes(mapDuration)
+      ? mapDuration
+      : (opts[opts.length - 1] ?? MIN_DURATION_MIN);
+    return buildRoomAvailabilityByLayoutObjectId(
+      rooms,
+      bookings,
+      timeZone,
+      startMin,
+      startMin + dur
+    );
+  }, [rooms, bookings, timeZone, mapStart, mapDuration]);
+
+  const selectedLayoutObjectId = useMemo(() => {
+    const room = rooms.find((r) => r.id === selectedRoomId);
+    return room?.layout_object ?? null;
+  }, [rooms, selectedRoomId]);
+
+  // Scroll the selected room's card into view when picked from the map.
+  useEffect(() => {
+    if (selectedRoomId === null) return;
+    const el = document.getElementById(`room-anchor-${selectedRoomId}`);
+    if (el && typeof el.scrollIntoView === "function") {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [selectedRoomId]);
+
+  function handleMapObjectSelect(layoutObjectId: number) {
+    const roomId = findRoomIdByLayoutObjectId(rooms, layoutObjectId);
+    if (roomId !== null) setSelectedRoomId(roomId);
+  }
+
+  function handleMapStartChange(value: string) {
+    setMapStart(value);
+    const opts = durationOptionsFor(timeLabelToMinutes(value));
+    if (!opts.includes(mapDuration)) {
+      setMapDuration(opts[opts.length - 1] ?? MIN_DURATION_MIN);
+    }
+  }
 
   const dateError = validateBookingDate(selectedDate);
   const dateErrorMessage = !dateError
@@ -279,22 +366,81 @@ export function RoomBookingPage() {
             />
           ) : (
             <Stack spacing={2}>
+              {/* Floor map colored by the chosen availability slot (PR 075). */}
+              {layoutObjects.length > 0 && (
+                <Box>
+                  <Stack
+                    direction={{ xs: "column", sm: "row" }}
+                    spacing={1.5}
+                    sx={{ mb: 1, alignItems: { sm: "center" } }}
+                  >
+                    <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+                      {c.mapSlotLabel}
+                    </Typography>
+                    <FormControl size="small" sx={{ minWidth: 120 }}>
+                      <InputLabel id="map-start-label">{c.startLabel}</InputLabel>
+                      <Select
+                        labelId="map-start-label"
+                        label={c.startLabel}
+                        value={mapStart}
+                        onChange={(e) => handleMapStartChange(String(e.target.value))}
+                        data-testid="map-start-select"
+                      >
+                        {mapStartOptions.map((s) => (
+                          <MenuItem key={s} value={s}>
+                            {s}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                    <FormControl size="small" sx={{ minWidth: 120 }}>
+                      <InputLabel id="map-duration-label">{c.durationLabel}</InputLabel>
+                      <Select
+                        labelId="map-duration-label"
+                        label={c.durationLabel}
+                        value={effectiveMapDuration}
+                        onChange={(e) => setMapDuration(Number(e.target.value))}
+                        data-testid="map-duration-select"
+                      >
+                        {mapDurationOptions.map((d) => (
+                          <MenuItem key={d} value={d}>
+                            {formatDuration(d, { hour: c.unitHour, minute: c.unitMinute })}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                    <Typography variant="caption" color="text.secondary">
+                      {mapStart}–{endTimeLabel(mapStart, effectiveMapDuration)}
+                    </Typography>
+                  </Stack>
+                  <RoomBookingFloorMap
+                    layoutObjects={layoutObjects}
+                    availabilityByLayoutObjectId={roomAvailabilityByLayoutObjectId}
+                    selectedLayoutObjectId={selectedLayoutObjectId}
+                    onObjectSelect={handleMapObjectSelect}
+                    boundary={boundary}
+                  />
+                </Box>
+              )}
+
               {dateError && <Alert severity="warning">{c.dateInvalidNote}</Alert>}
               {rooms.map((room) => (
-                <RoomBookingCard
-                  key={room.id}
-                  room={room}
-                  bookings={bookingsByRoom.get(room.id) ?? []}
-                  timeZone={timeZone}
-                  bookingDisabled={dateError !== null}
-                  loading={actionRoomId === room.id && (bookingLoading || cancelLoading)}
-                  error={bookingErrorRoomId === room.id ? bookingError : null}
-                  onBook={handleBook}
-                  onCancel={(bookingId) => {
-                    const target = bookings.find((b) => b.id === bookingId) ?? null;
-                    setPendingCancel(target);
-                  }}
-                />
+                <Box key={room.id} id={`room-anchor-${room.id}`}>
+                  <RoomBookingCard
+                    room={room}
+                    bookings={bookingsByRoom.get(room.id) ?? []}
+                    timeZone={timeZone}
+                    bookingDisabled={dateError !== null}
+                    highlighted={selectedRoomId === room.id}
+                    loading={actionRoomId === room.id && (bookingLoading || cancelLoading)}
+                    error={bookingErrorRoomId === room.id ? bookingError : null}
+                    onBook={handleBook}
+                    onCancel={(bookingId) => {
+                      const target = bookings.find((b) => b.id === bookingId) ?? null;
+                      setPendingCancel(target);
+                    }}
+                  />
+                </Box>
               ))}
             </Stack>
           )}

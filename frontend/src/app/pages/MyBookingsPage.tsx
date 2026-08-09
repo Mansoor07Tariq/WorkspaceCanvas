@@ -12,16 +12,21 @@ import {
   Typography,
 } from "@mui/material";
 import { WeekendOutlined } from "@mui/icons-material";
+import { useSelectedOrganization } from "@/features/organizations/context/SelectedOrganizationProvider";
+import { useOffices } from "@/features/offices/hooks/useOffices";
 import { useMyBookings } from "@/features/bookings/hooks/useMyBookings";
+import { useMyRoomBookings } from "@/features/rooms/hooks/useMyRoomBookings";
 import { cancelMyBooking } from "@/features/bookings/api/bookingApi";
+import { cancelRoomBooking } from "@/features/rooms/api/roomApi";
 import { MyBookingsList } from "@/features/bookings/components/MyBookingsList";
+import { mergeMyBookings } from "@/features/bookings/utils/mergeMyBookings";
 import { groupMyBookings, type MyBookingsTab } from "@/features/bookings/utils/groupMyBookings";
+import type { MyBooking } from "@/features/bookings/types/myBookings.types";
 import { ConfirmDialog } from "@/components/feedback/ConfirmDialog";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { deskBookingPath } from "@/routes/paths";
+import { deskBookingPath, roomBookingPath } from "@/routes/paths";
 import { getApiErrorMessage } from "@/lib/api/getApiErrorMessage";
 import { en } from "@/i18n/en";
-import type { DeskBooking } from "@/features/bookings/types/booking.types";
 
 const c = en.myBookings;
 const cb = en.bookings;
@@ -36,32 +41,72 @@ function todayLocal(): string {
 
 export function MyBookingsPage() {
   const navigate = useNavigate();
+  const { selectedOrganizationId } = useSelectedOrganization();
   const [tab, setTab] = useState<MyBookingsTab>("upcoming");
-  const [pendingCancel, setPendingCancel] = useState<DeskBooking | null>(null);
+  const [pendingCancel, setPendingCancel] = useState<MyBooking | null>(null);
   const [cancellingId, setCancellingId] = useState<number | null>(null);
   const [cancelSuccess, setCancelSuccess] = useState<string | undefined>();
   const [cancelError, setCancelError] = useState<string | undefined>();
 
-  // One fetch for the whole history; the three views are a pure client-side split.
-  const { bookings, loading, error, refresh } = useMyBookings({ status: "all" });
-  const groups = useMemo(() => groupMyBookings(bookings, todayLocal()), [bookings]);
+  // Two clean endpoints, merged client-side. Each can fail independently — the
+  // page shows whichever half loaded plus an inline error, never a blank screen.
+  const {
+    bookings: deskBookings,
+    loading: deskLoading,
+    error: deskError,
+    refresh: refreshDesks,
+  } = useMyBookings({ status: "all" });
+  const {
+    bookings: roomBookings,
+    loading: roomLoading,
+    error: roomError,
+    refresh: refreshRooms,
+  } = useMyRoomBookings({ status: "all" });
+
+  // Offices of the selected org supply room timezones (office-local time labels).
+  const { offices } = useOffices(selectedOrganizationId);
+  const officeTz = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const o of offices) map.set(o.id, o.timezone ?? "");
+    return map;
+  }, [offices]);
+  const resolveTimeZone = (officeId: number): string => officeTz.get(officeId) ?? "";
+
+  const merged = useMemo(
+    () => mergeMyBookings(deskBookings, roomBookings),
+    [deskBookings, roomBookings]
+  );
+  const groups = useMemo(() => groupMyBookings(merged, todayLocal()), [merged]);
   const current = groups[tab];
 
-  function handleBookAgain(booking: DeskBooking) {
-    navigate(deskBookingPath({ office: booking.office, floor: booking.floor, desk: booking.desk }));
+  const loading = deskLoading || roomLoading;
+
+  function handleBookAgain(booking: MyBooking) {
+    if (booking.resource_type === "room") {
+      navigate(roomBookingPath({ office: booking.office, floor: booking.floor }));
+    } else {
+      navigate(
+        deskBookingPath({ office: booking.office, floor: booking.floor, desk: booking.desk })
+      );
+    }
   }
 
   async function confirmCancel() {
     if (!pendingCancel) return;
-    const id = pendingCancel.id;
-    setCancellingId(id);
+    const booking = pendingCancel;
+    setCancellingId(booking.id);
     setCancelSuccess(undefined);
     setCancelError(undefined);
     try {
-      await cancelMyBooking(id);
+      if (booking.resource_type === "room") {
+        await cancelRoomBooking(booking.office, booking.floor, booking.id);
+        refreshRooms();
+      } else {
+        await cancelMyBooking(booking.id);
+        refreshDesks();
+      }
       setCancelSuccess(c.cancelSuccess);
       setPendingCancel(null);
-      refresh();
     } catch (err) {
       setCancelError(getApiErrorMessage(err));
       setPendingCancel(null);
@@ -132,9 +177,15 @@ export function MyBookingsPage() {
           {cancelError}
         </Alert>
       )}
-      {error && (
+      {/* Partial-failure: one endpoint down shows an inline error over the loaded half. */}
+      {deskError && (
         <Alert severity="error" role="alert" sx={{ mb: 2 }}>
-          {error}
+          {c.deskLoadError}
+        </Alert>
+      )}
+      {roomError && (
+        <Alert severity="error" role="alert" sx={{ mb: 2 }}>
+          {c.roomLoadError}
         </Alert>
       )}
 
@@ -157,16 +208,10 @@ export function MyBookingsPage() {
       {!loading && current.length > 0 && (
         <MyBookingsList
           bookings={current}
-          onCancel={
-            tab === "upcoming"
-              ? (id) => {
-                  const b = current.find((x) => x.id === id);
-                  if (b) setPendingCancel(b);
-                }
-              : undefined
-          }
+          onCancel={tab === "upcoming" ? (booking) => setPendingCancel(booking) : undefined}
           onBookAgain={handleBookAgain}
           cancellingId={cancellingId}
+          resolveTimeZone={resolveTimeZone}
         />
       )}
 
