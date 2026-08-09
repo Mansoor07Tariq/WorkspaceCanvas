@@ -25,6 +25,7 @@ from offices.models import (
     DeskBooking,
     Floor,
     FloorLayoutObject,
+    MeetingRoom,
     Office,
 )
 
@@ -287,6 +288,31 @@ def test_desks_linked_to_layout_objects():
     desks = Desk.objects.filter(office=office, is_active=True)
     for desk in desks:
         assert desk.layout_object_id is not None
+
+
+# ─── Meeting rooms (PR 076) ───────────────────────────────────────────────────
+
+
+@pytest.mark.django_db
+def test_seeds_a_bookable_meeting_room_on_the_pod():
+    run_seed()
+    org = Organization.objects.get(slug=_DEMO_SLUG)
+    office = Office.objects.get(organization=org)
+    room = MeetingRoom.objects.get(office=office, is_active=True)
+    assert room.status == MeetingRoom.Status.AVAILABLE
+    assert room.capacity >= 1
+    # The room sits on the seeded meeting-pod layout object.
+    assert room.layout_object.object_type == FloorLayoutObject.ObjectType.MEETING_POD
+
+
+@pytest.mark.django_db
+def test_meeting_room_seed_is_idempotent():
+    run_seed()
+    office = Office.objects.get(organization__slug=_DEMO_SLUG)
+    first = MeetingRoom.objects.filter(office=office, is_active=True).count()
+    run_seed()
+    second = MeetingRoom.objects.filter(office=office, is_active=True).count()
+    assert first == second == 1
 
 
 # ─── Bookings ─────────────────────────────────────────────────────────────────

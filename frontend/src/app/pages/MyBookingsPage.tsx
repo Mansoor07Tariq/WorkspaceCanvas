@@ -12,8 +12,6 @@ import {
   Typography,
 } from "@mui/material";
 import { WeekendOutlined } from "@mui/icons-material";
-import { useSelectedOrganization } from "@/features/organizations/context/SelectedOrganizationProvider";
-import { useOffices } from "@/features/offices/hooks/useOffices";
 import { useMyBookings } from "@/features/bookings/hooks/useMyBookings";
 import { useMyRoomBookings } from "@/features/rooms/hooks/useMyRoomBookings";
 import { cancelMyBooking } from "@/features/bookings/api/bookingApi";
@@ -41,7 +39,6 @@ function todayLocal(): string {
 
 export function MyBookingsPage() {
   const navigate = useNavigate();
-  const { selectedOrganizationId } = useSelectedOrganization();
   const [tab, setTab] = useState<MyBookingsTab>("upcoming");
   const [pendingCancel, setPendingCancel] = useState<MyBooking | null>(null);
   const [cancellingId, setCancellingId] = useState<number | null>(null);
@@ -63,15 +60,7 @@ export function MyBookingsPage() {
     refresh: refreshRooms,
   } = useMyRoomBookings({ status: "all" });
 
-  // Offices of the selected org supply room timezones (office-local time labels).
-  const { offices } = useOffices(selectedOrganizationId);
-  const officeTz = useMemo(() => {
-    const map = new Map<number, string>();
-    for (const o of offices) map.set(o.id, o.timezone ?? "");
-    return map;
-  }, [offices]);
-  const resolveTimeZone = (officeId: number): string => officeTz.get(officeId) ?? "";
-
+  // Room bookings carry their office timezone (PR 076) — no offices fetch needed.
   const merged = useMemo(
     () => mergeMyBookings(deskBookings, roomBookings),
     [deskBookings, roomBookings]
@@ -211,7 +200,6 @@ export function MyBookingsPage() {
           onCancel={tab === "upcoming" ? (booking) => setPendingCancel(booking) : undefined}
           onBookAgain={handleBookAgain}
           cancellingId={cancellingId}
-          resolveTimeZone={resolveTimeZone}
         />
       )}
 

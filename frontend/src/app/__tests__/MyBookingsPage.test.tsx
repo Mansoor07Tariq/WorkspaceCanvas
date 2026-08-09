@@ -18,21 +18,13 @@ vi.mock("@/features/bookings/hooks/useMyBookings", () => ({
   useMyBookings: (...args: unknown[]) => mockUseMyBookings(...args),
 }));
 
-// PR 075: My Bookings merges desk + room endpoints. These dependencies are new
-// and are mocked here (declared): the room-bookings hook, offices (for room
-// timezones), the selected-org context, and the room cancel api.
+// PR 075: My Bookings merges desk + room endpoints — the room-bookings hook and the
+// room cancel api are mocked here (declared). (PR 076 dropped the offices/org
+// dependency; room bookings now carry office_timezone directly.)
 const mockRefreshRooms = vi.fn();
 const mockUseMyRoomBookings = vi.fn();
 vi.mock("@/features/rooms/hooks/useMyRoomBookings", () => ({
   useMyRoomBookings: (...args: unknown[]) => mockUseMyRoomBookings(...args),
-}));
-
-vi.mock("@/features/offices/hooks/useOffices", () => ({
-  useOffices: () => ({ offices: [], loading: false, error: null, refresh: vi.fn() }),
-}));
-
-vi.mock("@/features/organizations/context/SelectedOrganizationProvider", () => ({
-  useSelectedOrganization: () => ({ selectedOrganizationId: 10, selectedMembership: null }),
 }));
 
 const mockCancelMyBooking = vi.fn();

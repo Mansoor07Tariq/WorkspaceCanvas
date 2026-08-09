@@ -415,7 +415,59 @@ class DeskResponseSerializer(serializers.ModelSerializer):
         return obj.layout_object.label
 
 
-# ─── DeskBooking serializers ──────────────────────────────────────────────────
+# ─── Booking response serializers ─────────────────────────────────────────────
+
+
+class _IdentityMaskingMixin:
+    """Shared booking-identity masking for the desk + room response serializers.
+
+    A booking's identity — the ``user`` and ``cancelled_by`` — is visible only to the
+    booking's owner, a manager (``user_can_manage_offices``), or the admin shell (no
+    request in context). Everyone else sees ``user_name = "Reserved"`` and the
+    ``user`` / ``cancelled_by`` fields are dropped from the representation. Behaviour
+    is byte-identical to the per-serializer methods it replaces (PR 076).
+
+    Host serializer must declare ``user_name``/``is_mine`` SerializerMethodFields and
+    include ``user``/``cancelled_by`` in ``fields``.
+    """
+
+    def _can_see_identity(self, obj):
+        request = self.context.get("request")
+        membership = self.context.get("membership")
+        if not request:
+            # No request context = Django admin shell / admin site —
+            # show identity to maintain admin usability.
+            return True
+        if obj.user_id is None:
+            # Nothing to hide when user has been deleted.
+            return True
+        if obj.user_id == request.user.id:
+            return True
+        if membership and user_can_manage_offices(membership):
+            return True
+        return False
+
+    def get_user_name(self, obj):
+        if obj.user is None:
+            return "Former user"
+        if self._can_see_identity(obj):
+            return obj.user.get_full_name() or obj.user.email
+        return "Reserved"
+
+    def get_is_mine(self, obj):
+        if obj.user is None:
+            return False
+        request = self.context.get("request")
+        if not request:
+            return False
+        return obj.user_id == request.user.id
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        if not self._can_see_identity(instance):
+            data.pop("user", None)
+            data.pop("cancelled_by", None)
+        return data
 
 
 class CreateDeskBookingSerializer(serializers.Serializer):
@@ -442,7 +494,7 @@ class CreateDeskBookingSerializer(serializers.Serializer):
         return value
 
 
-class DeskBookingResponseSerializer(serializers.ModelSerializer):
+class DeskBookingResponseSerializer(_IdentityMaskingMixin, serializers.ModelSerializer):
     desk_name = serializers.CharField(source="desk.name", read_only=True)
     desk_code = serializers.CharField(source="desk.code", read_only=True)
     layout_object = serializers.IntegerField(
@@ -501,49 +553,11 @@ class DeskBookingResponseSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
 
-    def _can_see_identity(self, obj):
-        request = self.context.get("request")
-        membership = self.context.get("membership")
-        if not request:
-            # No request context = Django admin shell / admin site —
-            # show identity to maintain admin usability.
-            return True
-        if obj.user_id is None:
-            # Nothing to hide when user has been deleted.
-            return True
-        if obj.user_id == request.user.id:
-            return True
-        if membership and user_can_manage_offices(membership):
-            return True
-        return False
-
-    def get_user_name(self, obj):
-        if obj.user is None:
-            return "Former user"
-        if self._can_see_identity(obj):
-            return obj.user.get_full_name() or obj.user.email
-        return "Reserved"
-
-    def get_is_mine(self, obj):
-        if obj.user is None:
-            return False
-        request = self.context.get("request")
-        if not request:
-            return False
-        return obj.user_id == request.user.id
-
     def get_office_name(self, obj) -> str:
         return obj.office.name if obj.office_id else ""
 
     def get_floor_name(self, obj) -> str:
         return obj.floor.name if obj.floor_id else ""
-
-    def to_representation(self, instance):
-        data = super().to_representation(instance)
-        if not self._can_see_identity(instance):
-            data.pop("user", None)
-            data.pop("cancelled_by", None)
-        return data
 
 
 # ─── Meeting rooms (PR 073) ───────────────────────────────────────────────────
@@ -660,7 +674,7 @@ class CreateRoomBookingSerializer(serializers.Serializer):
         return attrs
 
 
-class RoomBookingResponseSerializer(serializers.ModelSerializer):
+class RoomBookingResponseSerializer(_IdentityMaskingMixin, serializers.ModelSerializer):
     room_name = serializers.CharField(source="room.name", read_only=True)
     room_capacity = serializers.IntegerField(source="room.capacity", read_only=True)
     layout_object = serializers.IntegerField(
@@ -671,6 +685,10 @@ class RoomBookingResponseSerializer(serializers.ModelSerializer):
     status_display = serializers.CharField(source="get_status_display", read_only=True)
     office_name = serializers.SerializerMethodField()
     floor_name = serializers.SerializerMethodField()
+    # Office IANA timezone for rendering start_at/end_at (UTC instants) in office-
+    # local time on the client (PR 076). Falls back to the configured default so the
+    # field is never empty/misleading. Additive, read-only — no migration.
+    office_timezone = serializers.SerializerMethodField()
 
     class Meta:
         model = RoomBooking
@@ -679,6 +697,7 @@ class RoomBookingResponseSerializer(serializers.ModelSerializer):
             "organization",
             "office",
             "office_name",
+            "office_timezone",
             "floor",
             "floor_name",
             "room",
@@ -700,49 +719,21 @@ class RoomBookingResponseSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = fields
 
-    # Identity masking mirrors DeskBookingResponseSerializer verbatim (self /
-    # manager / admin-shell / deleted-user); duplicated rather than shared to keep
-    # this PR from touching the desk serializer (scope discipline).
-    def _can_see_identity(self, obj):
-        request = self.context.get("request")
-        membership = self.context.get("membership")
-        if not request:
-            return True
-        if obj.user_id is None:
-            return True
-        if obj.user_id == request.user.id:
-            return True
-        if membership and user_can_manage_offices(membership):
-            return True
-        return False
-
-    def get_user_name(self, obj):
-        if obj.user is None:
-            return "Former user"
-        if self._can_see_identity(obj):
-            return obj.user.get_full_name() or obj.user.email
-        return "Reserved"
-
-    def get_is_mine(self, obj):
-        if obj.user is None:
-            return False
-        request = self.context.get("request")
-        if not request:
-            return False
-        return obj.user_id == request.user.id
-
     def get_office_name(self, obj) -> str:
         return obj.office.name if obj.office_id else ""
 
     def get_floor_name(self, obj) -> str:
         return obj.floor.name if obj.floor_id else ""
 
-    def to_representation(self, instance):
-        data = super().to_representation(instance)
-        if not self._can_see_identity(instance):
-            data.pop("user", None)
-            data.pop("cancelled_by", None)
-        return data
+    def get_office_timezone(self, obj) -> str:
+        tzname = ""
+        if obj.office_id:
+            tzname = (getattr(obj.office, "timezone", "") or "").strip()
+        # Guarantee a valid IANA name so the client never has to guess (mirrors
+        # resolve_office_zone's fallback chain).
+        if tzname not in _VALID_TIMEZONES:
+            return settings.BOOKING_DEFAULT_TIMEZONE
+        return tzname
 
 
 # ─── EnhanceRun serializers ───────────────────────────────────────────────────

@@ -582,6 +582,42 @@ def test_member_can_book_slot(member_client, active_office, active_floor, room):
 
 
 @pytest.mark.django_db
+def test_response_includes_office_timezone(member_client, la_office, la_floor, la_room):
+    # PR 076: room-booking responses carry the office IANA timezone so the client
+    # renders start_at/end_at in office-local time without loading offices.
+    with mock.patch(
+        "offices.serializers.timezone.now", return_value=_dt(2027, 6, 1, 12)
+    ):
+        res = member_client.post(
+            room_bookings_url(la_office.id, la_floor.id),
+            {
+                "room": la_room.id,
+                "booking_date": "2027-06-15",
+                "start": "10:00",
+                "end": "11:00",
+            },
+            format="json",
+        )
+    assert res.status_code == 201
+    assert res.data["office_timezone"] == "America/Los_Angeles"
+
+
+@pytest.mark.django_db
+def test_office_timezone_falls_back_to_default_when_unset(
+    member_client, active_office, active_floor, room
+):
+    # active_office has no timezone configured → the field falls back to the
+    # configured default (UTC in tests), never empty.
+    res = member_client.post(
+        room_bookings_url(active_office.id, active_floor.id),
+        _slot_body(room),
+        format="json",
+    )
+    assert res.status_code == 201
+    assert res.data["office_timezone"] == "UTC"
+
+
+@pytest.mark.django_db
 def test_overlapping_slot_conflicts_409(
     member_client, active_office, active_floor, room
 ):
