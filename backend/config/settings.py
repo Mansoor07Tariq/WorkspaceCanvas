@@ -265,6 +265,17 @@ ROOM_BOOKING_MAX_MINUTES = int(os.environ.get("ROOM_BOOKING_MAX_MINUTES", str(8 
 # adapter (Slice 2) reads these — empty by default so nothing breaks without them.
 SLACK_SIGNING_SECRET = os.environ.get("SLACK_SIGNING_SECRET", "")
 SLACK_BOT_TOKEN = os.environ.get("SLACK_BOT_TOKEN", "")
+
+# Microsoft Teams adapter (PR 078). The bot's Azure app registration — DISTINCT
+# from the MICROSOFT_CLIENT_ID social-login app above. Env-only; empty by default.
+# The bot is registered SINGLE TENANT (Azure no longer offers multi-tenant Azure Bot
+# resources), so MICROSOFT_APP_TENANT_ID scopes both inbound issuer validation and the
+# outbound token endpoint. The Teams endpoint fails closed (503) when ANY of the three
+# is unset — it must be impossible to validate a token against an empty audience, or to
+# run single-tenant validation without a tenant to scope the issuer/JWKS to.
+MICROSOFT_APP_ID = os.environ.get("MICROSOFT_APP_ID", "")
+MICROSOFT_APP_PASSWORD = os.environ.get("MICROSOFT_APP_PASSWORD", "")
+MICROSOFT_APP_TENANT_ID = os.environ.get("MICROSOFT_APP_TENANT_ID", "")
 # TTLs. The account-link code is short-lived (single-use); the write-confirm token
 # gives the user a brief window to press Confirm before it expires.
 CHAT_LINK_TOKEN_TTL_MINUTES = int(os.environ.get("CHAT_LINK_TOKEN_TTL_MINUTES", "10"))

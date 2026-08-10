@@ -19,7 +19,7 @@ from users.models import ExpiringTokenMixin
 
 class ChatPlatform(models.TextChoices):
     SLACK = "slack", "Slack"
-    # Teams etc. arrive in later slices; the enum is the single extension point.
+    TEAMS = "teams", "Teams"  # PR 078 (Teams-first MVP)
 
 
 class ChatLink(ExpiringTokenMixin, models.Model):
