@@ -1,0 +1,49 @@
+{
+  "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.16/MicrosoftTeams.schema.json",
+  "manifestVersion": "1.16",
+  "version": "1.0.0",
+  "id": "c0dd8bfb-02aa-4f8e-9149-b5ad082ff604",
+  "packageName": "com.workspacecanvas.teamsbot",
+  "developer": {
+    "name": "WorkspaceCanvas",
+    "websiteUrl": "https://example.com",
+    "privacyUrl": "https://example.com/privacy",
+    "termsOfUseUrl": "https://example.com/terms"
+  },
+  "name": {
+    "short": "WorkspaceCanvas",
+    "full": "WorkspaceCanvas Desk Booking"
+  },
+  "description": {
+    "short": "Book and manage your desk from Teams.",
+    "full": "Chat with WorkspaceCanvas to see, book, and cancel your desk booking. Type 'help' to get started, or 'link' to connect your account."
+  },
+  "icons": {
+    "color": "color.png",
+    "outline": "outline.png"
+  },
+  "accentColor": "#2A6EF5",
+  "bots": [
+    {
+      "botId": "c0dd8bfb-02aa-4f8e-9149-b5ad082ff604",
+      "scopes": ["personal"],
+      "supportsFiles": false,
+      "isNotificationOnly": false,
+      "commandLists": [
+        {
+          "scopes": ["personal"],
+          "commands": [
+            { "title": "help", "description": "Show what I can do" },
+            { "title": "link", "description": "Connect your WorkspaceCanvas account" },
+            { "title": "today", "description": "What you have booked today" },
+            { "title": "tomorrow", "description": "What you have booked tomorrow" },
+            { "title": "book", "description": "Book your usual desk" },
+            { "title": "cancel", "description": "Cancel a desk booking" }
+          ]
+        }
+      ]
+    }
+  ],
+  "permissions": ["identity", "messageTeamMembers"],
+  "validDomains": []
+}
