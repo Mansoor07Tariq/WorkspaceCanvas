@@ -47,12 +47,11 @@ function renderSidebar(user: CurrentUser | null = incompleteUser, initialPath = 
   );
 }
 
-// All product items that appear in the nav
+// Product items that require a completed profile (Today is always enabled).
 const PRODUCT_LABELS = [
-  en.app.sidebar.offices,
-  en.app.sidebar.deskBooking,
-  en.app.sidebar.roomBooking,
-  en.app.sidebar.myBookings,
+  en.app.sidebar.bookDesk,
+  en.app.sidebar.bookRoom,
+  en.app.sidebar.myBookingsNav,
   en.app.sidebar.people,
 ];
 
@@ -61,12 +60,14 @@ describe("AppSidebar — locked (profile incomplete)", () => {
 
   it("renders the nav landmark", () => {
     renderSidebar();
-    expect(screen.getByRole("navigation", { name: "Main navigation" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("navigation", { name: en.app.sidebar.primaryNavLabel })
+    ).toBeInTheDocument();
   });
 
-  it("dashboard item is always enabled", () => {
+  it("Today item is always enabled", () => {
     renderSidebar();
-    expect(screen.getByRole("button", { name: en.app.sidebar.dashboard })).not.toBeDisabled();
+    expect(screen.getByRole("button", { name: en.app.sidebar.today })).not.toBeDisabled();
   });
 
   it.each(PRODUCT_LABELS)("%s item is disabled when profile is incomplete", (label) => {
@@ -83,7 +84,6 @@ describe("AppSidebar — locked (profile incomplete)", () => {
   it("locked tooltip text is present in the DOM for disabled items", async () => {
     const user = userEvent.setup();
     const { container } = renderSidebar();
-    // Hover the span wrapper (not the button, which has pointer-events:none when disabled)
     const tooltipSpan = container.querySelectorAll("span[style*='width: 100%']")[0];
     await user.hover(tooltipSpan);
     await waitFor(() => {
@@ -97,7 +97,7 @@ describe("AppSidebar — unlocked (profile complete)", () => {
 
   it("all five items are enabled", () => {
     renderSidebar(completeUser);
-    [en.app.sidebar.dashboard, ...PRODUCT_LABELS].forEach((label) => {
+    [en.app.sidebar.today, ...PRODUCT_LABELS].forEach((label) => {
       expect(screen.getByRole("button", { name: label })).not.toBeDisabled();
     });
   });
@@ -108,25 +108,21 @@ describe("AppSidebar — unlocked (profile complete)", () => {
   });
 });
 
-describe("AppSidebar — My Bookings nav item", () => {
+describe("AppSidebar — nav destinations", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("My Bookings item is present in the nav", () => {
+  it("shows the five renamed destinations and not Offices/Dashboard/Events", () => {
     renderSidebar(completeUser);
-    expect(screen.getByRole("button", { name: en.app.sidebar.myBookings })).toBeInTheDocument();
-  });
-
-  it("My Bookings item is enabled for a profile-complete user", () => {
-    renderSidebar(completeUser);
-    expect(screen.getByRole("button", { name: en.app.sidebar.myBookings })).not.toBeDisabled();
-  });
-});
-
-describe("AppSidebar — Events removed", () => {
-  beforeEach(() => vi.clearAllMocks());
-
-  it("Events item is not shown in the nav", () => {
-    renderSidebar(completeUser);
+    [
+      en.app.sidebar.today,
+      en.app.sidebar.bookDesk,
+      en.app.sidebar.bookRoom,
+      en.app.sidebar.myBookingsNav,
+      en.app.sidebar.people,
+    ].forEach((label) => {
+      expect(screen.getByRole("button", { name: label })).toBeInTheDocument();
+    });
+    expect(screen.queryByRole("button", { name: en.app.sidebar.offices })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: en.app.sidebar.events })).not.toBeInTheDocument();
   });
 });
@@ -134,22 +130,27 @@ describe("AppSidebar — Events removed", () => {
 describe("AppSidebar — active item selection", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("dashboard button has Mui-selected class when on /app", () => {
+  it("Today button is selected when on /app", () => {
     renderSidebar(completeUser, ROUTES.app);
-    const btn = screen.getByRole("button", { name: en.app.sidebar.dashboard });
+    const btn = screen.getByRole("button", { name: en.app.sidebar.today });
     expect(btn).toHaveClass("Mui-selected");
+    expect(btn).toHaveAttribute("aria-current", "page");
   });
 
-  it("dashboard button does not have Mui-selected class when on a different route", () => {
-    renderSidebar(completeUser, ROUTES.offices);
-    const btn = screen.getByRole("button", { name: en.app.sidebar.dashboard });
+  it("Today button is not selected when on a different route", () => {
+    renderSidebar(completeUser, ROUTES.bookings);
+    const btn = screen.getByRole("button", { name: en.app.sidebar.today });
     expect(btn).not.toHaveClass("Mui-selected");
   });
 
-  it("My Bookings button has Mui-selected class when on myBookings route", () => {
+  it("My bookings button is selected on the myBookings route (not Book a desk)", () => {
     renderSidebar(completeUser, ROUTES.myBookings);
-    const btn = screen.getByRole("button", { name: en.app.sidebar.myBookings });
-    expect(btn).toHaveClass("Mui-selected");
+    expect(screen.getByRole("button", { name: en.app.sidebar.myBookingsNav })).toHaveClass(
+      "Mui-selected"
+    );
+    expect(screen.getByRole("button", { name: en.app.sidebar.bookDesk })).not.toHaveClass(
+      "Mui-selected"
+    );
   });
 });
 
@@ -176,7 +177,6 @@ describe("AppSidebar — Almost there card", () => {
   it("does not show Almost there card when profile is complete", () => {
     renderSidebar(completeUser);
     expect(screen.queryByText(en.app.sidebar.almostThereTitle)).not.toBeInTheDocument();
-    expect(screen.queryByText(en.app.sidebar.almostThereBody)).not.toBeInTheDocument();
   });
 
   it("does not show Almost there card when user is null", () => {

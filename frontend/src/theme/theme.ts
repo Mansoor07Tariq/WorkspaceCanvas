@@ -1,52 +1,67 @@
 import { createTheme } from "@mui/material/styles";
 
+import { colorTokens, fontTokens, radiusTokens, shadowTokens } from "./tokens";
+
+/**
+ * The app-wide MUI theme, built from the design tokens (PR 079). Mapping the tokens onto
+ * MUI's standard slots (palette/typography/shape/component defaults) means every existing
+ * page inherits the pine/porcelain look without a per-page rewrite. Raw tokens live in
+ * `tokens.ts`; nothing here (or elsewhere) should hardcode a hex.
+ *
+ * Typography: Manrope is the UI face (theme default); Fraunces is the display face,
+ * applied to the heading variants (h1–h4) so greetings, page titles, and big numbers
+ * render in it automatically. Fonts are self-hosted via @fontsource (imported in
+ * main.tsx) — no runtime Google Fonts dependency.
+ */
 export const theme = createTheme({
   palette: {
     primary: {
-      main: "#2563EB",
-      dark: "#1D4ED8",
-      light: "#60A5FA",
-      contrastText: "#FFFFFF",
+      main: colorTokens.pine,
+      dark: colorTokens.pineDark,
+      light: colorTokens.mint,
+      contrastText: colorTokens.onPine,
     },
     secondary: {
-      main: "#7C3AED",
-      light: "#A78BFA",
-      dark: "#5B21B6",
-      contrastText: "#FFFFFF",
+      main: colorTokens.amber,
+      light: colorTokens.amberLight,
+      dark: colorTokens.amberDark,
+      contrastText: colorTokens.onPine,
     },
-    error: {
-      main: "#DC2626",
-    },
-    success: {
-      main: "#16A34A",
-    },
+    error: { main: colorTokens.errorRed },
+    success: { main: colorTokens.pine },
+    warning: { main: colorTokens.amber },
     background: {
-      default: "#F1F5F9",
-      paper: "#FFFFFF",
+      default: colorTokens.page,
+      paper: colorTokens.card,
     },
     text: {
-      primary: "#0F172A",
-      secondary: "#64748B",
+      primary: colorTokens.ink,
+      secondary: colorTokens.slate,
     },
+    divider: colorTokens.line,
   },
   typography: {
-    fontFamily: ["Inter", "system-ui", "-apple-system", "sans-serif"].join(","),
-    h1: { fontWeight: 700 },
-    h2: { fontWeight: 700 },
-    h3: { fontWeight: 700 },
-    h4: { fontWeight: 600 },
-    h5: { fontWeight: 600 },
-    h6: { fontWeight: 600 },
-    button: { textTransform: "none", fontWeight: 600 },
+    fontFamily: fontTokens.body,
+    h1: { fontFamily: fontTokens.display, fontWeight: 600, letterSpacing: "-0.01em" },
+    h2: { fontFamily: fontTokens.display, fontWeight: 600, letterSpacing: "-0.01em" },
+    h3: { fontFamily: fontTokens.display, fontWeight: 500, letterSpacing: "-0.01em" },
+    h4: { fontFamily: fontTokens.display, fontWeight: 500 },
+    h5: { fontWeight: 700 },
+    h6: { fontWeight: 700 },
+    button: { textTransform: "none", fontWeight: 700 },
   },
   shape: {
-    borderRadius: 8,
+    borderRadius: radiusTokens.control,
   },
   components: {
     MuiButton: {
       defaultProps: { disableElevation: true },
       styleOverrides: {
-        root: { textTransform: "none", fontWeight: 600 },
+        root: {
+          textTransform: "none",
+          fontWeight: 700,
+          borderRadius: radiusTokens.control,
+        },
         sizeLarge: { paddingTop: 10, paddingBottom: 10 },
       },
     },
@@ -56,13 +71,23 @@ export const theme = createTheme({
     MuiCard: {
       styleOverrides: {
         root: {
-          borderRadius: 16,
-          boxShadow: "0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1)",
+          borderRadius: radiusTokens.card,
+          border: `1px solid ${colorTokens.line}`,
+          boxShadow: shadowTokens.card,
         },
       },
     },
+    MuiPaper: {
+      styleOverrides: {
+        // Keep outlined paper hairline-consistent with cards.
+        outlined: { borderColor: colorTokens.line },
+      },
+    },
     MuiAlert: {
-      styleOverrides: { root: { borderRadius: 8 } },
+      styleOverrides: { root: { borderRadius: radiusTokens.control } },
+    },
+    MuiChip: {
+      styleOverrides: { root: { fontWeight: 700 } },
     },
   },
 });

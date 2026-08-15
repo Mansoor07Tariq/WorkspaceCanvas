@@ -222,7 +222,12 @@ REST_FRAMEWORK = {
         "enhance_apply": os.environ.get("THROTTLE_ENHANCE_APPLY", "30/min"),
         "desk_write": os.environ.get("THROTTLE_DESK_WRITE", "120/hour"),
         "desk_booking_write": os.environ.get("THROTTLE_DESK_BOOKING_WRITE", "60/hour"),
-        "desk_booking_read": os.environ.get("THROTTLE_DESK_BOOKING_READ", "120/hour"),
+        # Read throttle covers desk-booking reads: the floor-bookings list, the booking
+        # detail, and (PR 079) the usual-desk lookup. The Today home screen fetches the
+        # whole visible week — five per-day floor-booking reads + the usual desk on a
+        # cold mount — so 120/hour (≈2/min) throttled real use to a 429. Raised so a
+        # normal Today load (≈6 cached reads) has headroom; still env-overridable.
+        "desk_booking_read": os.environ.get("THROTTLE_DESK_BOOKING_READ", "600/hour"),
     },
 }
 
