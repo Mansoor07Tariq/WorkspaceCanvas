@@ -38,9 +38,9 @@ const MfaSetupPage = lazy(() =>
 );
 
 // App pages — lazy-loaded so MUI-heavy pages are not in the initial bundle.
-const DashboardPage = lazy(() =>
-  import("@/app/pages/DashboardPage").then((m) => ({
-    default: m.DashboardPage,
+const TodayPage = lazy(() =>
+  import("@/app/pages/TodayPage").then((m) => ({
+    default: m.TodayPage,
   }))
 );
 const AppOfficesPage = lazy(() =>
@@ -165,9 +165,9 @@ export function AppRouter() {
                 </ProtectedRoute>
               }
             >
-              {/* Always available: dashboard (hosts the no-workspace state),
+              {/* Always available: Today (home; hosts the no-workspace state),
                   MFA setup, and Offices (hosts the org-creation flow). */}
-              <Route path={ROUTES.app} element={<DashboardPage />} />
+              <Route path={ROUTES.app} element={<TodayPage />} />
               <Route path={ROUTES.mfaSetup} element={<MfaSetupPage />} />
               <Route path={ROUTES.offices} element={<AppOfficesPage />} />
               {/* Chat-account linking is not workspace-gated: any authenticated

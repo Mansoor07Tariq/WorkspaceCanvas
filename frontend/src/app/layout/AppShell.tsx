@@ -1,11 +1,24 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
-import { AppBar, Box, Button, Drawer, IconButton, Toolbar, Typography } from "@mui/material";
-import { MenuOutlined } from "@mui/icons-material";
+import {
+  AppBar,
+  Avatar,
+  Box,
+  Button,
+  Drawer,
+  IconButton,
+  Stack,
+  Toolbar,
+  Typography,
+} from "@mui/material";
+import { MapOutlined, MenuOutlined } from "@mui/icons-material";
 import { useAuth } from "@/features/auth/context/AuthContext";
 import { OrganizationSwitcher } from "@/features/organizations/components/OrganizationSwitcher";
+import { initialsFromName } from "@/theme/tokens";
 import { AppSidebar, SIDEBAR_WIDTH } from "./AppSidebar";
+import { BottomTabBar } from "./BottomTabBar";
 import { SidebarCollapseContext } from "./SidebarCollapseContext";
+import * as s from "./AppShell.styles";
 import { en } from "@/i18n/en";
 
 interface Props {
@@ -16,41 +29,52 @@ interface Props {
 export function AppShell({ children, onLogout }: Props) {
   const { user } = useAuth();
   const [drawerOpen, setDrawerOpen] = useState(false);
-  // A page (e.g. the floor-map canvas) can collapse the permanent rail into a
-  // burger + temporary drawer at ALL breakpoints to free horizontal space.
+  // A page (e.g. the floor-map canvas) can collapse the side nav into a burger +
+  // temporary drawer at ALL breakpoints to free horizontal space.
   const [collapsed, setCollapsed] = useState(false);
+
+  const displayName = user?.first_name || user?.full_name || user?.email || "";
 
   return (
     <SidebarCollapseContext.Provider value={{ collapsed, setCollapsed }}>
       <Box sx={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-        <AppBar
-          position="static"
-          elevation={1}
-          color="default"
-          sx={{ bgcolor: "background.paper" }}
-        >
-          <Toolbar>
+        <AppBar position="sticky" elevation={0} color="default" sx={s.appBar}>
+          <Toolbar variant="dense">
             <IconButton
               edge="start"
               color="inherit"
               aria-label={en.app.shell.openNav}
               onClick={() => setDrawerOpen(true)}
-              sx={{ mr: 1, display: collapsed ? "inline-flex" : { md: "none" } }}
+              sx={{ mr: 1, display: collapsed ? "inline-flex" : "none" }}
             >
               <MenuOutlined />
             </IconButton>
-            <Typography variant="h6" sx={{ flexGrow: 1, fontWeight: 700 }}>
-              {en.app.shell.brand}
-            </Typography>
+            {/* Brand shown when there's no side rail (phone), or when collapsed */}
+            <Stack
+              direction="row"
+              spacing={1}
+              sx={{
+                alignItems: "center",
+                flexGrow: 1,
+                display: { xs: "flex", sm: collapsed ? "flex" : "none" },
+              }}
+            >
+              <Box aria-hidden sx={s.brandTileSm}>
+                <MapOutlined fontSize="small" />
+              </Box>
+              <Typography sx={s.brandText}>{en.app.shell.brand}</Typography>
+            </Stack>
+            <Box sx={{ flexGrow: 1, display: { xs: "none", sm: collapsed ? "none" : "block" } }} />
             <OrganizationSwitcher />
             {user && (
-              <Typography
-                variant="body2"
-                color="text.secondary"
-                sx={{ mr: 2, display: { xs: "none", sm: "block" } }}
-              >
-                {user.email}
-              </Typography>
+              <Stack direction="row" spacing={1} sx={{ alignItems: "center", ml: 1.5, mr: 1.5 }}>
+                <Avatar sx={s.userAvatar(user.email ?? displayName)}>
+                  {initialsFromName(displayName)}
+                </Avatar>
+                <Typography variant="body2" color="text.secondary" sx={s.userName}>
+                  {displayName}
+                </Typography>
+              </Stack>
             )}
             <Button variant="outlined" color="inherit" size="small" onClick={onLogout}>
               {en.app.shell.logout}
@@ -58,29 +82,36 @@ export function AppShell({ children, onLogout }: Props) {
           </Toolbar>
         </AppBar>
 
-        {/* Temporary drawer — below md, or at all widths when a page collapses the rail */}
+        {/* Temporary drawer — for the burger (collapsed canvas pages) */}
         <Drawer
           anchor="left"
           open={drawerOpen}
           onClose={() => setDrawerOpen(false)}
           variant="temporary"
-          sx={{
-            display: collapsed ? "block" : { md: "none" },
-            "& .MuiDrawer-paper": { width: SIDEBAR_WIDTH, boxSizing: "border-box" },
-          }}
+          sx={{ "& .MuiDrawer-paper": { width: SIDEBAR_WIDTH, boxSizing: "border-box" } }}
         >
           <AppSidebar onNavigate={() => setDrawerOpen(false)} />
         </Drawer>
 
-        <Box sx={{ display: "flex", flexGrow: 1 }}>
-          {/* Permanent sidebar — hidden on mobile, and when a page collapses the rail */}
-          <Box sx={{ display: collapsed ? "none" : { xs: "none", md: "flex" } }}>
-            <AppSidebar />
+        <Box sx={{ display: "flex", flexGrow: 1, minHeight: 0 }}>
+          {/* Tablet icon rail (sm–md), hidden when collapsed */}
+          <Box sx={{ display: collapsed ? "none" : { xs: "none", sm: "flex", md: "none" } }}>
+            <AppSidebar variant="rail" />
           </Box>
-          <Box component="main" sx={{ flexGrow: 1, minWidth: 0 }}>
+          {/* Desktop full sidebar (md+), hidden when collapsed */}
+          <Box sx={{ display: collapsed ? "none" : { xs: "none", md: "flex" } }}>
+            <AppSidebar variant="full" />
+          </Box>
+          <Box
+            component="main"
+            sx={{ flexGrow: 1, minWidth: 0, display: "flex", flexDirection: "column" }}
+          >
             {children}
           </Box>
         </Box>
+
+        {/* Phone bottom tab bar */}
+        <BottomTabBar />
       </Box>
     </SidebarCollapseContext.Provider>
   );

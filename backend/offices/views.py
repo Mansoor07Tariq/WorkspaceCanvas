@@ -54,6 +54,7 @@ from .serializers import (
     UpdateDeskSerializer,
     UpdateFloorSerializer,
     UpdateLayoutObjectSerializer,
+    UsualDeskSerializer,
 )
 from .services.booking_service import (
     BookingDeskNotAvailableError,
@@ -65,6 +66,7 @@ from .services.booking_service import (
     create_booking_for_user,
     get_my_desk_booking,
     list_my_desk_bookings,
+    resolve_usual_desk,
 )
 from .services.enhance_run_service import (
     EnhanceRunNotFoundError,
@@ -1244,6 +1246,29 @@ class MyBookingsView(APIView):
             qs, many=True, context={"request": request}
         )
         return Response(serializer.data)
+
+
+class UsualDeskView(APIView):
+    """Read-only: the caller's resolved "usual desk" in the selected org (PR 079).
+
+    Thin wrapper over the existing ``resolve_usual_desk`` service (also used by the chat
+    bot) — the Today screen uses it for the amber "usual desk" marker and near-you
+    ranking. Returns ``{"usual_desk": <desk> | null}``.
+    """
+
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [_DeskBookingReadThrottle]
+
+    def get(self, request: Request) -> Response:
+        membership = resolve_membership(request.user, _selected_org_id(request))
+        if membership is None:
+            return Response(
+                {"detail": "No active membership."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        desk = resolve_usual_desk(request.user, organization=membership.organization)
+        data = UsualDeskSerializer(desk).data if desk is not None else None
+        return Response({"usual_desk": data})
 
 
 class MyBookingCancelView(APIView):
