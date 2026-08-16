@@ -1,6 +1,9 @@
 import type { FloorBoundary } from "../utils/coordinateHelpers";
 import type { LayoutObject, LayoutObjectType } from "../types/layoutObject.types";
-import type { DeskAvailabilityStatus } from "@/features/bookings/utils/bookingAvailability";
+import type {
+  DeskAvailabilityStatus,
+  OccupantIdentity,
+} from "@/features/bookings/utils/bookingAvailability";
 import type { GhostPreview } from "../enhancePreview/buildGhostPreview";
 
 /** Public props contract for {@link FloorMapCanvas}. Unchanged by PR 067. */
@@ -53,6 +56,8 @@ export interface FloorMapCanvasProps {
   mode?: "editor" | "booking";
   /** Map from layoutObject.id → DeskAvailabilityStatus for canvas colouring. */
   availabilityByLayoutObjectId?: ReadonlyMap<number, DeskAvailabilityStatus>;
+  /** Map from layoutObject.id → occupant identity for on-desk tiles (PR 080 B3). */
+  occupantByLayoutObjectId?: ReadonlyMap<number, OccupantIdentity>;
   /** The layout object id of the currently selected desk in booking mode. */
   selectedAvailabilityLayoutObjectId?: number | null;
   /** Called when the user clicks a desk object in booking mode. */

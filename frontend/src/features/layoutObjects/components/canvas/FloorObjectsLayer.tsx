@@ -1,13 +1,17 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { Layer, Transformer } from "react-konva";
 import type Konva from "konva";
 import { alignOpeningToWall, type getSnapWalls } from "../../utils/wallPlacement";
 import { MIN_OBJECT_SIZE } from "../../utils/coordinateHelpers";
 import { makeMinSizeBoundBox } from "../../utils/transformerBounds";
+import { getLayoutObjectRenderConfig } from "../../utils/layoutObjectRenderConfig";
 import { ROTATION_SNAPS } from "./canvasStyle";
 import { LayoutObjectCanvasNode } from "../LayoutObjectCanvasNode";
 import type { LayoutObject } from "../../types/layoutObject.types";
-import type { DeskAvailabilityStatus } from "@/features/bookings/utils/bookingAvailability";
+import type {
+  DeskAvailabilityStatus,
+  OccupantIdentity,
+} from "@/features/bookings/utils/bookingAvailability";
 
 type WallDragBound = (this: Konva.Node, pos: { x: number; y: number }) => { x: number; y: number };
 
@@ -22,6 +26,7 @@ interface Props {
   savingObjectIds?: ReadonlySet<number>;
   bookableObjectIds?: ReadonlySet<number>;
   availabilityByLayoutObjectId?: ReadonlyMap<number, DeskAvailabilityStatus>;
+  occupantByLayoutObjectId?: ReadonlyMap<number, OccupantIdentity>;
   selectedAvailabilityLayoutObjectId?: number | null;
   notesTooltipEnabled: boolean;
   selectedIsWallMounted: boolean;
@@ -60,6 +65,7 @@ export function FloorObjectsLayer({
   savingObjectIds,
   bookableObjectIds,
   availabilityByLayoutObjectId,
+  occupantByLayoutObjectId,
   selectedAvailabilityLayoutObjectId,
   notesTooltipEnabled,
   selectedIsWallMounted,
@@ -84,9 +90,20 @@ export function FloorObjectsLayer({
     [nodeRefs]
   );
 
+  // Draw order (PR 080 B4): room shells behind all furniture, then furniture back-to-front by
+  // bottom edge (y + height) so overlapping sprites (a plant in front of a sofa) layer correctly.
+  // A STABLE copy — keys stay `obj.id` and the memo comparator is reference-based, so reordering
+  // changes only Konva sibling paint order, never node identity or the PR-068 render-count.
+  const orderedObjects = useMemo(() => {
+    const rank = (o: LayoutObject) =>
+      getLayoutObjectRenderConfig(o.object_type).category === "Rooms & Zones" ? 0 : 1;
+    const bottom = (o: LayoutObject) => parseFloat(o.y) + parseFloat(o.height);
+    return [...objects].sort((a, b) => rank(a) - rank(b) || bottom(a) - bottom(b));
+  }, [objects]);
+
   return (
     <Layer>
-      {objects.map((obj) => {
+      {orderedObjects.map((obj) => {
         // Where the floor is carved (enhanced / booking), a cutout is shown by the
         // carved shape + rerouted walls, so its X box is not drawn.
         if (carveShape && obj.object_type === "cutout") return null;
@@ -95,6 +112,9 @@ export function FloorObjectsLayer({
         const displayObj = alignOpeningToWall(obj, snapWalls);
         const availabilityStatus = availabilityByLayoutObjectId?.get(obj.id);
         const isAvailabilitySelected = selectedAvailabilityLayoutObjectId === obj.id;
+        // Read the occupant off the map here and forward FLAT scalars: the node's memo
+        // compares each, so a booking change on one desk re-renders only that desk.
+        const occupant = occupantByLayoutObjectId?.get(obj.id);
         return (
           <LayoutObjectCanvasNode
             key={obj.id}
@@ -115,6 +135,10 @@ export function FloorObjectsLayer({
             availabilityStatus={availabilityStatus}
             isAvailabilitySelected={isAvailabilitySelected}
             onAvailabilitySelect={onAvailabilityObjectSelect}
+            occupantKind={occupant?.kind}
+            occupantName={occupant?.name}
+            occupantAvatarUrl={occupant ? occupant.avatarUrl : undefined}
+            occupantColorKey={occupant ? occupant.colorKey : undefined}
           />
         );
       })}

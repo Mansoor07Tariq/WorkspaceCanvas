@@ -5,6 +5,7 @@ import {
   countAvailability,
   canBookDesk,
   buildAvailabilityByLayoutObjectId,
+  buildOccupantByLayoutObjectId,
   findDeskIdByLayoutObjectId,
   getSelectedLayoutObjectId,
 } from "./bookingAvailability";
@@ -217,14 +218,42 @@ describe("privacy — reserved booking sanitization", () => {
     const booking = makeBooking({ user: 42, user_name: "Jane Smith", is_mine: false });
     const items = buildDeskAvailability({ desks: [desk], bookings: [booking], layoutObjects: [] });
     expect(items[0].status).toBe("reserved");
+    // The raw booking object is still not surfaced to list/panel consumers.
     expect(items[0].booking).toBeNull();
   });
 
-  it("reserved desk: item object does not expose the other user's name", () => {
+  it("reserved desk: occupant carries the server-VISIBLE colleague identity (PR 080 B3)", () => {
+    // Post-B1.5 the server sends a same-org colleague's real name/photo; the map needs it
+    // to draw the on-desk tile, so `occupant` (unlike the raw `booking`) exposes it.
     const desk = makeDesk();
-    const booking = makeBooking({ user: 42, user_name: "Jane Smith", is_mine: false });
+    const booking = makeBooking({
+      user: 42,
+      user_name: "Jane Smith",
+      user_avatar: "https://cdn.example.com/j.jpg",
+      is_mine: false,
+    });
     const items = buildDeskAvailability({ desks: [desk], bookings: [booking], layoutObjects: [] });
-    expect(JSON.stringify(items[0])).not.toContain("Jane Smith");
+    expect(items[0].occupant).toEqual({
+      kind: "colleague",
+      name: "Jane Smith",
+      avatarUrl: "https://cdn.example.com/j.jpg",
+      colorKey: 42,
+    });
+  });
+
+  it("reserved desk: a MASKED booking (server 'Reserved') yields no occupant → no tile", () => {
+    const desk = makeDesk();
+    const booking = makeBooking({ user: null, user_name: "Reserved", is_mine: false });
+    const items = buildDeskAvailability({ desks: [desk], bookings: [booking], layoutObjects: [] });
+    expect(items[0].status).toBe("reserved");
+    expect(items[0].occupant).toBeNull();
+  });
+
+  it("my desk: occupant kind is 'me'", () => {
+    const desk = makeDesk();
+    const booking = makeBooking({ user: 7, user_name: "Me", is_mine: true });
+    const items = buildDeskAvailability({ desks: [desk], bookings: [booking], layoutObjects: [] });
+    expect(items[0].occupant?.kind).toBe("me");
   });
 
   it("bookedByMe desk: item.booking is defined and contains the correct booking id", () => {
@@ -294,6 +323,46 @@ describe("buildAvailabilityByLayoutObjectId", () => {
     const items = buildDeskAvailability({ desks: [desk], bookings: [], layoutObjects: [lo] });
     const map = buildAvailabilityByLayoutObjectId(items);
     expect(map.get(10)).toBe("unavailable");
+  });
+});
+
+describe("buildOccupantByLayoutObjectId", () => {
+  it("maps layoutObject id → occupant for booked desks, skipping free ones", () => {
+    const free = makeDesk({ id: 1, layout_object: 10 });
+    const taken = makeDesk({ id: 2, layout_object: 20 });
+    const items = buildDeskAvailability({
+      desks: [free, taken],
+      bookings: [makeBooking({ desk: 2, user: 42, user_name: "Jane Smith", is_mine: false })],
+      layoutObjects: [makeLayoutObject({ id: 10 }), makeLayoutObject({ id: 20 })],
+    });
+    const map = buildOccupantByLayoutObjectId(items);
+    expect(map.has(10)).toBe(false); // free desk → no occupant
+    expect(map.get(20)).toEqual({
+      kind: "colleague",
+      name: "Jane Smith",
+      avatarUrl: null,
+      colorKey: 42,
+    });
+  });
+
+  it("excludes masked ('Reserved') bookings so no tile is drawn", () => {
+    const desk = makeDesk({ id: 2, layout_object: 20 });
+    const items = buildDeskAvailability({
+      desks: [desk],
+      bookings: [makeBooking({ desk: 2, user: null, user_name: "Reserved", is_mine: false })],
+      layoutObjects: [makeLayoutObject({ id: 20 })],
+    });
+    expect(buildOccupantByLayoutObjectId(items).size).toBe(0);
+  });
+
+  it("excludes items without a linked layoutObject", () => {
+    const desk = makeDesk({ id: 2, layout_object: 999 });
+    const items = buildDeskAvailability({
+      desks: [desk],
+      bookings: [makeBooking({ desk: 2, user: 42, user_name: "Jane Smith", is_mine: false })],
+      layoutObjects: [],
+    });
+    expect(buildOccupantByLayoutObjectId(items).size).toBe(0);
   });
 });
 

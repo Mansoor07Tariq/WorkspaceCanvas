@@ -59,6 +59,7 @@ function makeItem(overrides: Partial<DeskAvailabilityItem> = {}): DeskAvailabili
     status: "available",
     isMine: false,
     label: "Available",
+    occupant: null,
     ...overrides,
   };
 }

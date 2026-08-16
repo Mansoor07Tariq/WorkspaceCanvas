@@ -290,22 +290,129 @@ def test_member_retrieves_own_booking_full_identity(
     assert response.data["user_name"] != "Reserved"
 
 
-def test_member_retrieves_other_booking_anonymized(
+def test_member_sees_other_booking_identity(
     client,
     other_member_user,
     active_office,
     active_floor,
     active_booking,
+    member_user,
 ):
-    """A member viewing another user's booking sees 'Reserved' and is_mine=False."""
+    """PR 079: a same-org member now SEES the colleague's booking identity (name +
+    ``user`` id) — only ``is_mine`` stays False. Was 'Reserved' before the rule change;
+    the mask now applies only to non-members of the booking's org (guarded by the 404 in
+    ``test_cross_org_returns_404``)."""
     client.force_authenticate(user=other_member_user)
     url = booking_detail_url(active_office.id, active_floor.id, active_booking.id)
     response = client.get(url)
     assert response.status_code == 200
-    assert response.data["user_name"] == "Reserved"
+    assert response.data["user_name"] != "Reserved"
+    assert response.data["user_name"] == (
+        member_user.get_full_name() or member_user.email
+    )
     assert response.data["is_mine"] is False
-    # user field should not be exposed for non-owners viewing others' bookings
-    assert response.data.get("user") is None or "user" not in response.data
+    assert response.data["user"] == member_user.id
+
+
+def test_non_member_identity_still_masked_at_serializer(
+    db, active_booking, other_org_user, member_user
+):
+    """PR 079 backstop: the "Reserved" mask still applies to a viewer who is NOT an
+    active member of the booking's org. Exercised at the serializer (every HTTP path
+    404s a non-member first — ``test_cross_org_returns_404`` — so this pins the
+    defensive layer directly)."""
+    from rest_framework.test import APIRequestFactory
+
+    from offices.serializers import DeskBookingResponseSerializer
+
+    request = APIRequestFactory().get("/")
+    request.user = other_org_user
+    data = DeskBookingResponseSerializer(
+        active_booking, context={"request": request}
+    ).data
+    assert data["user_name"] == "Reserved"
+    assert data["is_mine"] is False
+    assert data.get("user") is None or "user" not in data
+
+
+# ─── Occupant avatar (PR 080 B3) ─────────────────────────────────────────────
+
+
+def _tiny_png_bytes() -> bytes:
+    """A minimal valid PNG so the ImageField accepts an upload in tests."""
+    import io
+
+    from PIL import Image
+
+    buf = io.BytesIO()
+    Image.new("RGB", (2, 2), (20, 120, 80)).save(buf, format="PNG")
+    return buf.getvalue()
+
+
+def test_user_avatar_from_provider_url_visible_to_member(
+    client, other_member_user, active_office, active_floor, active_booking, member_user
+):
+    """A same-org member sees the colleague's provider avatar URL when the booking user
+    has an ``avatar_url`` but no hosted avatar (initials-fallback path is avoided)."""
+    member_user.avatar_url = "https://cdn.example.com/p.jpg"
+    member_user.save(update_fields=["avatar_url"])
+    client.force_authenticate(user=other_member_user)
+    url = booking_detail_url(active_office.id, active_floor.id, active_booking.id)
+    response = client.get(url)
+    assert response.status_code == 200
+    assert response.data["user_avatar"] == "https://cdn.example.com/p.jpg"
+
+
+def test_hosted_avatar_takes_precedence_over_provider_url(
+    client, other_member_user, active_office, active_floor, active_booking, member_user
+):
+    """When the user has a hosted ``avatar`` image, it wins over ``avatar_url`` and is
+    returned as an absolute (media) URL."""
+    from django.core.files.base import ContentFile
+
+    member_user.avatar_url = "https://cdn.example.com/p.jpg"
+    member_user.avatar.save("a.png", ContentFile(_tiny_png_bytes()), save=True)
+    client.force_authenticate(user=other_member_user)
+    url = booking_detail_url(active_office.id, active_floor.id, active_booking.id)
+    response = client.get(url)
+    assert response.status_code == 200
+    assert response.data["user_avatar"] != "https://cdn.example.com/p.jpg"
+    assert "/media/" in response.data["user_avatar"]
+    assert response.data["user_avatar"].startswith("http")
+
+
+def test_user_avatar_null_when_no_photo(
+    client, other_member_user, active_office, active_floor, active_booking, member_user
+):
+    """No hosted avatar and no provider URL → ``user_avatar`` is null (UI shows
+    coloured initials)."""
+    assert not member_user.avatar
+    assert not member_user.avatar_url
+    client.force_authenticate(user=other_member_user)
+    url = booking_detail_url(active_office.id, active_floor.id, active_booking.id)
+    response = client.get(url)
+    assert response.status_code == 200
+    assert response.data["user_avatar"] is None
+
+
+def test_user_avatar_masked_for_non_member_at_serializer(
+    db, active_booking, other_org_user, member_user
+):
+    """Backstop: a non-member of the booking's org gets NO photo (and no name), the same
+    mask that hides ``user``/``user_name``."""
+    from rest_framework.test import APIRequestFactory
+
+    from offices.serializers import DeskBookingResponseSerializer
+
+    member_user.avatar_url = "https://cdn.example.com/p.jpg"
+    member_user.save(update_fields=["avatar_url"])
+    request = APIRequestFactory().get("/")
+    request.user = other_org_user
+    data = DeskBookingResponseSerializer(
+        active_booking, context={"request": request}
+    ).data
+    assert data["user_name"] == "Reserved"
+    assert data["user_avatar"] is None
 
 
 def test_owner_retrieves_any_booking_full_identity(
@@ -335,7 +442,7 @@ def test_admin_retrieves_any_booking_full_identity(
 # ─── Identity masking / cancelled_by field ────────────────────────────────────
 
 
-def test_cancelled_by_not_exposed_to_non_owner_member(
+def test_cancelled_by_exposed_to_same_org_member(
     db,
     client,
     other_member_user,
@@ -347,7 +454,8 @@ def test_cancelled_by_not_exposed_to_non_owner_member(
     member_user,
     tomorrow,
 ):
-    """A non-owner member must not see cancelled_by when viewing another's booking."""
+    """PR 079: a same-org member now sees ``cancelled_by`` on a colleague's booking
+    (part of the now-visible identity). Was hidden before the rule change."""
     # Create a booking owned by member_user, cancelled by owner_user.
     booking = DeskBooking.objects.create(
         organization=active_org,
@@ -372,9 +480,7 @@ def test_cancelled_by_not_exposed_to_non_owner_member(
     url = booking_detail_url(active_office.id, active_floor.id, booking.id)
     response = client.get(url)
     assert response.status_code == 200
-    # cancelled_by should NOT be exposed to non-owner members viewing others' bookings
-    cancelled_by_val = response.data.get("cancelled_by")
-    assert "cancelled_by" not in response.data or cancelled_by_val is None
+    assert response.data.get("cancelled_by") == owner_user.id
 
 
 def test_no_email_in_detail_response(

@@ -739,6 +739,9 @@ export const en = {
   bookings: {
     pageTitle: "Desk Booking",
     selectPrompt: "Select an office and floor to view desk availability.",
+    // On-desk occupant identity tile (PR 080 B3).
+    deskTileYou: "You",
+    deskTileGuest: "Guest",
     noOfficesAdminTitle: "No offices yet",
     noOfficesAdminDesc: "Create your first office to enable desk booking.",
     noOfficesAdminAction: "Manage offices",
