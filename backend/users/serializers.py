@@ -307,6 +307,12 @@ class SocialAuthSerializer(serializers.Serializer):
                     and _save_social_avatar(user, avatar_bytes)
                 ):
                     update_fields.append("avatar")
+                # Keep the raw provider avatar URL current (Google's rotates), so the
+                # booking-identity fallback photo stays valid; only write on change.
+                provider_avatar_url = identity.get("avatar_url")
+                if provider_avatar_url and provider_avatar_url != user.avatar_url:
+                    user.avatar_url = provider_avatar_url
+                    update_fields.append("avatar_url")
                 if update_fields:
                     user.save(update_fields=update_fields)
             except User.DoesNotExist:
@@ -323,6 +329,7 @@ class SocialAuthSerializer(serializers.Serializer):
                     preferred_auth_provider=provider,
                     email_verified=provider_verified,
                     email_verified_at=now if provider_verified else None,
+                    avatar_url=identity.get("avatar_url") or "",
                 )
                 avatar_bytes = identity.get("avatar_bytes")
                 if avatar_bytes and _save_social_avatar(user, avatar_bytes):

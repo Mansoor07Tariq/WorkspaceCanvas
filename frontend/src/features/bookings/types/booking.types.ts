@@ -11,6 +11,12 @@ export interface DeskBooking {
   layout_object: number;
   user?: number | null;
   user_name: string;
+  /**
+   * Occupant photo URL for the desk-identity tile, or null when the user has no photo
+   * (UI falls back to coloured initials) or identity is masked for the viewer. Masked
+   * server-side by the same same-org rule as `user_name` (PR 080 B3).
+   */
+  user_avatar?: string | null;
   booking_date: string;
   status: DeskBookingStatus;
   status_display: string;

@@ -1,0 +1,17 @@
+{
+  "_comment": "Ratified per-asset overrides (review/32 §7). The pipeline merges `role`/`type`/`footprint` into the generated manifest.json. `desktopRect` (PR 080 B3) is read LIVE from THIS file by the desk renderer (getDesktopRect) — the normalized {x,y,w,h} sub-rectangle of the trimmed sprite covering ONLY the desk's top surface (EXCLUDING the chair), where the occupant identity tile is drawn; retuning a rect is a one-line edit here with no rebuild. Rects measured from the 640px art (chair sits at the front/bottom ~lower 40%).",
+  "map-1": { "role": "unused" },
+  "map-2": { "role": "unused" },
+  "map-3": { "role": "unused" },
+  "map-4": { "role": "unused" },
+  "system-1": { "role": "standalone-desk" },
+  "system-2": { "role": "standalone-desk" },
+  "staircase-1": { "role": "structural", "type": "staircase" },
+  "staircase-2": { "role": "structural", "type": "staircase" },
+  "desk-chair-1": { "desktopRect": { "x": 0.03, "y": 0.03, "w": 0.94, "h": 0.55 } },
+  "desk-chair-2": { "desktopRect": { "x": 0.03, "y": 0.02, "w": 0.94, "h": 0.58 } },
+  "desk-system-1-less": { "desktopRect": { "x": 0.03, "y": 0.03, "w": 0.94, "h": 0.55 } },
+  "desk-system-2-less": { "desktopRect": { "x": 0.03, "y": 0.03, "w": 0.94, "h": 0.55 } },
+  "desk-system-3-less": { "desktopRect": { "x": 0.03, "y": 0.03, "w": 0.94, "h": 0.55 } },
+  "desk-system-4-less": { "desktopRect": { "x": 0.03, "y": 0.03, "w": 0.94, "h": 0.55 } }
+}

@@ -2,6 +2,10 @@ import type { ComponentType } from "react";
 import type { LayoutObject } from "../types/layoutObject.types";
 import type { RenderConfig } from "../utils/layoutObjectRenderConfig";
 import type { LayoutObjectNodeStyle } from "../utils/layoutObjectNodeStyle";
+import type {
+  DeskAvailabilityStatus,
+  OccupantKind,
+} from "@/features/bookings/utils/bookingAvailability";
 
 /**
  * Props handed to every layout object renderer.
@@ -36,6 +40,25 @@ export interface LayoutObjectRendererProps {
   isSaving: boolean;
   /** True when the canvas is in booking mode (read-only, availability overlay). */
   isBookingMode: boolean;
+  /**
+   * Desk availability status when known (booking mode). The desk renderer uses it to pick
+   * booking-state-aware art (free → the clean desk; booked → the bare desk). Already a
+   * compared scalar on the memoised node, so passing it costs no extra re-renders.
+   */
+  availabilityStatus?: DeskAvailabilityStatus;
+  /**
+   * Occupant identity for a booked desk's on-desktop tile (PR 080 B3), threaded as flat
+   * scalars so a single booking change re-renders ONLY that desk's node (a whole-object
+   * prop would share a reference across the map and defeat the PR-068 memo). Absent
+   * `occupantKind` ⇒ no tile (free desk, or a booking the viewer may not see).
+   */
+  occupantKind?: OccupantKind;
+  /** Occupant display name — drives initials and the tile's accessible label. */
+  occupantName?: string;
+  /** Occupant photo URL, or null → the tile shows coloured initials. */
+  occupantAvatarUrl?: string | null;
+  /** Occupant user id → stable tile colour; null falls back to a name hash. */
+  occupantColorKey?: number | null;
 }
 
 /**

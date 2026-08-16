@@ -17,7 +17,7 @@ from .models import (
     Office,
     RoomBooking,
 )
-from .permissions import user_can_manage_offices
+from .permissions import get_active_membership_for_org
 
 _VALID_TIMEZONES: frozenset[str] = frozenset(zoneinfo.available_timezones())
 
@@ -421,11 +421,17 @@ class DeskResponseSerializer(serializers.ModelSerializer):
 class _IdentityMaskingMixin:
     """Shared booking-identity masking for the desk + room response serializers.
 
-    A booking's identity — the ``user`` and ``cancelled_by`` — is visible only to the
-    booking's owner, a manager (``user_can_manage_offices``), or the admin shell (no
-    request in context). Everyone else sees ``user_name = "Reserved"`` and the
-    ``user`` / ``cancelled_by`` fields are dropped from the representation. Behaviour
-    is byte-identical to the per-serializer methods it replaces (PR 076).
+    **Masking rule (PR 080 B1.5, lifted from PR 079):** a booking's identity — the
+    ``user`` and ``cancelled_by`` — is visible to any **active member of the booking's
+    organization**. Colleagues in the same org see each other's names/avatars (the
+    canvas needs this to draw faces on desks); the ``user_name = "Reserved"`` mask holds
+    ONLY for a viewer who is *not* an active member of the booking's org (and for the
+    admin shell, which sees identity, and deleted users → "Former user").
+
+    In practice every HTTP endpoint that emits *other* people's bookings already 404s a
+    non-member (the office is resolved only within the caller's active orgs — see
+    ``get_office_for_user``), so the mask is a defensive backstop rather than a live
+    code path; it still guards any future endpoint that hands a booking to a non-member.
 
     Host serializer must declare ``user_name``/``is_mine`` SerializerMethodFields and
     include ``user``/``cancelled_by`` in ``fields``.
@@ -433,7 +439,6 @@ class _IdentityMaskingMixin:
 
     def _can_see_identity(self, obj):
         request = self.context.get("request")
-        membership = self.context.get("membership")
         if not request:
             # No request context = Django admin shell / admin site —
             # show identity to maintain admin usability.
@@ -443,9 +448,29 @@ class _IdentityMaskingMixin:
             return True
         if obj.user_id == request.user.id:
             return True
-        if membership and user_can_manage_offices(membership):
+        # Same-org members see each other's booking identities. Derive membership from
+        # the booking's org (context["membership"] is absent on the my-bookings paths).
+        return self._viewer_is_member(request, obj.organization_id)
+
+    def _viewer_is_member(self, request, organization_id):
+        """Is the viewer an active member of this org? The list/detail views already
+        resolve the viewer's membership in the office's org into
+        ``context["membership"]`` (and bookings are org-scoped to that office) — use it
+        as a zero-query fast path so the floor list adds NO query. Only the my-bookings
+        paths lack it, and there the owner branch short-circuits before we get here; the
+        fallback query is memoised per org so it can never become an N+1."""
+        membership = self.context.get("membership")
+        if membership is not None and membership.organization_id == organization_id:
             return True
-        return False
+        cache = self.context.get("_identity_member_cache")
+        if cache is None:
+            cache = {}
+            self.context["_identity_member_cache"] = cache
+        if organization_id not in cache:
+            cache[organization_id] = (
+                get_active_membership_for_org(request.user, organization_id) is not None
+            )
+        return cache[organization_id]
 
     def get_user_name(self, obj):
         if obj.user is None:
@@ -453,6 +478,23 @@ class _IdentityMaskingMixin:
         if self._can_see_identity(obj):
             return obj.user.get_full_name() or obj.user.email
         return "Reserved"
+
+    def get_user_avatar(self, obj):
+        """The occupant's photo URL for the desk-identity tile, masked by the same
+        same-org rule as the name. Resolves to the hosted ``avatar`` image (present for
+        social sign-ins — we download the provider photo — and manual uploads) and falls
+        back to the raw provider ``avatar_url``; ``None`` when neither exists or the
+        viewer may not see identity, in which case the UI shows coloured initials.
+
+        Reads only columns already loaded via ``select_related("user")``, so it adds no
+        query (keeps the N+1 / query-count guarantee)."""
+        if obj.user is None or not self._can_see_identity(obj):
+            return None
+        avatar = getattr(obj.user, "avatar", None)
+        if avatar:
+            request = self.context.get("request")
+            return request.build_absolute_uri(avatar.url) if request else avatar.url
+        return obj.user.avatar_url or None
 
     def get_is_mine(self, obj):
         if obj.user is None:
@@ -501,6 +543,7 @@ class DeskBookingResponseSerializer(_IdentityMaskingMixin, serializers.ModelSeri
         source="desk.layout_object_id", read_only=True
     )
     user_name = serializers.SerializerMethodField()
+    user_avatar = serializers.SerializerMethodField()
     is_mine = serializers.SerializerMethodField()
     status_display = serializers.CharField(source="get_status_display", read_only=True)
     office_name = serializers.SerializerMethodField()
@@ -521,6 +564,7 @@ class DeskBookingResponseSerializer(_IdentityMaskingMixin, serializers.ModelSeri
             "layout_object",
             "user",
             "user_name",
+            "user_avatar",
             "is_mine",
             "booking_date",
             "status",
@@ -543,6 +587,7 @@ class DeskBookingResponseSerializer(_IdentityMaskingMixin, serializers.ModelSeri
             "layout_object",
             "user",
             "user_name",
+            "user_avatar",
             "is_mine",
             "booking_date",
             "status",
@@ -681,6 +726,7 @@ class RoomBookingResponseSerializer(_IdentityMaskingMixin, serializers.ModelSeri
         source="room.layout_object_id", read_only=True
     )
     user_name = serializers.SerializerMethodField()
+    user_avatar = serializers.SerializerMethodField()
     is_mine = serializers.SerializerMethodField()
     status_display = serializers.CharField(source="get_status_display", read_only=True)
     office_name = serializers.SerializerMethodField()
@@ -706,6 +752,7 @@ class RoomBookingResponseSerializer(_IdentityMaskingMixin, serializers.ModelSeri
             "layout_object",
             "user",
             "user_name",
+            "user_avatar",
             "is_mine",
             "booking_date",
             "start_at",

@@ -45,6 +45,7 @@ function makeItem(
           : status === "bookedByMe"
             ? "Your booking"
             : "Unavailable",
+    occupant: null,
   };
 }
 

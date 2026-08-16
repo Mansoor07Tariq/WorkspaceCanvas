@@ -1,11 +1,42 @@
 import { describe, it, expect } from "vitest";
 import { getLayoutObjectRenderer, DefaultLayoutObjectRenderer } from "../index";
-import { IsometricAssetRenderer } from "../isometric/IsometricAssetRenderer";
+import { DeskRenderer } from "../isometric/DeskRenderer";
+import { RoomRenderer } from "../isometric/RoomRenderer";
+import { SpriteRenderer } from "../isometric/SpriteRenderer";
 import { ALL_LAYOUT_OBJECT_TYPES } from "../../utils/layoutObjectRenderConfig";
 import type { LayoutObjectType } from "../../types/layoutObject.types";
 
-// Types that have a pre-built isometric asset (used only in enhanced mode).
-const ISOMETRIC_TYPES: LayoutObjectType[] = ["desk", "meeting_room"];
+// The enhanced-mode renderer expected for each type (PR 080 B4). Types absent here stay on the
+// default styled box even when enhanced (walls, chairs, cutouts, decor primitives, …).
+const ENHANCED: Partial<Record<LayoutObjectType, unknown>> = {
+  desk: DeskRenderer,
+  standing_desk: DeskRenderer,
+  hot_desk: DeskRenderer,
+  private_desk: DeskRenderer,
+  meeting_room: RoomRenderer,
+  room: RoomRenderer,
+  lobby: RoomRenderer,
+  kitchen: RoomRenderer,
+  bathroom: RoomRenderer,
+  quiet_room: RoomRenderer,
+  focus_zone: RoomRenderer,
+  meeting_pod: RoomRenderer,
+  phone_booth: RoomRenderer,
+  sofa: SpriteRenderer,
+  lounge_chair: SpriteRenderer,
+  stool: SpriteRenderer,
+  chair_table_set: SpriteRenderer,
+  table: SpriteRenderer,
+  coffee_table: SpriteRenderer,
+  lunch_table: SpriteRenderer,
+  boardroom_table: SpriteRenderer,
+  toilet: SpriteRenderer,
+  sink: SpriteRenderer,
+  kitchen_sink: SpriteRenderer,
+  door: SpriteRenderer,
+  window: SpriteRenderer,
+  plant: SpriteRenderer,
+};
 
 describe("layout object renderer registry", () => {
   it("resolves a renderer for every known object type without throwing", () => {
@@ -22,15 +53,15 @@ describe("layout object renderer registry", () => {
     }
   });
 
-  it("uses the isometric asset renderer for asset-backed types when enhanced", () => {
-    for (const type of ISOMETRIC_TYPES) {
-      expect(getLayoutObjectRenderer(type, true)).toBe(IsometricAssetRenderer);
+  it("maps each type to its expected enhanced renderer (desk / room / sprite), else the box", () => {
+    for (const type of ALL_LAYOUT_OBJECT_TYPES) {
+      const expected = ENHANCED[type] ?? DefaultLayoutObjectRenderer;
+      expect(getLayoutObjectRenderer(type, true)).toBe(expected);
     }
   });
 
-  it("keeps non-asset types on the default renderer even when enhanced", () => {
-    const others = ALL_LAYOUT_OBJECT_TYPES.filter((t) => !ISOMETRIC_TYPES.includes(t));
-    for (const type of others) {
+  it("keeps structural/decor types (wall, cutout, chair, whiteboard) on the box when enhanced", () => {
+    for (const type of ["wall", "cutout", "chair", "whiteboard", "column"] as LayoutObjectType[]) {
       expect(getLayoutObjectRenderer(type, true)).toBe(DefaultLayoutObjectRenderer);
     }
   });

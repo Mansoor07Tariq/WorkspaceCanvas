@@ -789,9 +789,11 @@ def _book_as(client, office, floor, room, date, start="10:00", end="11:00"):
 
 
 @pytest.mark.django_db
-def test_member_sees_reserved_for_others(
+def test_member_sees_identity_for_others(
     client, active_office, active_floor, room, member_user, member_user2
 ):
+    """PR 079: a same-org member now sees a colleague's room-booking identity (name +
+    ``user`` id); only ``is_mine`` stays False. Was 'Reserved' before this rule."""
     d = _future_date()
     client.force_authenticate(user=member_user)
     _book_as(client, active_office, active_floor, room, d)
@@ -802,9 +804,10 @@ def test_member_sees_reserved_for_others(
     )
     assert res.status_code == 200
     row = res.data[0]
-    assert row["user_name"] == "Reserved"
+    assert row["user_name"] != "Reserved"
+    assert row["user_name"] == (member_user.get_full_name() or member_user.email)
     assert row["is_mine"] is False
-    assert "user" not in row
+    assert row["user"] == member_user.id
 
 
 @pytest.mark.django_db

@@ -7,7 +7,10 @@ import { getLayoutObjectRenderer } from "../renderers";
 import { calculateTransformResult, getTopLeftFromCenterPosition } from "../utils/coordinateHelpers";
 import { isWallMountedType } from "../utils/wallPlacement";
 import type { LayoutObject } from "../types/layoutObject.types";
-import type { DeskAvailabilityStatus } from "@/features/bookings/utils/bookingAvailability";
+import type {
+  DeskAvailabilityStatus,
+  OccupantKind,
+} from "@/features/bookings/utils/bookingAvailability";
 
 /** Konva drag-bound: keeps a door/window sliding along its host wall. */
 type WallDragBound = (this: Konva.Node, pos: { x: number; y: number }) => { x: number; y: number };
@@ -47,6 +50,15 @@ interface Props {
   isBookingMode?: boolean;
   /** True when the Enhance toggle is on: render isometric assets instead of boxes. */
   enhanced?: boolean;
+  /**
+   * Occupant identity for a booked desk's on-desktop tile (PR 080 B3). Flat scalars, not
+   * a single object, so a booking change re-renders only the affected desk (see the memo
+   * comparator). Undefined `occupantKind` ⇒ no tile.
+   */
+  occupantKind?: OccupantKind;
+  occupantName?: string;
+  occupantAvatarUrl?: string | null;
+  occupantColorKey?: number | null;
   /** Reports hover (object id) / un-hover (null) so the canvas can show a tooltip. */
   onHover?: (objectId: number | null) => void;
   /**
@@ -83,6 +95,10 @@ function LayoutObjectCanvasNodeInner({
   onAvailabilitySelect,
   isBookingMode = false,
   enhanced = false,
+  occupantKind,
+  occupantName,
+  occupantAvatarUrl,
+  occupantColorKey,
   onHover,
   registerNode,
 }: Props) {
@@ -109,7 +125,16 @@ function LayoutObjectCanvasNodeInner({
   // In enhanced (isometric) mode the artwork carries its own meaning, so the
   // short-code labels (e.g. "DSK") become visual noise. Hide them for every
   // type except meeting rooms, which still need a textual marker.
-  const showLabel = !enhanced || obj.object_type === "meeting_room";
+  //
+  // Exception (PR 080 B3 label decision): a FREE desk on the booking map has no
+  // occupant tile to say "who/which", so keep its short-code visible for pick-ability
+  // and accessibility. Booked desks stay label-free — their identity tile carries the
+  // meaning, and selecting one surfaces its name/code in the booking panel.
+  const isFreeDeskInBooking =
+    isBookingMode &&
+    obj.object_type === "desk" &&
+    (availabilityStatus === undefined || availabilityStatus === "available");
+  const showLabel = !enhanced || obj.object_type === "meeting_room" || isFreeDeskInBooking;
 
   // The inner visual is delegated to a per-type renderer (renderer registry).
   const Renderer = getLayoutObjectRenderer(obj.object_type, enhanced);
@@ -246,6 +271,11 @@ function LayoutObjectCanvasNodeInner({
         isSelected={isSelected}
         isSaving={isSaving}
         isBookingMode={isBookingMode}
+        availabilityStatus={availabilityStatus}
+        occupantKind={occupantKind}
+        occupantName={occupantName}
+        occupantAvatarUrl={occupantAvatarUrl}
+        occupantColorKey={occupantColorKey}
       />
       {isCutout && (
         <Line
@@ -304,6 +334,12 @@ function arePropsEqual(prev: Props, next: Props): boolean {
     prev.isAvailabilitySelected === next.isAvailabilitySelected &&
     prev.isBookingMode === next.isBookingMode &&
     prev.enhanced === next.enhanced &&
+    // Occupant identity for the on-desk tile (PR 080 B3): flat scalars, so a booking
+    // change on one desk skips every OTHER desk's node.
+    prev.occupantKind === next.occupantKind &&
+    prev.occupantName === next.occupantName &&
+    prev.occupantAvatarUrl === next.occupantAvatarUrl &&
+    prev.occupantColorKey === next.occupantColorKey &&
     prev.onSelect === next.onSelect &&
     prev.onDragMove === next.onDragMove &&
     prev.onDragEnd === next.onDragEnd &&

@@ -1,0 +1,3192 @@
+{
+  "generatedBy": "scripts/build-iso-assets.mjs",
+  "widths": [
+    256,
+    640
+  ],
+  "count": 86,
+  "assets": [
+    {
+      "key": "big-sofa-1",
+      "sourceName": "Big Sofa-1",
+      "baseType": "Big Sofa",
+      "variantIndex": 1,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "84dc88918c9ce72a2c8cbbb1cda65eeccac9c861b9579e20a949d00021323123",
+      "svgDims": {
+        "width": 2457,
+        "height": 1083
+      },
+      "trimmed": {
+        "width": 2457,
+        "height": 1083
+      },
+      "aspectRatio": 2.2687,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "big-sofa-1-256.webp",
+          "bytes": 2998
+        },
+        {
+          "width": 640,
+          "file": "big-sofa-1-640.webp",
+          "bytes": 14662
+        }
+      ]
+    },
+    {
+      "key": "big-sofa-2",
+      "sourceName": "Big Sofa-2",
+      "baseType": "Big Sofa",
+      "variantIndex": 2,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "0d79f6699e4a84e446438bf26ee90a3bb55e843cb3792db60e37b534b2b663b7",
+      "svgDims": {
+        "width": 2564,
+        "height": 1165
+      },
+      "trimmed": {
+        "width": 2564,
+        "height": 1165
+      },
+      "aspectRatio": 2.2009,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "big-sofa-2-256.webp",
+          "bytes": 3374
+        },
+        {
+          "width": 640,
+          "file": "big-sofa-2-640.webp",
+          "bytes": 19566
+        }
+      ]
+    },
+    {
+      "key": "big-sofa-3",
+      "sourceName": "Big Sofa-3",
+      "baseType": "Big Sofa",
+      "variantIndex": 3,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "4d81aec437bbb21f7aae3e65d90e992b7d094d08bdcbdbaf8c393427c06d5bd7",
+      "svgDims": {
+        "width": 2769,
+        "height": 1228
+      },
+      "trimmed": {
+        "width": 2769,
+        "height": 1228
+      },
+      "aspectRatio": 2.2549,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "big-sofa-3-256.webp",
+          "bytes": 4026
+        },
+        {
+          "width": 640,
+          "file": "big-sofa-3-640.webp",
+          "bytes": 19982
+        }
+      ]
+    },
+    {
+      "key": "desk-chair-1",
+      "sourceName": "Desk+Chair-1",
+      "baseType": "Desk+Chair",
+      "variantIndex": 1,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "392ca7617211f762246b8a4a15afd09fd1c452655ef6c16517c8307198ecc3ab",
+      "svgDims": {
+        "width": 2145,
+        "height": 2151
+      },
+      "trimmed": {
+        "width": 2145,
+        "height": 2150
+      },
+      "aspectRatio": 0.9977,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "desk-chair-1-256.webp",
+          "bytes": 6152
+        },
+        {
+          "width": 640,
+          "file": "desk-chair-1-640.webp",
+          "bytes": 24704
+        }
+      ]
+    },
+    {
+      "key": "desk-chair-2",
+      "sourceName": "Desk+Chair-2",
+      "baseType": "Desk+Chair",
+      "variantIndex": 2,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "5bdee83d6c7fcab6bd63c9677b9f5ecdcd152f9709f2e8f9748653778785ad28",
+      "svgDims": {
+        "width": 3817,
+        "height": 3763
+      },
+      "trimmed": {
+        "width": 3817,
+        "height": 3763
+      },
+      "aspectRatio": 1.0144,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "desk-chair-2-256.webp",
+          "bytes": 4924
+        },
+        {
+          "width": 640,
+          "file": "desk-chair-2-640.webp",
+          "bytes": 15612
+        }
+      ]
+    },
+    {
+      "key": "desk-system-1",
+      "sourceName": "Desk+System-1",
+      "baseType": "Desk+System",
+      "variantIndex": 1,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "27e7351cf12caa2d431604838e1bca608b9f4374eab8b4707b8e50b02d3a8135",
+      "svgDims": {
+        "width": 3819,
+        "height": 3830
+      },
+      "trimmed": {
+        "width": 3819,
+        "height": 3829
+      },
+      "aspectRatio": 0.9974,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "desk-system-1-256.webp",
+          "bytes": 5954
+        },
+        {
+          "width": 640,
+          "file": "desk-system-1-640.webp",
+          "bytes": 23960
+        }
+      ]
+    },
+    {
+      "key": "desk-system-1-all",
+      "sourceName": "Desk+System-1 ALL",
+      "baseType": "Desk+System",
+      "variantIndex": 1,
+      "descriptor": "ALL",
+      "type": null,
+      "role": null,
+      "sourceHash": "27e7351cf12caa2d431604838e1bca608b9f4374eab8b4707b8e50b02d3a8135",
+      "svgDims": {
+        "width": 3819,
+        "height": 3830
+      },
+      "trimmed": {
+        "width": 3819,
+        "height": 3829
+      },
+      "aspectRatio": 0.9974,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "desk-system-1-all-256.webp",
+          "bytes": 5954
+        },
+        {
+          "width": 640,
+          "file": "desk-system-1-all-640.webp",
+          "bytes": 23960
+        }
+      ]
+    },
+    {
+      "key": "desk-system-1-less",
+      "sourceName": "Desk+System-1 Less",
+      "baseType": "Desk+System",
+      "variantIndex": 1,
+      "descriptor": "Less",
+      "type": null,
+      "role": null,
+      "sourceHash": "27e7351cf12caa2d431604838e1bca608b9f4374eab8b4707b8e50b02d3a8135",
+      "svgDims": {
+        "width": 3819,
+        "height": 3830
+      },
+      "trimmed": {
+        "width": 3819,
+        "height": 3829
+      },
+      "aspectRatio": 0.9974,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "desk-system-1-less-256.webp",
+          "bytes": 5954
+        },
+        {
+          "width": 640,
+          "file": "desk-system-1-less-640.webp",
+          "bytes": 23960
+        }
+      ]
+    },
+    {
+      "key": "desk-system-1-plant",
+      "sourceName": "Desk+System-1 Plant",
+      "baseType": "Desk+System",
+      "variantIndex": 1,
+      "descriptor": "Plant",
+      "type": null,
+      "role": null,
+      "sourceHash": "27e7351cf12caa2d431604838e1bca608b9f4374eab8b4707b8e50b02d3a8135",
+      "svgDims": {
+        "width": 3819,
+        "height": 3830
+      },
+      "trimmed": {
+        "width": 3819,
+        "height": 3829
+      },
+      "aspectRatio": 0.9974,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "desk-system-1-plant-256.webp",
+          "bytes": 5954
+        },
+        {
+          "width": 640,
+          "file": "desk-system-1-plant-640.webp",
+          "bytes": 23960
+        }
+      ]
+    },
+    {
+      "key": "desk-system-2",
+      "sourceName": "Desk+System-2",
+      "baseType": "Desk+System",
+      "variantIndex": 2,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "5bdee83d6c7fcab6bd63c9677b9f5ecdcd152f9709f2e8f9748653778785ad28",
+      "svgDims": {
+        "width": 3817,
+        "height": 3763
+      },
+      "trimmed": {
+        "width": 3817,
+        "height": 3763
+      },
+      "aspectRatio": 1.0144,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "desk-system-2-256.webp",
+          "bytes": 4924
+        },
+        {
+          "width": 640,
+          "file": "desk-system-2-640.webp",
+          "bytes": 15612
+        }
+      ]
+    },
+    {
+      "key": "desk-system-2-all",
+      "sourceName": "Desk+System-2 ALL",
+      "baseType": "Desk+System",
+      "variantIndex": 2,
+      "descriptor": "ALL",
+      "type": null,
+      "role": null,
+      "sourceHash": "5bdee83d6c7fcab6bd63c9677b9f5ecdcd152f9709f2e8f9748653778785ad28",
+      "svgDims": {
+        "width": 3817,
+        "height": 3763
+      },
+      "trimmed": {
+        "width": 3817,
+        "height": 3763
+      },
+      "aspectRatio": 1.0144,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "desk-system-2-all-256.webp",
+          "bytes": 4924
+        },
+        {
+          "width": 640,
+          "file": "desk-system-2-all-640.webp",
+          "bytes": 15612
+        }
+      ]
+    },
+    {
+      "key": "desk-system-2-less",
+      "sourceName": "Desk+System-2 Less",
+      "baseType": "Desk+System",
+      "variantIndex": 2,
+      "descriptor": "Less",
+      "type": null,
+      "role": null,
+      "sourceHash": "5bdee83d6c7fcab6bd63c9677b9f5ecdcd152f9709f2e8f9748653778785ad28",
+      "svgDims": {
+        "width": 3817,
+        "height": 3763
+      },
+      "trimmed": {
+        "width": 3817,
+        "height": 3763
+      },
+      "aspectRatio": 1.0144,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "desk-system-2-less-256.webp",
+          "bytes": 4924
+        },
+        {
+          "width": 640,
+          "file": "desk-system-2-less-640.webp",
+          "bytes": 15612
+        }
+      ]
+    },
+    {
+      "key": "desk-system-2-plant",
+      "sourceName": "Desk+System-2 Plant",
+      "baseType": "Desk+System",
+      "variantIndex": 2,
+      "descriptor": "Plant",
+      "type": null,
+      "role": null,
+      "sourceHash": "5bdee83d6c7fcab6bd63c9677b9f5ecdcd152f9709f2e8f9748653778785ad28",
+      "svgDims": {
+        "width": 3817,
+        "height": 3763
+      },
+      "trimmed": {
+        "width": 3817,
+        "height": 3763
+      },
+      "aspectRatio": 1.0144,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "desk-system-2-plant-256.webp",
+          "bytes": 4924
+        },
+        {
+          "width": 640,
+          "file": "desk-system-2-plant-640.webp",
+          "bytes": 15612
+        }
+      ]
+    },
+    {
+      "key": "desk-system-3",
+      "sourceName": "Desk+System-3",
+      "baseType": "Desk+System",
+      "variantIndex": 3,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "5fe4a801c6434e81709e060be2db0eb11418944e54a92b1f8ef3877542b08593",
+      "svgDims": {
+        "width": 4417,
+        "height": 3149
+      },
+      "trimmed": {
+        "width": 4417,
+        "height": 3149
+      },
+      "aspectRatio": 1.4027,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "desk-system-3-256.webp",
+          "bytes": 5088
+        },
+        {
+          "width": 640,
+          "file": "desk-system-3-640.webp",
+          "bytes": 14452
+        }
+      ]
+    },
+    {
+      "key": "desk-system-3-all",
+      "sourceName": "Desk+System-3 ALL",
+      "baseType": "Desk+System",
+      "variantIndex": 3,
+      "descriptor": "ALL",
+      "type": null,
+      "role": null,
+      "sourceHash": "5fe4a801c6434e81709e060be2db0eb11418944e54a92b1f8ef3877542b08593",
+      "svgDims": {
+        "width": 4417,
+        "height": 3149
+      },
+      "trimmed": {
+        "width": 4417,
+        "height": 3149
+      },
+      "aspectRatio": 1.4027,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "desk-system-3-all-256.webp",
+          "bytes": 5088
+        },
+        {
+          "width": 640,
+          "file": "desk-system-3-all-640.webp",
+          "bytes": 14452
+        }
+      ]
+    },
+    {
+      "key": "desk-system-3-less",
+      "sourceName": "Desk+System-3 Less",
+      "baseType": "Desk+System",
+      "variantIndex": 3,
+      "descriptor": "Less",
+      "type": null,
+      "role": null,
+      "sourceHash": "5fe4a801c6434e81709e060be2db0eb11418944e54a92b1f8ef3877542b08593",
+      "svgDims": {
+        "width": 4417,
+        "height": 3149
+      },
+      "trimmed": {
+        "width": 4417,
+        "height": 3149
+      },
+      "aspectRatio": 1.4027,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "desk-system-3-less-256.webp",
+          "bytes": 5088
+        },
+        {
+          "width": 640,
+          "file": "desk-system-3-less-640.webp",
+          "bytes": 14452
+        }
+      ]
+    },
+    {
+      "key": "desk-system-3-plant",
+      "sourceName": "Desk+System-3 Plant",
+      "baseType": "Desk+System",
+      "variantIndex": 3,
+      "descriptor": "Plant",
+      "type": null,
+      "role": null,
+      "sourceHash": "5fe4a801c6434e81709e060be2db0eb11418944e54a92b1f8ef3877542b08593",
+      "svgDims": {
+        "width": 4417,
+        "height": 3149
+      },
+      "trimmed": {
+        "width": 4417,
+        "height": 3149
+      },
+      "aspectRatio": 1.4027,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "desk-system-3-plant-256.webp",
+          "bytes": 5088
+        },
+        {
+          "width": 640,
+          "file": "desk-system-3-plant-640.webp",
+          "bytes": 14452
+        }
+      ]
+    },
+    {
+      "key": "desk-system-4",
+      "sourceName": "Desk+System-4",
+      "baseType": "Desk+System",
+      "variantIndex": 4,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "6225b2086013524e702d1aa22cc752baa73d184793b6ae88e61dbd211cf4ea30",
+      "svgDims": {
+        "width": 4424,
+        "height": 3543
+      },
+      "trimmed": {
+        "width": 4424,
+        "height": 3543
+      },
+      "aspectRatio": 1.2487,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "desk-system-4-256.webp",
+          "bytes": 5984
+        },
+        {
+          "width": 640,
+          "file": "desk-system-4-640.webp",
+          "bytes": 22588
+        }
+      ]
+    },
+    {
+      "key": "desk-system-4-all",
+      "sourceName": "Desk+System-4 ALL",
+      "baseType": "Desk+System",
+      "variantIndex": 4,
+      "descriptor": "ALL",
+      "type": null,
+      "role": null,
+      "sourceHash": "6225b2086013524e702d1aa22cc752baa73d184793b6ae88e61dbd211cf4ea30",
+      "svgDims": {
+        "width": 4424,
+        "height": 3543
+      },
+      "trimmed": {
+        "width": 4424,
+        "height": 3543
+      },
+      "aspectRatio": 1.2487,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "desk-system-4-all-256.webp",
+          "bytes": 5984
+        },
+        {
+          "width": 640,
+          "file": "desk-system-4-all-640.webp",
+          "bytes": 22588
+        }
+      ]
+    },
+    {
+      "key": "desk-system-4-less",
+      "sourceName": "Desk+System-4 Less",
+      "baseType": "Desk+System",
+      "variantIndex": 4,
+      "descriptor": "Less",
+      "type": null,
+      "role": null,
+      "sourceHash": "6225b2086013524e702d1aa22cc752baa73d184793b6ae88e61dbd211cf4ea30",
+      "svgDims": {
+        "width": 4424,
+        "height": 3543
+      },
+      "trimmed": {
+        "width": 4424,
+        "height": 3543
+      },
+      "aspectRatio": 1.2487,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "desk-system-4-less-256.webp",
+          "bytes": 5984
+        },
+        {
+          "width": 640,
+          "file": "desk-system-4-less-640.webp",
+          "bytes": 22588
+        }
+      ]
+    },
+    {
+      "key": "desk-system-4-plant",
+      "sourceName": "Desk+System-4 Plant",
+      "baseType": "Desk+System",
+      "variantIndex": 4,
+      "descriptor": "Plant",
+      "type": null,
+      "role": null,
+      "sourceHash": "6225b2086013524e702d1aa22cc752baa73d184793b6ae88e61dbd211cf4ea30",
+      "svgDims": {
+        "width": 4424,
+        "height": 3543
+      },
+      "trimmed": {
+        "width": 4424,
+        "height": 3543
+      },
+      "aspectRatio": 1.2487,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "desk-system-4-plant-256.webp",
+          "bytes": 5984
+        },
+        {
+          "width": 640,
+          "file": "desk-system-4-plant-640.webp",
+          "bytes": 22588
+        }
+      ]
+    },
+    {
+      "key": "door-closed-1",
+      "sourceName": "Door closed-1",
+      "baseType": "Door closed",
+      "variantIndex": 1,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "cb6e61b2dfa6e029ffcf03eb0f398db239bca99ea85f6a9c7b6e8e962e076371",
+      "svgDims": {
+        "width": 360,
+        "height": 58
+      },
+      "trimmed": {
+        "width": 360,
+        "height": 58
+      },
+      "aspectRatio": 6.2069,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "door-closed-1-256.webp",
+          "bytes": 1354
+        },
+        {
+          "width": 640,
+          "file": "door-closed-1-640.webp",
+          "bytes": 1662
+        }
+      ]
+    },
+    {
+      "key": "door-closed-2",
+      "sourceName": "Door closed-2",
+      "baseType": "Door closed",
+      "variantIndex": 2,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "e0eb131ec355fd19d15f11b5d28b24082335446218a1b0804a63e4508077d06b",
+      "svgDims": {
+        "width": 770,
+        "height": 103
+      },
+      "trimmed": {
+        "width": 770,
+        "height": 103
+      },
+      "aspectRatio": 7.4757,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "door-closed-2-256.webp",
+          "bytes": 1504
+        },
+        {
+          "width": 640,
+          "file": "door-closed-2-640.webp",
+          "bytes": 4642
+        }
+      ]
+    },
+    {
+      "key": "door-opened-1",
+      "sourceName": "Door opened-1",
+      "baseType": "Door opened",
+      "variantIndex": 1,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "5913a0c9e1927dc55ffb2fd56692167dea917e2c8e4532a03749d3ea30ac8704",
+      "svgDims": {
+        "width": 45,
+        "height": 318
+      },
+      "trimmed": {
+        "width": 45,
+        "height": 318
+      },
+      "aspectRatio": 0.1415,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "door-opened-1-256.webp",
+          "bytes": 1260
+        },
+        {
+          "width": 640,
+          "file": "door-opened-1-640.webp",
+          "bytes": 1260
+        }
+      ]
+    },
+    {
+      "key": "door-opened-2",
+      "sourceName": "Door opened-2",
+      "baseType": "Door opened",
+      "variantIndex": 2,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "9a6be44e0f558fe25ec3de89e124b96200cddc9792b2448235dc2d78fda6ef09",
+      "svgDims": {
+        "width": 725,
+        "height": 251
+      },
+      "trimmed": {
+        "width": 725,
+        "height": 251
+      },
+      "aspectRatio": 2.8884,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "door-opened-2-256.webp",
+          "bytes": 5130
+        },
+        {
+          "width": 640,
+          "file": "door-opened-2-640.webp",
+          "bytes": 15234
+        }
+      ]
+    },
+    {
+      "key": "kitchen-shelf-1",
+      "sourceName": "Kitchen Shelf-1",
+      "baseType": "Kitchen Shelf",
+      "variantIndex": 1,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "570ef5c646ab04c8c1f9e7db940be68ac13d140a57c8876a13a4040b3deff705",
+      "svgDims": {
+        "width": 3805,
+        "height": 1075
+      },
+      "trimmed": {
+        "width": 3805,
+        "height": 1075
+      },
+      "aspectRatio": 3.5395,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "kitchen-shelf-1-256.webp",
+          "bytes": 3540
+        },
+        {
+          "width": 640,
+          "file": "kitchen-shelf-1-640.webp",
+          "bytes": 12318
+        }
+      ]
+    },
+    {
+      "key": "kitchen-shelf-2",
+      "sourceName": "Kitchen Shelf-2",
+      "baseType": "Kitchen Shelf",
+      "variantIndex": 2,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "db6dde44dcab1358a201a9e7ed9f66f27767bfff1fc063cd30ce1e2a6d6f2afa",
+      "svgDims": {
+        "width": 3805,
+        "height": 1075
+      },
+      "trimmed": {
+        "width": 3805,
+        "height": 1075
+      },
+      "aspectRatio": 3.5395,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "kitchen-shelf-2-256.webp",
+          "bytes": 3604
+        },
+        {
+          "width": 640,
+          "file": "kitchen-shelf-2-640.webp",
+          "bytes": 12668
+        }
+      ]
+    },
+    {
+      "key": "kitchen-table-1",
+      "sourceName": "Kitchen Table-1",
+      "baseType": "Kitchen Table",
+      "variantIndex": 1,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "20c08cacf172848261b5c4c17edbfb62f43e8a1d2252842d59b05abdd5f043cf",
+      "svgDims": {
+        "width": 2565,
+        "height": 1612
+      },
+      "trimmed": {
+        "width": 2565,
+        "height": 1612
+      },
+      "aspectRatio": 1.5912,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "kitchen-table-1-256.webp",
+          "bytes": 7968
+        },
+        {
+          "width": 640,
+          "file": "kitchen-table-1-640.webp",
+          "bytes": 26252
+        }
+      ]
+    },
+    {
+      "key": "kitchen-table-2",
+      "sourceName": "Kitchen Table-2",
+      "baseType": "Kitchen Table",
+      "variantIndex": 2,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "736795ebdca1cb94deb83f9cf272318a31383c3ccb21c9204d2776f2285f0a26",
+      "svgDims": {
+        "width": 2341,
+        "height": 1806
+      },
+      "trimmed": {
+        "width": 2341,
+        "height": 1806
+      },
+      "aspectRatio": 1.2962,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "kitchen-table-2-256.webp",
+          "bytes": 8288
+        },
+        {
+          "width": 640,
+          "file": "kitchen-table-2-640.webp",
+          "bytes": 27112
+        }
+      ]
+    },
+    {
+      "key": "long-table",
+      "sourceName": "Long Table",
+      "baseType": "Long Table",
+      "variantIndex": null,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "c6698f528ece7f81ff3e1aebff01e686fcbf9e5e67d48e7cceacae8c10a2223c",
+      "svgDims": {
+        "width": 3932,
+        "height": 1577
+      },
+      "trimmed": {
+        "width": 3932,
+        "height": 1577
+      },
+      "aspectRatio": 2.4933,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "long-table-256.webp",
+          "bytes": 3316
+        },
+        {
+          "width": 640,
+          "file": "long-table-640.webp",
+          "bytes": 14814
+        }
+      ]
+    },
+    {
+      "key": "long-table-table-with-one-bench",
+      "sourceName": "Long Table Table with one Bench",
+      "baseType": "Long Table with one Bench",
+      "variantIndex": null,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "c63df50c408ff4bdedb7b440ab29c57886e31c05c3b83a55b12c70692c32a830",
+      "svgDims": {
+        "width": 3932,
+        "height": 2357
+      },
+      "trimmed": {
+        "width": 3932,
+        "height": 2357
+      },
+      "aspectRatio": 1.6682,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "long-table-table-with-one-bench-256.webp",
+          "bytes": 4320
+        },
+        {
+          "width": 640,
+          "file": "long-table-table-with-one-bench-640.webp",
+          "bytes": 20164
+        }
+      ]
+    },
+    {
+      "key": "long-table-with-benches",
+      "sourceName": "Long Table with Benches",
+      "baseType": "Long Table with Benches",
+      "variantIndex": null,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "e751e8a2f364d198c1dc219d1c7343aa22938a038dc43115c1d6245c403900c2",
+      "svgDims": {
+        "width": 3932,
+        "height": 3080
+      },
+      "trimmed": {
+        "width": 3932,
+        "height": 3080
+      },
+      "aspectRatio": 1.2766,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "long-table-with-benches-256.webp",
+          "bytes": 5940
+        },
+        {
+          "width": 640,
+          "file": "long-table-with-benches-640.webp",
+          "bytes": 27294
+        }
+      ]
+    },
+    {
+      "key": "lounge-1",
+      "sourceName": "Lounge-1",
+      "baseType": "Lounge",
+      "variantIndex": 1,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "a708adb5c8dfc3b509cd05b449c929093379e2844dc663010d1e57ce2e3e617d",
+      "svgDims": {
+        "width": 3904,
+        "height": 3257
+      },
+      "trimmed": {
+        "width": 3904,
+        "height": 3257
+      },
+      "aspectRatio": 1.1986,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "lounge-1-256.webp",
+          "bytes": 10048
+        },
+        {
+          "width": 640,
+          "file": "lounge-1-640.webp",
+          "bytes": 31628
+        }
+      ]
+    },
+    {
+      "key": "lounge-2",
+      "sourceName": "Lounge-2",
+      "baseType": "Lounge",
+      "variantIndex": 2,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "44d076bc4e46906195b52a2297bb5c6b24ea8a008481737a2db558e79fba4cb3",
+      "svgDims": {
+        "width": 4170,
+        "height": 3541
+      },
+      "trimmed": {
+        "width": 4170,
+        "height": 3541
+      },
+      "aspectRatio": 1.1776,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "lounge-2-256.webp",
+          "bytes": 11772
+        },
+        {
+          "width": 640,
+          "file": "lounge-2-640.webp",
+          "bytes": 35418
+        }
+      ]
+    },
+    {
+      "key": "lounge-3",
+      "sourceName": "Lounge-3",
+      "baseType": "Lounge",
+      "variantIndex": 3,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "9583feaf3e78f10b26eb174f300ac458364b07236610c473d9346557725a8ed3",
+      "svgDims": {
+        "width": 4713,
+        "height": 3680
+      },
+      "trimmed": {
+        "width": 4713,
+        "height": 3680
+      },
+      "aspectRatio": 1.2807,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "lounge-3-256.webp",
+          "bytes": 12224
+        },
+        {
+          "width": 640,
+          "file": "lounge-3-640.webp",
+          "bytes": 47688
+        }
+      ]
+    },
+    {
+      "key": "map-1",
+      "sourceName": "Map-1",
+      "baseType": "Map",
+      "variantIndex": 1,
+      "descriptor": null,
+      "type": null,
+      "role": "unused",
+      "sourceHash": "aa135591ea79a6191588a628c2837319c4040ab7d2da6eaf9c7d7fc8601dbc13",
+      "svgDims": {
+        "width": 3000,
+        "height": 2112
+      },
+      "trimmed": {
+        "width": 3000,
+        "height": 2112
+      },
+      "aspectRatio": 1.4205,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "map-1-256.webp",
+          "bytes": 150
+        },
+        {
+          "width": 640,
+          "file": "map-1-640.webp",
+          "bytes": 590
+        }
+      ]
+    },
+    {
+      "key": "map-2",
+      "sourceName": "Map-2",
+      "baseType": "Map",
+      "variantIndex": 2,
+      "descriptor": null,
+      "type": null,
+      "role": "unused",
+      "sourceHash": "419c30bb1f49930953a7f375da931298a69d4f8757d29ca57119664f77c04824",
+      "svgDims": {
+        "width": 3000,
+        "height": 2083
+      },
+      "trimmed": {
+        "width": 199,
+        "height": 103
+      },
+      "aspectRatio": 1.932,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "map-2-256.webp",
+          "bytes": 218
+        },
+        {
+          "width": 640,
+          "file": "map-2-640.webp",
+          "bytes": 218
+        }
+      ]
+    },
+    {
+      "key": "map-3",
+      "sourceName": "Map-3",
+      "baseType": "Map",
+      "variantIndex": 3,
+      "descriptor": null,
+      "type": null,
+      "role": "unused",
+      "sourceHash": "37c071d83b76f844b912de6e271875db22c7813dc662b9476a490bf5eccac725",
+      "svgDims": {
+        "width": 4500,
+        "height": 3000
+      },
+      "trimmed": {
+        "width": 4500,
+        "height": 3000
+      },
+      "aspectRatio": 1.5,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "map-3-256.webp",
+          "bytes": 142
+        },
+        {
+          "width": 640,
+          "file": "map-3-640.webp",
+          "bytes": 554
+        }
+      ]
+    },
+    {
+      "key": "map-4",
+      "sourceName": "Map-4",
+      "baseType": "Map",
+      "variantIndex": 4,
+      "descriptor": null,
+      "type": null,
+      "role": "unused",
+      "sourceHash": "37c071d83b76f844b912de6e271875db22c7813dc662b9476a490bf5eccac725",
+      "svgDims": {
+        "width": 4500,
+        "height": 3000
+      },
+      "trimmed": {
+        "width": 4500,
+        "height": 3000
+      },
+      "aspectRatio": 1.5,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "map-4-256.webp",
+          "bytes": 142
+        },
+        {
+          "width": 640,
+          "file": "map-4-640.webp",
+          "bytes": 554
+        }
+      ]
+    },
+    {
+      "key": "meeting-room-1",
+      "sourceName": "Meeting Room-1",
+      "baseType": "Meeting Room",
+      "variantIndex": 1,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "e86921d585f116dac1090d18f71bb7216ce8b89ddf8852399a06666a80600d95",
+      "svgDims": {
+        "width": 4500,
+        "height": 3409
+      },
+      "trimmed": {
+        "width": 4500,
+        "height": 3409
+      },
+      "aspectRatio": 1.32,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "meeting-room-1-256.webp",
+          "bytes": 6168
+        },
+        {
+          "width": 640,
+          "file": "meeting-room-1-640.webp",
+          "bytes": 17824
+        }
+      ]
+    },
+    {
+      "key": "meeting-room-2",
+      "sourceName": "Meeting Room-2",
+      "baseType": "Meeting Room",
+      "variantIndex": 2,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "d0edddd493c2d8047f1f4475ab71f62193b6c2d3d8ed4bc070aa7e39dcd6e987",
+      "svgDims": {
+        "width": 4422,
+        "height": 3418
+      },
+      "trimmed": {
+        "width": 4422,
+        "height": 3418
+      },
+      "aspectRatio": 1.2937,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "meeting-room-2-256.webp",
+          "bytes": 7590
+        },
+        {
+          "width": 640,
+          "file": "meeting-room-2-640.webp",
+          "bytes": 19904
+        }
+      ]
+    },
+    {
+      "key": "meeting-room-3",
+      "sourceName": "Meeting Room-3",
+      "baseType": "Meeting Room",
+      "variantIndex": 3,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "4ba267f1688674509cb90788fbf19f2c085a487486c0d5d556e8bc413b08af60",
+      "svgDims": {
+        "width": 4647,
+        "height": 3409
+      },
+      "trimmed": {
+        "width": 4647,
+        "height": 3409
+      },
+      "aspectRatio": 1.3632,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "meeting-room-3-256.webp",
+          "bytes": 8240
+        },
+        {
+          "width": 640,
+          "file": "meeting-room-3-640.webp",
+          "bytes": 24036
+        }
+      ]
+    },
+    {
+      "key": "meeting-room-4",
+      "sourceName": "Meeting Room-4",
+      "baseType": "Meeting Room",
+      "variantIndex": 4,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "2f0640ecf11eb6b21f0b5a4f035505dfb0288d7003769fede37cc3cb17a69e97",
+      "svgDims": {
+        "width": 4655,
+        "height": 3239
+      },
+      "trimmed": {
+        "width": 4655,
+        "height": 3239
+      },
+      "aspectRatio": 1.4372,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "meeting-room-4-256.webp",
+          "bytes": 8266
+        },
+        {
+          "width": 640,
+          "file": "meeting-room-4-640.webp",
+          "bytes": 21426
+        }
+      ]
+    },
+    {
+      "key": "plant-1",
+      "sourceName": "Plant-1",
+      "baseType": "Plant",
+      "variantIndex": 1,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "31274eb8589034206578d4d317ca99bc94a99831a5a4bd27a64e6bc1eaf9ff5e",
+      "svgDims": {
+        "width": 1196,
+        "height": 1135
+      },
+      "trimmed": {
+        "width": 1195,
+        "height": 1135
+      },
+      "aspectRatio": 1.0529,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "plant-1-256.webp",
+          "bytes": 13724
+        },
+        {
+          "width": 640,
+          "file": "plant-1-640.webp",
+          "bytes": 37056
+        }
+      ]
+    },
+    {
+      "key": "plant-2",
+      "sourceName": "Plant-2",
+      "baseType": "Plant",
+      "variantIndex": 2,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "c5a885fe572aff61a2e84c24e52f6352e7f4dd2419e9ae46d8fc74558c0b8896",
+      "svgDims": {
+        "width": 1069,
+        "height": 1047
+      },
+      "trimmed": {
+        "width": 1069,
+        "height": 1047
+      },
+      "aspectRatio": 1.021,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "plant-2-256.webp",
+          "bytes": 20852
+        },
+        {
+          "width": 640,
+          "file": "plant-2-640.webp",
+          "bytes": 58864
+        }
+      ]
+    },
+    {
+      "key": "plant-3",
+      "sourceName": "Plant-3",
+      "baseType": "Plant",
+      "variantIndex": 3,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "4c235c4f9f5e209e84ddc290051ded1f0fce0cadfb84de3812032c6e8dc6f49f",
+      "svgDims": {
+        "width": 1077,
+        "height": 1095
+      },
+      "trimmed": {
+        "width": 1077,
+        "height": 1095
+      },
+      "aspectRatio": 0.9836,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "plant-3-256.webp",
+          "bytes": 16562
+        },
+        {
+          "width": 640,
+          "file": "plant-3-640.webp",
+          "bytes": 45018
+        }
+      ]
+    },
+    {
+      "key": "plant-4",
+      "sourceName": "Plant-4",
+      "baseType": "Plant",
+      "variantIndex": 4,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "f37c9b1fd733ed8cb02cf3dc2f668970baa02ca995ae209e0fdcd0bb4de45c35",
+      "svgDims": {
+        "width": 1098,
+        "height": 1065
+      },
+      "trimmed": {
+        "width": 1098,
+        "height": 1065
+      },
+      "aspectRatio": 1.031,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "plant-4-256.webp",
+          "bytes": 26982
+        },
+        {
+          "width": 640,
+          "file": "plant-4-640.webp",
+          "bytes": 79966
+        }
+      ]
+    },
+    {
+      "key": "plant-5",
+      "sourceName": "Plant-5",
+      "baseType": "Plant",
+      "variantIndex": 5,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "56259fdc5bcc2f69b45b4304cff6b25bce7089792f498729671380a701dc2067",
+      "svgDims": {
+        "width": 1229,
+        "height": 1138
+      },
+      "trimmed": {
+        "width": 1229,
+        "height": 1138
+      },
+      "aspectRatio": 1.08,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "plant-5-256.webp",
+          "bytes": 24786
+        },
+        {
+          "width": 640,
+          "file": "plant-5-640.webp",
+          "bytes": 76370
+        }
+      ]
+    },
+    {
+      "key": "plant-sofa-side-1",
+      "sourceName": "Plant Sofa side-1",
+      "baseType": "Plant Sofa side",
+      "variantIndex": 1,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "68eb130943d4231a338390af1298869eeac3d5b17af413c48e12aa369f6a4c82",
+      "svgDims": {
+        "width": 564,
+        "height": 582
+      },
+      "trimmed": {
+        "width": 564,
+        "height": 582
+      },
+      "aspectRatio": 0.9691,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "plant-sofa-side-1-256.webp",
+          "bytes": 14878
+        },
+        {
+          "width": 640,
+          "file": "plant-sofa-side-1-640.webp",
+          "bytes": 19946
+        }
+      ]
+    },
+    {
+      "key": "plant-sofa-side-2",
+      "sourceName": "Plant Sofa side-2",
+      "baseType": "Plant Sofa side",
+      "variantIndex": 2,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "92f3ec4b530f251464213a16ca16ab5eb4f681d62c76df8ad469a9a820760160",
+      "svgDims": {
+        "width": 596,
+        "height": 645
+      },
+      "trimmed": {
+        "width": 596,
+        "height": 645
+      },
+      "aspectRatio": 0.924,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "plant-sofa-side-2-256.webp",
+          "bytes": 15296
+        },
+        {
+          "width": 640,
+          "file": "plant-sofa-side-2-640.webp",
+          "bytes": 22336
+        }
+      ]
+    },
+    {
+      "key": "plant-sofa-side-3",
+      "sourceName": "Plant Sofa side-3",
+      "baseType": "Plant Sofa side",
+      "variantIndex": 3,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "a420323d27e27f314af71ed2abab76980b4dd4b5c09fef920fc1f4d3e86f4afb",
+      "svgDims": {
+        "width": 654,
+        "height": 787
+      },
+      "trimmed": {
+        "width": 654,
+        "height": 787
+      },
+      "aspectRatio": 0.831,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "plant-sofa-side-3-256.webp",
+          "bytes": 15984
+        },
+        {
+          "width": 640,
+          "file": "plant-sofa-side-3-640.webp",
+          "bytes": 42158
+        }
+      ]
+    },
+    {
+      "key": "short-table",
+      "sourceName": "Short Table",
+      "baseType": "Short Table",
+      "variantIndex": null,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "fd195008ea74fb7b3bd8ecf2632c6d9b80ecfdbf10795301664d7a6ba08c5ae6",
+      "svgDims": {
+        "width": 1966,
+        "height": 1576
+      },
+      "trimmed": {
+        "width": 1966,
+        "height": 1576
+      },
+      "aspectRatio": 1.2475,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "short-table-256.webp",
+          "bytes": 5376
+        },
+        {
+          "width": 640,
+          "file": "short-table-640.webp",
+          "bytes": 25466
+        }
+      ]
+    },
+    {
+      "key": "short-table-with-benches",
+      "sourceName": "Short Table with Benches",
+      "baseType": "Short Table with Benches",
+      "variantIndex": null,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "b110cad31f369df12fe85f132a67e9266b51f51d96af00ed4144cb92f52f0237",
+      "svgDims": {
+        "width": 1966,
+        "height": 3080
+      },
+      "trimmed": {
+        "width": 1966,
+        "height": 3080
+      },
+      "aspectRatio": 0.6383,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "short-table-with-benches-256.webp",
+          "bytes": 10938
+        },
+        {
+          "width": 640,
+          "file": "short-table-with-benches-640.webp",
+          "bytes": 40882
+        }
+      ]
+    },
+    {
+      "key": "short-table-with-one-bench",
+      "sourceName": "Short Table with one Bench",
+      "baseType": "Short Table with one Bench",
+      "variantIndex": null,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "fbb0d462cef026898db980d3f297ad3007abbe0377db73ea19cec236b2792749",
+      "svgDims": {
+        "width": 1966,
+        "height": 2299
+      },
+      "trimmed": {
+        "width": 1966,
+        "height": 2299
+      },
+      "aspectRatio": 0.8552,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "short-table-with-one-bench-256.webp",
+          "bytes": 7986
+        },
+        {
+          "width": 640,
+          "file": "short-table-with-one-bench-640.webp",
+          "bytes": 32570
+        }
+      ]
+    },
+    {
+      "key": "small-sofa-1",
+      "sourceName": "Small Sofa-1",
+      "baseType": "Small Sofa",
+      "variantIndex": 1,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "ed404a93d652957b11851aa57e91a25c8f36999c108dceb8d29dab8d00592636",
+      "svgDims": {
+        "width": 786,
+        "height": 987
+      },
+      "trimmed": {
+        "width": 786,
+        "height": 987
+      },
+      "aspectRatio": 0.7964,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "small-sofa-1-256.webp",
+          "bytes": 8774
+        },
+        {
+          "width": 640,
+          "file": "small-sofa-1-640.webp",
+          "bytes": 25880
+        }
+      ]
+    },
+    {
+      "key": "small-sofa-2",
+      "sourceName": "Small Sofa-2",
+      "baseType": "Small Sofa",
+      "variantIndex": 2,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "6f544b9887dd53a9bbf0392915da36f8c0f8036c828e62959f255dad63eda48c",
+      "svgDims": {
+        "width": 799,
+        "height": 986
+      },
+      "trimmed": {
+        "width": 799,
+        "height": 986
+      },
+      "aspectRatio": 0.8103,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "small-sofa-2-256.webp",
+          "bytes": 8496
+        },
+        {
+          "width": 640,
+          "file": "small-sofa-2-640.webp",
+          "bytes": 25330
+        }
+      ]
+    },
+    {
+      "key": "small-sofa-3",
+      "sourceName": "Small Sofa-3",
+      "baseType": "Small Sofa",
+      "variantIndex": 3,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "96917faab06b6bfe990b01641fb9bf83d9342812db756a91167503c2f76094d1",
+      "svgDims": {
+        "width": 881,
+        "height": 1123
+      },
+      "trimmed": {
+        "width": 881,
+        "height": 1123
+      },
+      "aspectRatio": 0.7845,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "small-sofa-3-256.webp",
+          "bytes": 9230
+        },
+        {
+          "width": 640,
+          "file": "small-sofa-3-640.webp",
+          "bytes": 26272
+        }
+      ]
+    },
+    {
+      "key": "small-sofa-4",
+      "sourceName": "Small Sofa-4",
+      "baseType": "Small Sofa",
+      "variantIndex": 4,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "7b9647db59ce5b35e636f5c8c806246d29b6f81d6ad0f1a4bc704c71017498ea",
+      "svgDims": {
+        "width": 909,
+        "height": 1125
+      },
+      "trimmed": {
+        "width": 909,
+        "height": 1125
+      },
+      "aspectRatio": 0.808,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "small-sofa-4-256.webp",
+          "bytes": 8784
+        },
+        {
+          "width": 640,
+          "file": "small-sofa-4-640.webp",
+          "bytes": 24712
+        }
+      ]
+    },
+    {
+      "key": "small-sofa-5",
+      "sourceName": "Small Sofa-5",
+      "baseType": "Small Sofa",
+      "variantIndex": 5,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "5146f03bd58feb76df79015e5d620510556e55078082f5bf7003d1be84191940",
+      "svgDims": {
+        "width": 966,
+        "height": 1233
+      },
+      "trimmed": {
+        "width": 966,
+        "height": 1233
+      },
+      "aspectRatio": 0.7835,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "small-sofa-5-256.webp",
+          "bytes": 12428
+        },
+        {
+          "width": 640,
+          "file": "small-sofa-5-640.webp",
+          "bytes": 34484
+        }
+      ]
+    },
+    {
+      "key": "small-sofa-6",
+      "sourceName": "Small Sofa-6",
+      "baseType": "Small Sofa",
+      "variantIndex": 6,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "842334174e8471e6b429991d7c7b904eb9ee7f7eebb47f008e9eec10bac44fc8",
+      "svgDims": {
+        "width": 979,
+        "height": 1234
+      },
+      "trimmed": {
+        "width": 979,
+        "height": 1234
+      },
+      "aspectRatio": 0.7934,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "small-sofa-6-256.webp",
+          "bytes": 12570
+        },
+        {
+          "width": 640,
+          "file": "small-sofa-6-640.webp",
+          "bytes": 35162
+        }
+      ]
+    },
+    {
+      "key": "staircase-1",
+      "sourceName": "Staircase-1",
+      "baseType": "Staircase",
+      "variantIndex": 1,
+      "descriptor": null,
+      "type": "staircase",
+      "role": "structural",
+      "sourceHash": "6964788416d634734941fc6b36e260b1742b60e496ecced45f55c2bfed01a4f4",
+      "svgDims": {
+        "width": 1876,
+        "height": 3907
+      },
+      "trimmed": {
+        "width": 1876,
+        "height": 3900
+      },
+      "aspectRatio": 0.481,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "staircase-1-256.webp",
+          "bytes": 6756
+        },
+        {
+          "width": 640,
+          "file": "staircase-1-640.webp",
+          "bytes": 23736
+        }
+      ]
+    },
+    {
+      "key": "staircase-2",
+      "sourceName": "Staircase-2",
+      "baseType": "Staircase",
+      "variantIndex": 2,
+      "descriptor": null,
+      "type": "staircase",
+      "role": "structural",
+      "sourceHash": "1ea9c85082f6ce6822da95831e26a916649578317780033a4f0832c01f259e38",
+      "svgDims": {
+        "width": 1850,
+        "height": 3988
+      },
+      "trimmed": {
+        "width": 1850,
+        "height": 3988
+      },
+      "aspectRatio": 0.4639,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "staircase-2-256.webp",
+          "bytes": 7426
+        },
+        {
+          "width": 640,
+          "file": "staircase-2-640.webp",
+          "bytes": 29480
+        }
+      ]
+    },
+    {
+      "key": "stool-1",
+      "sourceName": "Stool-1",
+      "baseType": "Stool",
+      "variantIndex": 1,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "83050d5f409252191c3e9c28229c53739a50197bc954f5707c2300e76bed30cb",
+      "svgDims": {
+        "width": 572,
+        "height": 659
+      },
+      "trimmed": {
+        "width": 572,
+        "height": 659
+      },
+      "aspectRatio": 0.868,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "stool-1-256.webp",
+          "bytes": 7816
+        },
+        {
+          "width": 640,
+          "file": "stool-1-640.webp",
+          "bytes": 11188
+        }
+      ]
+    },
+    {
+      "key": "stool-2",
+      "sourceName": "Stool-2",
+      "baseType": "Stool",
+      "variantIndex": 2,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "ae5404e31f9db72731827aff1de3e104ed3f23b94276a973392cc5239796795c",
+      "svgDims": {
+        "width": 572,
+        "height": 654
+      },
+      "trimmed": {
+        "width": 572,
+        "height": 654
+      },
+      "aspectRatio": 0.8746,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "stool-2-256.webp",
+          "bytes": 7922
+        },
+        {
+          "width": 640,
+          "file": "stool-2-640.webp",
+          "bytes": 11222
+        }
+      ]
+    },
+    {
+      "key": "stool-3",
+      "sourceName": "Stool-3",
+      "baseType": "Stool",
+      "variantIndex": 3,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "ef80fd9368c719b687e23c9005728639831e915104ce71db30e6b314c3fc8d46",
+      "svgDims": {
+        "width": 640,
+        "height": 717
+      },
+      "trimmed": {
+        "width": 640,
+        "height": 716
+      },
+      "aspectRatio": 0.8939,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "stool-3-256.webp",
+          "bytes": 7056
+        },
+        {
+          "width": 640,
+          "file": "stool-3-640.webp",
+          "bytes": 9744
+        }
+      ]
+    },
+    {
+      "key": "stool-4",
+      "sourceName": "Stool-4",
+      "baseType": "Stool",
+      "variantIndex": 4,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "d7a34da3ee167439f843cc201b42d4a04fe0e93f8936d4f4f194eae69a9a026f",
+      "svgDims": {
+        "width": 640,
+        "height": 719
+      },
+      "trimmed": {
+        "width": 640,
+        "height": 719
+      },
+      "aspectRatio": 0.8901,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "stool-4-256.webp",
+          "bytes": 6938
+        },
+        {
+          "width": 640,
+          "file": "stool-4-640.webp",
+          "bytes": 9914
+        }
+      ]
+    },
+    {
+      "key": "stool-5",
+      "sourceName": "Stool-5",
+      "baseType": "Stool",
+      "variantIndex": 5,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "2e22385f7019c2741cbd85e41eacd5f85cdf31805917646fc8cdbadc56ade8d2",
+      "svgDims": {
+        "width": 743,
+        "height": 827
+      },
+      "trimmed": {
+        "width": 743,
+        "height": 827
+      },
+      "aspectRatio": 0.8984,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "stool-5-256.webp",
+          "bytes": 17384
+        },
+        {
+          "width": 640,
+          "file": "stool-5-640.webp",
+          "bytes": 45158
+        }
+      ]
+    },
+    {
+      "key": "stool-6",
+      "sourceName": "Stool-6",
+      "baseType": "Stool",
+      "variantIndex": 6,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "2caac01f3c443b73e5dd524dd8e7b1b6711046fee421ed3a13dfdc46bac18f2b",
+      "svgDims": {
+        "width": 743,
+        "height": 818
+      },
+      "trimmed": {
+        "width": 743,
+        "height": 817
+      },
+      "aspectRatio": 0.9094,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "stool-6-256.webp",
+          "bytes": 17592
+        },
+        {
+          "width": 640,
+          "file": "stool-6-640.webp",
+          "bytes": 45628
+        }
+      ]
+    },
+    {
+      "key": "system-1",
+      "sourceName": "System-1",
+      "baseType": "System",
+      "variantIndex": 1,
+      "descriptor": null,
+      "type": null,
+      "role": "standalone-desk",
+      "sourceHash": "5ae88e8ad6d65e92e354544206241dd56f0ec768ea863d1aa7eb4efa04b9f100",
+      "svgDims": {
+        "width": 4391,
+        "height": 2718
+      },
+      "trimmed": {
+        "width": 4391,
+        "height": 2718
+      },
+      "aspectRatio": 1.6155,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "system-1-256.webp",
+          "bytes": 5406
+        },
+        {
+          "width": 640,
+          "file": "system-1-640.webp",
+          "bytes": 16328
+        }
+      ]
+    },
+    {
+      "key": "system-2",
+      "sourceName": "System-2",
+      "baseType": "System",
+      "variantIndex": 2,
+      "descriptor": null,
+      "type": null,
+      "role": "standalone-desk",
+      "sourceHash": "2bd98d8f97d755862ecd420c6f2da7f6a8c28d891a4b5d2492020fb56d798617",
+      "svgDims": {
+        "width": 4671,
+        "height": 2754
+      },
+      "trimmed": {
+        "width": 4671,
+        "height": 2754
+      },
+      "aspectRatio": 1.6961,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "system-2-256.webp",
+          "bytes": 4196
+        },
+        {
+          "width": 640,
+          "file": "system-2-640.webp",
+          "bytes": 11512
+        }
+      ]
+    },
+    {
+      "key": "table-1",
+      "sourceName": "Table-1",
+      "baseType": "Table",
+      "variantIndex": 1,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "79e63b3d2b5fcf1984114e403351b5ed1e1637c404f9c329bf667aa180a86e75",
+      "svgDims": {
+        "width": 1424,
+        "height": 915
+      },
+      "trimmed": {
+        "width": 1424,
+        "height": 915
+      },
+      "aspectRatio": 1.5563,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "table-1-256.webp",
+          "bytes": 6130
+        },
+        {
+          "width": 640,
+          "file": "table-1-640.webp",
+          "bytes": 19382
+        }
+      ]
+    },
+    {
+      "key": "table-2",
+      "sourceName": "Table-2",
+      "baseType": "Table",
+      "variantIndex": 2,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "215cadd9b3ab8fa0f4a7240dcfe4e4222c0537f2f2baa74801ab9787d2993ffc",
+      "svgDims": {
+        "width": 1576,
+        "height": 988
+      },
+      "trimmed": {
+        "width": 1576,
+        "height": 988
+      },
+      "aspectRatio": 1.5951,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "table-2-256.webp",
+          "bytes": 6532
+        },
+        {
+          "width": 640,
+          "file": "table-2-640.webp",
+          "bytes": 21378
+        }
+      ]
+    },
+    {
+      "key": "table-3",
+      "sourceName": "Table-3",
+      "baseType": "Table",
+      "variantIndex": 3,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "7a976eb0e2b25f7e4fdd4e8b1dc3c95fee3699325bc4a66f546f4db0344ebf13",
+      "svgDims": {
+        "width": 2493,
+        "height": 1667
+      },
+      "trimmed": {
+        "width": 2493,
+        "height": 1667
+      },
+      "aspectRatio": 1.4955,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "table-3-256.webp",
+          "bytes": 8288
+        },
+        {
+          "width": 640,
+          "file": "table-3-640.webp",
+          "bytes": 63838
+        }
+      ]
+    },
+    {
+      "key": "toilet-1",
+      "sourceName": "Toilet-1",
+      "baseType": "Toilet",
+      "variantIndex": 1,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "dc62355f17ac59e876121d10c72bb2f889ba4985031559c3dfb63f73bbe2fc5c",
+      "svgDims": {
+        "width": 2190,
+        "height": 1676
+      },
+      "trimmed": {
+        "width": 2190,
+        "height": 1676
+      },
+      "aspectRatio": 1.3067,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "toilet-1-256.webp",
+          "bytes": 7804
+        },
+        {
+          "width": 640,
+          "file": "toilet-1-640.webp",
+          "bytes": 22482
+        }
+      ]
+    },
+    {
+      "key": "toilet-2",
+      "sourceName": "Toilet-2",
+      "baseType": "Toilet",
+      "variantIndex": 2,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "add2c67b8b022879d457994337fa449f84d8d091809b56e81f183fc301fcc5ed",
+      "svgDims": {
+        "width": 1849,
+        "height": 1358
+      },
+      "trimmed": {
+        "width": 1849,
+        "height": 1358
+      },
+      "aspectRatio": 1.3616,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "toilet-2-256.webp",
+          "bytes": 14604
+        },
+        {
+          "width": 640,
+          "file": "toilet-2-640.webp",
+          "bytes": 63030
+        }
+      ]
+    },
+    {
+      "key": "toilet-sink-1",
+      "sourceName": "Toilet Sink-1",
+      "baseType": "Toilet Sink",
+      "variantIndex": 1,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "7d8eed984c9fcf871e78dcd3cb77c2b5284b54b7ae62a91c5a0981d6e34eb641",
+      "svgDims": {
+        "width": 2006,
+        "height": 1205
+      },
+      "trimmed": {
+        "width": 2006,
+        "height": 1205
+      },
+      "aspectRatio": 1.6647,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "toilet-sink-1-256.webp",
+          "bytes": 134
+        },
+        {
+          "width": 640,
+          "file": "toilet-sink-1-640.webp",
+          "bytes": 498
+        }
+      ]
+    },
+    {
+      "key": "toilet-sink-2",
+      "sourceName": "Toilet Sink-2",
+      "baseType": "Toilet Sink",
+      "variantIndex": 2,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "1c065ae019a583d197bbe9a685cfcbd8602d8cea513ee4febfb61c3f228d10cf",
+      "svgDims": {
+        "width": 1843,
+        "height": 1004
+      },
+      "trimmed": {
+        "width": 1843,
+        "height": 1004
+      },
+      "aspectRatio": 1.8357,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "toilet-sink-2-256.webp",
+          "bytes": 12468
+        },
+        {
+          "width": 640,
+          "file": "toilet-sink-2-640.webp",
+          "bytes": 71624
+        }
+      ]
+    },
+    {
+      "key": "wall-1",
+      "sourceName": "Wall-1",
+      "baseType": "Wall",
+      "variantIndex": 1,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "dc6d69eaa21e2a495990689a2ce08013c42614382664221f7a22af19b959f6c9",
+      "svgDims": {
+        "width": 1382,
+        "height": 98
+      },
+      "trimmed": {
+        "width": 1382,
+        "height": 98
+      },
+      "aspectRatio": 14.102,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "wall-1-256.webp",
+          "bytes": 392
+        },
+        {
+          "width": 640,
+          "file": "wall-1-640.webp",
+          "bytes": 1478
+        }
+      ]
+    },
+    {
+      "key": "wall-2",
+      "sourceName": "Wall-2",
+      "baseType": "Wall",
+      "variantIndex": 2,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "01eb0c4b53573d605d4a2ac4e38e200d30cb1803f3efb4da6b604123774c260f",
+      "svgDims": {
+        "width": 1384,
+        "height": 99
+      },
+      "trimmed": {
+        "width": 1384,
+        "height": 99
+      },
+      "aspectRatio": 13.9798,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "wall-2-256.webp",
+          "bytes": 414
+        },
+        {
+          "width": 640,
+          "file": "wall-2-640.webp",
+          "bytes": 1158
+        }
+      ]
+    },
+    {
+      "key": "wall-3",
+      "sourceName": "Wall-3",
+      "baseType": "Wall",
+      "variantIndex": 3,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "4fed572ee0befc3ba06c795ffdbe9c532e97ed2f73be2771a62515d7623a8312",
+      "svgDims": {
+        "width": 1384,
+        "height": 86
+      },
+      "trimmed": {
+        "width": 1384,
+        "height": 86
+      },
+      "aspectRatio": 16.093,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "wall-3-256.webp",
+          "bytes": 280
+        },
+        {
+          "width": 640,
+          "file": "wall-3-640.webp",
+          "bytes": 862
+        }
+      ]
+    },
+    {
+      "key": "wall-4",
+      "sourceName": "Wall-4",
+      "baseType": "Wall",
+      "variantIndex": 4,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "a5e07cc92de2ebe2963dae937e64ac59c84d511ed9dcd517222c513981865f89",
+      "svgDims": {
+        "width": 991,
+        "height": 92
+      },
+      "trimmed": {
+        "width": 991,
+        "height": 92
+      },
+      "aspectRatio": 10.7717,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "wall-4-256.webp",
+          "bytes": 690
+        },
+        {
+          "width": 640,
+          "file": "wall-4-640.webp",
+          "bytes": 2034
+        }
+      ]
+    },
+    {
+      "key": "wall-5",
+      "sourceName": "Wall-5",
+      "baseType": "Wall",
+      "variantIndex": 5,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "e5cfb813fcb9e0b545403a5f8cd48bc1797d9954abf198795d2a2659b686d2f5",
+      "svgDims": {
+        "width": 1713,
+        "height": 156
+      },
+      "trimmed": {
+        "width": 1713,
+        "height": 156
+      },
+      "aspectRatio": 10.9808,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "wall-5-256.webp",
+          "bytes": 892
+        },
+        {
+          "width": 640,
+          "file": "wall-5-640.webp",
+          "bytes": 2994
+        }
+      ]
+    },
+    {
+      "key": "window-1",
+      "sourceName": "Window-1",
+      "baseType": "Window",
+      "variantIndex": 1,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "987ab545d7f7683613d56d5f1b02b56df02e5fb331884bbe62a6b7d758b0cd29",
+      "svgDims": {
+        "width": 492,
+        "height": 78
+      },
+      "trimmed": {
+        "width": 492,
+        "height": 78
+      },
+      "aspectRatio": 6.3077,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "window-1-256.webp",
+          "bytes": 478
+        },
+        {
+          "width": 640,
+          "file": "window-1-640.webp",
+          "bytes": 1064
+        }
+      ]
+    },
+    {
+      "key": "window-2",
+      "sourceName": "Window-2",
+      "baseType": "Window",
+      "variantIndex": 2,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "63e6073e8d5e313dd97b0f2cc9a955ec1b24ec9bc6075ace677d2e54c9f0e1bd",
+      "svgDims": {
+        "width": 490,
+        "height": 82
+      },
+      "trimmed": {
+        "width": 490,
+        "height": 82
+      },
+      "aspectRatio": 5.9756,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "window-2-256.webp",
+          "bytes": 82
+        },
+        {
+          "width": 640,
+          "file": "window-2-640.webp",
+          "bytes": 146
+        }
+      ]
+    },
+    {
+      "key": "window-3",
+      "sourceName": "Window-3",
+      "baseType": "Window",
+      "variantIndex": 3,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "480bb193837f4ba807a60297c3be6d857485e3a1f781bb306a14fc51a5f19459",
+      "svgDims": {
+        "width": 1116,
+        "height": 101
+      },
+      "trimmed": {
+        "width": 1116,
+        "height": 101
+      },
+      "aspectRatio": 11.0495,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "window-3-256.webp",
+          "bytes": 782
+        },
+        {
+          "width": 640,
+          "file": "window-3-640.webp",
+          "bytes": 2424
+        }
+      ]
+    },
+    {
+      "key": "window-4",
+      "sourceName": "Window-4",
+      "baseType": "Window",
+      "variantIndex": 4,
+      "descriptor": null,
+      "type": null,
+      "role": null,
+      "sourceHash": "e331934bad67e4ced6a1fe9fb4a7140fa761e2e794cbfb3a69be27304a7e0d77",
+      "svgDims": {
+        "width": 1191,
+        "height": 111
+      },
+      "trimmed": {
+        "width": 1191,
+        "height": 111
+      },
+      "aspectRatio": 10.7297,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "window-4-256.webp",
+          "bytes": 790
+        },
+        {
+          "width": 640,
+          "file": "window-4-640.webp",
+          "bytes": 2284
+        }
+      ]
+    }
+  ]
+}

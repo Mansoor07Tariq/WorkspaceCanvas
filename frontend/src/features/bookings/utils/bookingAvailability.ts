@@ -4,6 +4,19 @@ import type { DeskBooking } from "../types/booking.types";
 
 export type DeskAvailabilityStatus = "available" | "reserved" | "bookedByMe" | "unavailable";
 
+/** Who a booked desk belongs to, for the on-desk identity tile (PR 080 B3). */
+export type OccupantKind = "me" | "colleague" | "guest";
+
+export interface OccupantIdentity {
+  kind: OccupantKind;
+  /** Display name — used for initials + as the tile's aria label. */
+  name: string;
+  /** Photo URL, or null → the tile shows coloured initials instead. */
+  avatarUrl: string | null;
+  /** User id → stable avatar colour (`avatarColor`); null falls back to a name hash. */
+  colorKey: number | null;
+}
+
 export interface DeskAvailabilityItem {
   desk: Desk;
   layoutObject: LayoutObject | null;
@@ -11,6 +24,12 @@ export interface DeskAvailabilityItem {
   status: DeskAvailabilityStatus;
   isMine: boolean;
   label: string;
+  /**
+   * Identity of the person who booked this desk, for the on-desk tile. Present only for
+   * booked desks whose occupant the server let us see (same-org). Null for free desks and
+   * for masked bookings (server sent `user_name === "Reserved"`) — those render no tile.
+   */
+  occupant: OccupantIdentity | null;
 }
 
 export interface AvailabilityCounts {
@@ -78,8 +97,37 @@ export function buildDeskAvailability({
       status,
       isMine: booking?.is_mine === true,
       label: STATUS_LABELS[status],
+      occupant: deriveOccupant(status, booking),
     };
   });
+}
+
+/**
+ * Derive the on-desk occupant identity from a booking. The server has already applied
+ * same-org masking (PR 080 B1.5): a masked booking arrives with `user_name === "Reserved"`
+ * and `user_avatar` null, so we surface NO occupant for it (the desk shows the bare booked
+ * sprite, no tile). This reads the real booking (not `exposedBooking`) precisely so a
+ * colleague's server-visible identity survives to the canvas — the client no longer
+ * double-masks same-org colleagues the way it did before B1.5.
+ */
+function deriveOccupant(
+  status: DeskAvailabilityStatus,
+  booking: DeskBooking | null
+): OccupantIdentity | null {
+  if (booking === null || (status !== "bookedByMe" && status !== "reserved")) {
+    return null;
+  }
+  const name = (booking.user_name ?? "").trim();
+  // "Reserved" is the server's mask sentinel — never render it as a person.
+  if (!name || name === "Reserved") {
+    return null;
+  }
+  return {
+    kind: status === "bookedByMe" ? "me" : "colleague",
+    name,
+    avatarUrl: booking.user_avatar ?? null,
+    colorKey: booking.user ?? null,
+  };
 }
 
 export function getMyBookingForDate(bookings: DeskBooking[]): DeskBooking | null {
@@ -130,6 +178,24 @@ export function buildAvailabilityByLayoutObjectId(
   for (const item of items) {
     if (item.layoutObject !== null) {
       map.set(item.layoutObject.id, item.status);
+    }
+  }
+  return map;
+}
+
+/**
+ * Builds a map from layoutObject.id → occupant identity for the on-desk tiles. Only
+ * booked desks with a server-visible occupant are included; the canvas layer reads flat
+ * scalars off each entry per node, so — like {@link buildAvailabilityByLayoutObjectId} —
+ * the map's own reference identity does not affect the render-count guarantee.
+ */
+export function buildOccupantByLayoutObjectId(
+  items: DeskAvailabilityItem[]
+): Map<number, OccupantIdentity> {
+  const map = new Map<number, OccupantIdentity>();
+  for (const item of items) {
+    if (item.layoutObject !== null && item.occupant !== null) {
+      map.set(item.layoutObject.id, item.occupant);
     }
   }
   return map;

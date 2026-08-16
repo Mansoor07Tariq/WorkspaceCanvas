@@ -170,6 +170,9 @@ def verify_google_token(
         "locale": profile.get("locale", ""),
         "job_title": "",  # not available from Google tokeninfo or userinfo
         "avatar_bytes": _fetch_avatar_bytes(picture_url),
+        # Google's `picture` is a stable public CDN URL — persist it as the raw
+        # provider avatar URL alongside the downloaded bytes.
+        "avatar_url": picture_url or None,
         "tenant_id": None,
     }
 
@@ -223,6 +226,9 @@ def _verify_microsoft_access_token(access_token: str) -> dict:
         "locale": data.get("preferredLanguage", ""),
         "job_title": data.get("jobTitle", ""),
         "avatar_bytes": avatar_bytes,
+        # Graph /me returns the photo only as binary (downloaded above), not a public
+        # URL, so there is no raw provider URL to persist on the access-token path.
+        "avatar_url": None,
         "tenant_id": None,
     }
 
@@ -368,5 +374,8 @@ def _verify_microsoft_id_token(id_token: str) -> dict:
         "locale": "",
         "job_title": "",
         "avatar_bytes": None,  # no access token available in ID token path
+        # Some tenants include a public `picture` URL in the ID token; use it when
+        # present, else leave null (the UI falls back to initials).
+        "avatar_url": claims.get("picture") or None,
         "tenant_id": tid or None,
     }

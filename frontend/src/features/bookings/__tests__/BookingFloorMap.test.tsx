@@ -98,6 +98,7 @@ function makeItem(
     status,
     isMine: status === "bookedByMe",
     label: status,
+    occupant: null,
   };
 }
 
@@ -191,6 +192,7 @@ describe("BookingFloorMap", () => {
       status: "reserved",
       isMine: false,
       label: "Reserved",
+      occupant: null,
     };
     const { container } = render(
       <BookingFloorMap

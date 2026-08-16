@@ -48,3 +48,8 @@ review/
 Thumbs.db
 # Windows "mark of the web" alternate-data-stream files (created on WSL/NTFS)
 *:Zone.Identifier
+
+# Isometric asset SOURCES (PR 080): multi-MB base64-PNG-in-SVG originals. The pipeline
+# emits optimized WebP into frontend/src/assets/iso/ (that output IS committed). Owner keeps
+# his own backup of the sources.
+assets-src/

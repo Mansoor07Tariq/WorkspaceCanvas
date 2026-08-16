@@ -30,6 +30,14 @@ class User(AbstractUser):
         blank=True,
         null=True,
     )
+    # The provider's public profile-picture URL captured at social login (Google's
+    # ``picture`` claim; Microsoft's ``picture`` claim on tenants that expose one).
+    # Distinct from ``avatar`` (the uploaded/downloaded image we host): this is the raw
+    # provider CDN URL, used as a fallback photo source for booking identity when no
+    # hosted avatar exists. Null when the provider gave no public URL — the UI then
+    # falls back to coloured initials. Blank (not null) per the project's string-field
+    # convention (ruff DJ001); the booking serializer normalises "" → null on the wire.
+    avatar_url = models.URLField(max_length=1024, blank=True, default="")
     phone_number = models.CharField(max_length=30, blank=True)
     job_title = models.CharField(max_length=120, blank=True)
     timezone = models.CharField(max_length=64, default="UTC")

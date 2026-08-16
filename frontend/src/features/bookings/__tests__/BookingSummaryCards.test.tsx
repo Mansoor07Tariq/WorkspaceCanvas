@@ -59,6 +59,7 @@ function makeItem(overrides: Partial<DeskAvailabilityItem> = {}): DeskAvailabili
     status: "bookedByMe",
     isMine: true,
     label: "Your booking",
+    occupant: null,
     ...overrides,
   };
 }

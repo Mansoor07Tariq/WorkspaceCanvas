@@ -58,6 +58,7 @@ export function FloorMapCanvas({
   onBoundaryResize,
   mode = "editor",
   availabilityByLayoutObjectId,
+  occupantByLayoutObjectId,
   selectedAvailabilityLayoutObjectId,
   onAvailabilityObjectSelect,
   pendingPlacementType,
@@ -65,6 +66,12 @@ export function FloorMapCanvas({
 }: FloorMapCanvasProps) {
   const isBookingMode = mode === "booking";
   const nodeRefs = useRef<Map<number, Konva.Group>>(new Map());
+
+  // The booking map is a "real office" view like the enhanced editor: it already
+  // carves the boundary, draws walls and cutouts (see carveShape below), so its
+  // objects render with the isometric artwork too. `enhanced` stays the editor's
+  // opt-in toggle; booking is always enhanced for object rendering.
+  const objectsEnhanced = enhanced || isBookingMode;
 
   // ── Derived floor geometry (from the boundary prop) ───────────────────────
   const B = boundary;
@@ -234,10 +241,11 @@ export function FloorMapCanvas({
             selectedObjectId={selectedObjectId}
             isBookingMode={isBookingMode}
             canManageLayout={canManageLayout}
-            enhanced={enhanced}
+            enhanced={objectsEnhanced}
             savingObjectIds={savingObjectIds}
             bookableObjectIds={bookableObjectIds}
             availabilityByLayoutObjectId={availabilityByLayoutObjectId}
+            occupantByLayoutObjectId={occupantByLayoutObjectId}
             selectedAvailabilityLayoutObjectId={selectedAvailabilityLayoutObjectId}
             notesTooltipEnabled={notesTooltipEnabled}
             selectedIsWallMounted={selectedIsWallMounted}

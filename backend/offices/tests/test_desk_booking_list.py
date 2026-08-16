@@ -422,7 +422,7 @@ def test_no_email_in_response(
     assert "email" not in booking_data
 
 
-def test_member_sees_anonymized_user_for_others(
+def test_member_sees_identity_for_others(
     db,
     client,
     member_user,
@@ -432,8 +432,9 @@ def test_member_sees_anonymized_user_for_others(
     active_floor,
     desk_resource,
 ):
-    """A member viewing another user's booking should see 'Reserved' as user_name,
-    no email field, and is_mine == False."""
+    """PR 079: a same-org member now SEES a colleague's identity on the floor list
+    (name + ``user`` id); only ``is_mine`` stays False. Was 'Reserved' before the rule
+    change."""
     today = datetime.date.today()
     # Booking owned by owner_user
     booking = DeskBooking.objects.create(
@@ -445,7 +446,7 @@ def test_member_sees_anonymized_user_for_others(
         booking_date=today,
         status=DeskBooking.Status.ACTIVE,
     )
-    # Request list as member_user (a different person)
+    # Request list as member_user (a different person, same org)
     client.force_authenticate(user=member_user)
     url = booking_list_url(active_office.id, active_floor.id, today.isoformat())
     response = client.get(url)
@@ -453,12 +454,13 @@ def test_member_sees_anonymized_user_for_others(
     matching = [b for b in response.data if b["id"] == booking.id]
     assert len(matching) == 1
     booking_data = matching[0]
-    assert booking_data["user_name"] == "Reserved"
-    assert "email" not in booking_data
+    assert booking_data["user_name"] != "Reserved"
+    assert booking_data["user_name"] == (owner_user.get_full_name() or owner_user.email)
     assert booking_data["is_mine"] is False
+    assert booking_data.get("user") == owner_user.id
 
 
-def test_member_cannot_see_cancelled_by_for_others(
+def test_member_sees_cancelled_by_for_others(
     db,
     client,
     member_user,
@@ -468,7 +470,8 @@ def test_member_cannot_see_cancelled_by_for_others(
     active_floor,
     desk_resource,
 ):
-    """A regular member must not see cancelled_by for another user's booking."""
+    """PR 079: a same-org member now sees ``cancelled_by`` on a colleague's booking
+    (it's part of the now-visible identity). Was hidden before the rule change."""
 
     today = datetime.date.today()
     booking = DeskBooking.objects.create(
@@ -493,8 +496,7 @@ def test_member_cannot_see_cancelled_by_for_others(
     matching = [b for b in response.data if b["id"] == booking.id]
     assert len(matching) == 1
     booking_data = matching[0]
-    cancelled_by_val = booking_data.get("cancelled_by")
-    assert "cancelled_by" not in booking_data or cancelled_by_val is None
+    assert booking_data.get("cancelled_by") == owner_user.id
 
 
 def test_admin_sees_full_identity_for_others(

@@ -148,6 +148,60 @@ def test_google_creates_new_user(mock_verify, client):
     assert User.objects.filter(email="alice@example.com").exists()
 
 
+GOOGLE_IDENTITY_WITH_PICTURE = {
+    **GOOGLE_IDENTITY,
+    "avatar_url": "https://lh3.googleusercontent.com/a/pic123",
+}
+
+
+@pytest.mark.django_db
+@patch(
+    "users.serializers.verify_google_token",
+    return_value=GOOGLE_IDENTITY_WITH_PICTURE,
+)
+def test_google_persists_provider_avatar_url_on_create(mock_verify, client):
+    """PR 080 B3: the provider's public picture URL is persisted on the new user so the
+    booking-identity photo can fall back to it when no hosted avatar exists."""
+    resp = client.post(
+        SOCIAL_URL, {"provider": "google", "id_token": "tok"}, format="json"
+    )
+    assert resp.status_code == 200
+    user = User.objects.get(email="alice@example.com")
+    assert user.avatar_url == "https://lh3.googleusercontent.com/a/pic123"
+
+
+@pytest.mark.django_db
+@patch("users.serializers.verify_google_token")
+def test_google_refreshes_provider_avatar_url_on_subsequent_login(mock_verify, client):
+    """The rotating Google picture URL is refreshed on the next sign-in (only written
+    when it changes)."""
+    User.objects.create_user(
+        username="alice@example.com",
+        email="alice@example.com",
+        password=None,
+        avatar_url="https://lh3.googleusercontent.com/a/old",
+    )
+    mock_verify.return_value = GOOGLE_IDENTITY_WITH_PICTURE
+    resp = client.post(
+        SOCIAL_URL, {"provider": "google", "id_token": "tok"}, format="json"
+    )
+    assert resp.status_code == 200
+    user = User.objects.get(email="alice@example.com")
+    assert user.avatar_url == "https://lh3.googleusercontent.com/a/pic123"
+
+
+@pytest.mark.django_db
+@patch("users.serializers.verify_google_token", return_value=GOOGLE_IDENTITY)
+def test_google_leaves_avatar_url_null_when_provider_gives_none(mock_verify, client):
+    """No provider picture URL → avatar_url stays null (UI falls back to initials)."""
+    resp = client.post(
+        SOCIAL_URL, {"provider": "google", "id_token": "tok"}, format="json"
+    )
+    assert resp.status_code == 200
+    user = User.objects.get(email="alice@example.com")
+    assert not user.avatar_url
+
+
 @pytest.mark.django_db
 @patch("users.serializers.verify_google_token", return_value=GOOGLE_IDENTITY)
 def test_google_returns_access_token_and_refresh_cookie(mock_verify, client):

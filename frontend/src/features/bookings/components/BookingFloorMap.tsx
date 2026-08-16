@@ -3,6 +3,7 @@ import { Box, CircularProgress, Typography } from "@mui/material";
 import { AvailabilityMapLegend } from "./AvailabilityMapLegend";
 import {
   buildAvailabilityByLayoutObjectId,
+  buildOccupantByLayoutObjectId,
   findDeskIdByLayoutObjectId,
   getSelectedLayoutObjectId,
 } from "../utils/bookingAvailability";
@@ -57,6 +58,10 @@ export function BookingFloorMap({
     [items]
   );
 
+  // Memoised on `items` so it is stable across drag/select (the render-count-critical
+  // interactions), where `items` doesn't change; it only rebuilds when booking data does.
+  const occupantByLayoutObjectId = useMemo(() => buildOccupantByLayoutObjectId(items), [items]);
+
   const selectedItem = useMemo(
     () =>
       selectedDeskId !== null ? (items.find((i) => i.desk.id === selectedDeskId) ?? null) : null,
@@ -88,6 +93,7 @@ export function BookingFloorMap({
           onSelectObject={() => undefined}
           mode="booking"
           availabilityByLayoutObjectId={availabilityByLayoutObjectId}
+          occupantByLayoutObjectId={occupantByLayoutObjectId}
           selectedAvailabilityLayoutObjectId={selectedAvailabilityLayoutObjectId}
           onAvailabilityObjectSelect={handleAvailabilityObjectSelect}
           showGrid={false}
