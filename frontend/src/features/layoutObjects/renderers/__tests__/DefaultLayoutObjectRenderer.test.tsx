@@ -57,6 +57,7 @@ function renderDefault(
       width={80}
       height={50}
       isSelected={false}
+      showBorder={false}
       isSaving={false}
       isBookingMode={false}
     />

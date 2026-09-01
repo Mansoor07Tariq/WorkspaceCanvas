@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import type { LayoutObjectNodeStyle } from "../../utils/layoutObjectNodeStyle";
 import type { DeskAvailabilityStatus } from "@/features/bookings/utils/bookingAvailability";
@@ -40,6 +40,7 @@ function renderBody(
     isSaving?: boolean;
     isBookingMode?: boolean;
     availabilityStatus?: DeskAvailabilityStatus;
+    showBorder?: boolean;
   } = {}
 ) {
   const [nw, nh] = opts.natural ?? [0, 0];
@@ -54,6 +55,7 @@ function renderBody(
       isSaving={opts.isSaving ?? false}
       isBookingMode={opts.isBookingMode ?? false}
       availabilityStatus={opts.availabilityStatus}
+      showBorder={opts.showBorder ?? false}
     />
   );
 }
@@ -96,7 +98,7 @@ describe("AssetSpriteBody", () => {
   it("hit target is the UNION of floor rect and sprite bounds — no dead strip (fix-up 2)", () => {
     // 100x100 into 80x50 → sprite 70x70 spanning y -45..25, x -35..35. Floor rect: 80x50, y -25..25.
     // Union = x -40..40 (floor rect is WIDER than the capped sprite) and y -45..25 (sprite is TALLER).
-    renderBody({ natural: [100, 100], availabilityStatus: "bookedByMe" });
+    renderBody({ natural: [100, 100], availabilityStatus: "bookedByMe", showBorder: true });
     const hit = hitRect()!;
     expect(hit.listening).not.toBe(false); // still hit-testable
     expect(hit.x).toBe(-40);
@@ -114,6 +116,7 @@ describe("AssetSpriteBody", () => {
     expect(hit.y).toBeLessThanOrEqual(-25);
     // Availability fill + border are at the SPRITE bounds (70x70), not the 80x50 box.
     // (the coloured region and the hit region are different shapes BY DESIGN)
+    // PR 083 Part A: the border only exists while hovered/selected, so this case opts in.
     const fill = availFill();
     expect(fill!.width).toBe(70);
     expect(fill!.height).toBe(70);
@@ -133,7 +136,7 @@ describe("AssetSpriteBody", () => {
   });
 
   it("ONLY the hit target listens — sprite, fill and border stay non-listening", () => {
-    renderBody({ natural: [100, 100], availabilityStatus: "reserved" });
+    renderBody({ natural: [100, 100], availabilityStatus: "reserved", showBorder: true });
     expect(img().listening).toBe(false);
     expect(availFill()!.listening).toBe(false);
     expect(border()!.listening).toBe(false);
@@ -159,5 +162,49 @@ describe("AssetSpriteBody", () => {
   it("dims the sprite while saving", () => {
     renderBody({ isSaving: true });
     expect(img().opacity).toBe(0.6);
+  });
+
+  // ─── PR 083 Part A: a border means "you are interacting with this" ────────────
+
+  it("draws NO border at rest — an object at rest has no outline", () => {
+    // The resting state is the whole point of Part A: previously every enhanced object carried a
+    // permanent coloured outline, which read as "this object exists" rather than as interaction.
+    renderBody({ natural: [100, 100], availabilityStatus: "available" });
+    expect(border()).toBeUndefined();
+  });
+
+  it("draws no border at rest in the editor either (no availability status)", () => {
+    renderBody({ natural: [100, 100] });
+    expect(border()).toBeUndefined();
+  });
+
+  it("draws the border when hovered/selected, tracking the DRAWN sprite not the floor rect", () => {
+    // 100x100 into an 80x50 box → width-fill 80, capped to 70x70 by SPRITE_MAX_OVERFLOW_RATIO.
+    renderBody({ natural: [100, 100], availabilityStatus: "available", showBorder: true });
+    const b = border()!;
+    expect(b).toBeDefined();
+    expect(b.width).toBe(70); // the sprite bounds…
+    expect(b.height).toBe(70);
+    expect(b.width).not.toBe(80); // …not the 80x50 floor rect
+    expect(b.listening).toBe(false); // and it never steals the hit target
+  });
+
+  it("the availability FILL is unchanged by the border rule — it still carries state at rest", () => {
+    // With the border gone, the tint is the only thing separating available/reserved/unavailable,
+    // so it must be present and unchanged in the resting state.
+    renderBody({ natural: [100, 100], availabilityStatus: "available" });
+    const fill = availFill()!;
+    expect(fill).toBeDefined();
+    expect(fill.opacity).toBe(0.4);
+    expect(fill.width).toBe(70);
+  });
+
+  it("hiding the border does not change the hit target", () => {
+    renderBody({ natural: [100, 100], availabilityStatus: "available" });
+    const atRest = hitRect()!;
+    cleanup();
+    renderBody({ natural: [100, 100], availabilityStatus: "available", showBorder: true });
+    const hovered = hitRect()!;
+    expect(atRest).toEqual(hovered);
   });
 });

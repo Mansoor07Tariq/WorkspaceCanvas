@@ -1,5 +1,5 @@
 import overridesJson from "@/assets/iso/manifest.overrides.json";
-import { occupantTileInset } from "@/theme/tokens";
+import { occupantTileAspect, occupantTileInset } from "@/theme/tokens";
 
 /** Where the fitted sprite lands relative to the object box, in group-centred coords. */
 export interface SpriteFit {
@@ -161,8 +161,11 @@ export interface TileBox {
 }
 
 /**
- * Place the occupant tile: it FILLS the desk's top surface, keeping the desktop rect's own
- * width:height proportions (a wide desk → a wide tile) rather than a centred square. Maps the
+ * The occupant tile's AVAILABLE box: the desk's whole top surface, keeping the desktop rect's own
+ * width:height proportions (a wide desk → a wide box). This is the room the identity has to work
+ * in, not the drawn identity itself — since PR 083 the photo is CONTAINED within this box by
+ * {@link containInBox} rather than filling it, so the box is typically wider than what is drawn.
+ * Maps the
  * normalized `desktopRect` through the sprite's on-canvas `fit`, then insets uniformly by the
  * `occupantTileInset` token so a small wood margin and the corner radius remain. Because it's
  * drawn inside the object's Konva Group, the parent group's rotation carries the tile at any angle.
@@ -179,4 +182,34 @@ export function computeTileBox(fit: SpriteFit, rect: DesktopRect): TileBox {
     w: rectW - 2 * inset,
     h: rectH - 2 * inset,
   };
+}
+
+/**
+ * Contain an aspect ratio inside a box, centred — the occupant identity's drawn bounds (PR 083).
+ *
+ * REVERSES PR 080's cover-fit for the occupant photo. Cover filled the desk surface and cropped the
+ * overflow; because provider photos are ~square and a desk's top surface is wide and shallow, that cut
+ * the top and bottom off every face and left a horizontal band. On a seeded 80x60 desk only ~57% of the
+ * photo's height survived. Contain trades drawn size for a whole face, which is the owner's call: a
+ * square photo on that desk goes from 72.8x72.8 cropped to a 72.8x41.8 window, to 41.8x41.8 entire.
+ *
+ * ONE helper serves both paths so they cannot drift: a photo passes its natural dimensions and keeps its
+ * own aspect (a wide photo is bound by width and leaves gaps above and below); the generated fallbacks
+ * (initials, "Guest") have no intrinsic aspect and pass 0, taking `occupantTileAspect` — square, the modal
+ * provider shape — so an initials desk and a photo desk occupy the SAME rect and read as one design.
+ * Unknown natural dimensions (0, e.g. an image that never decoded) take that same square default rather
+ * than filling the box, so the degenerate case still matches its neighbours instead of standing out.
+ *
+ * Everything the tile draws — frame, clip, "You" tag, initials — is positioned from the returned bounds,
+ * never from the box, so the affordance always tracks the art (the PR 081 fix-up rule).
+ */
+export function containInBox(naturalW: number, naturalH: number, box: TileBox): TileBox {
+  const aspect = naturalW > 0 && naturalH > 0 ? naturalW / naturalH : occupantTileAspect;
+  let w = box.w;
+  let h = box.w / aspect;
+  if (h > box.h) {
+    h = box.h; // height-bound: the wide-box case (a square photo on a shallow desktop)
+    w = box.h * aspect;
+  }
+  return { x: box.x + (box.w - w) / 2, y: box.y + (box.h - h) / 2, w, h };
 }

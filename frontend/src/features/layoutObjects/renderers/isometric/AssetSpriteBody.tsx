@@ -19,19 +19,23 @@ interface Props {
    * without a dominating colour wash (PR 081 fix-up, Fix 2).
    */
   availabilityStatus?: DeskAvailabilityStatus;
+  /** Draw the interaction border? True only while hovered or selected (PR 083 Part A). */
+  showBorder: boolean;
 }
 
 /**
  * Shared Konva body for the isometric asset renderers (PR 080; PR 081 footprint fit + affordance).
  * Layers, group-centred (`-w/2..w/2`):
  *  1. the footprint-fit sprite (bottom-anchored to the floor rect, overflowing upward);
- *  2. an **invisible** hit-target rect at the object's floor rect — the clickable region stays where
- *     the object sits, not where its art rises (PR 081 decision 1). NOTE: hit area (floor rect) and the
- *     coloured region (sprite bounds, below) are deliberately DIFFERENT shapes — do not "fix" the mismatch;
+ *  2. an **invisible** hit-target rect over the UNION of the floor rect and the drawn sprite bounds
+ *     (PR 081 fix-up 2, which reversed the original "hit area = floor rect" decision — leaving it on the
+ *     floor rect left a strip of visible art where a click fell through and cleared the selection);
  *  3. the availability **fill** over the DRAWN SPRITE bounds — a strong colour only for a bookable desk
  *     (which carries an `availabilityStatus`); other furniture shows its art untinted so it never reads
  *     as a flat coloured blob;
- *  4. the selection/availability **border** over the sprite bounds.
+ *  4. the interaction **border** over the sprite bounds — drawn ONLY while the object is hovered or
+ *     selected (PR 083 Part A). At rest there is no outline: a border means "you are interacting with
+ *     this", not "this object exists". The availability fill (3) is unchanged and carries state alone.
  */
 export function AssetSpriteBody({
   image,
@@ -42,6 +46,7 @@ export function AssetSpriteBody({
   isSaving,
   isBookingMode,
   availabilityStatus,
+  showBorder,
 }: Props) {
   const fit = fitFootprint(image.naturalWidth || 0, image.naturalHeight || 0, width, height);
   // Clickable = floor rect ∪ drawn sprite. Union (not just the sprite) because a width-capped sprite is
@@ -91,18 +96,21 @@ export function AssetSpriteBody({
           listening={false}
         />
       )}
-      <Rect
-        x={fit.x}
-        y={fit.y}
-        width={fit.width}
-        height={fit.height}
-        cornerRadius={config.cornerRadius}
-        stroke={style.stroke}
-        strokeWidth={style.strokeWidth}
-        dash={style.dash}
-        fillEnabled={false}
-        listening={false}
-      />
+      {/* Interaction border — hover/selection only, and it tracks the DRAWN sprite (PR 081 fix-up). */}
+      {showBorder && (
+        <Rect
+          x={fit.x}
+          y={fit.y}
+          width={fit.width}
+          height={fit.height}
+          cornerRadius={config.cornerRadius}
+          stroke={style.stroke}
+          strokeWidth={style.strokeWidth}
+          dash={style.dash}
+          fillEnabled={false}
+          listening={false}
+        />
+      )}
     </>
   );
 }

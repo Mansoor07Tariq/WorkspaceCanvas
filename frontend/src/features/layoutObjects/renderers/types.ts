@@ -36,6 +36,13 @@ export interface LayoutObjectRendererProps {
   height: number;
   /** True when this object is the editor selection. */
   isSelected: boolean;
+  /**
+   * Show the interaction border (PR 083 Part A). A border means "you are interacting with this",
+   * not "this object exists": it is drawn ONLY while the object is hovered or selected (editor
+   * selection, or the booking-mode availability selection), never at rest. The availability FILL
+   * is unaffected and still carries free/reserved/unavailable on its own.
+   */
+  showBorder: boolean;
   /** True while an optimistic save is in flight. */
   isSaving: boolean;
   /** True when the canvas is in booking mode (read-only, availability overlay). */

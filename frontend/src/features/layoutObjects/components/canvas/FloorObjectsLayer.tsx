@@ -29,6 +29,8 @@ interface Props {
   occupantByLayoutObjectId?: ReadonlyMap<number, OccupantIdentity>;
   selectedAvailabilityLayoutObjectId?: number | null;
   notesTooltipEnabled: boolean;
+  /** The object under the pointer, or null — turned into a per-node `isHovered` scalar below. */
+  hoveredObjectId: number | null;
   selectedIsWallMounted: boolean;
   scale: number;
   nodeRefs: React.MutableRefObject<Map<number, Konva.Group>>;
@@ -68,6 +70,7 @@ export function FloorObjectsLayer({
   occupantByLayoutObjectId,
   selectedAvailabilityLayoutObjectId,
   notesTooltipEnabled,
+  hoveredObjectId,
   selectedIsWallMounted,
   scale,
   nodeRefs,
@@ -132,6 +135,7 @@ export function FloorObjectsLayer({
             isBookingMode={isBookingMode}
             enhanced={enhanced}
             onHover={notesTooltipEnabled ? setHoveredObjectId : undefined}
+            isHovered={hoveredObjectId === obj.id}
             availabilityStatus={availabilityStatus}
             isAvailabilitySelected={isAvailabilitySelected}
             onAvailabilitySelect={onAvailabilityObjectSelect}

@@ -37,6 +37,7 @@ export function DeskRenderer(props: LayoutObjectRendererProps) {
     occupantName,
     occupantAvatarUrl,
     occupantColorKey,
+    showBorder,
   } = props;
   const key = pickDeskSpriteKey(object.floor, availabilityStatus);
   const src = key ? spriteUrl(key) : undefined;
@@ -61,6 +62,7 @@ export function DeskRenderer(props: LayoutObjectRendererProps) {
         isSaving={isSaving}
         isBookingMode={isBookingMode}
         availabilityStatus={availabilityStatus}
+        showBorder={showBorder}
       />
       {occupantKind && (
         <OccupantTile
@@ -70,6 +72,7 @@ export function DeskRenderer(props: LayoutObjectRendererProps) {
           name={occupantName}
           avatarUrl={occupantAvatarUrl}
           colorKey={occupantColorKey}
+          showFrame={showBorder}
         />
       )}
     </>

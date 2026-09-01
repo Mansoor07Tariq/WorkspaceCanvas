@@ -52,6 +52,7 @@ function renderSprite(type: LayoutObjectType) {
       width={80}
       height={50}
       isSelected={false}
+      showBorder={false}
       isSaving={false}
       isBookingMode={false}
     />
@@ -98,6 +99,7 @@ describe("SpriteRenderer", () => {
         width={60}
         height={40}
         isSelected={false}
+        showBorder={false}
         isSaving={false}
         isBookingMode={false}
       />
@@ -114,6 +116,7 @@ describe("SpriteRenderer", () => {
         width={200}
         height={120}
         isSelected={false}
+        showBorder={false}
         isSaving={false}
         isBookingMode={false}
       />

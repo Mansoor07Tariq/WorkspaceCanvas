@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { occupantTileInset } from "@/theme/tokens";
+import { occupantTileAspect, occupantTileInset } from "@/theme/tokens";
 import {
   computeHitRect,
+  containInBox,
   fitFootprint,
   fitFootprintInSubRect,
   SPRITE_MAX_OVERFLOW_RATIO,
@@ -181,5 +182,58 @@ describe("computeHitRect (PR 081 fix-up 2 — union of floor rect and sprite bou
       expect(hit.width).toBeGreaterThanOrEqual(bW - 1e-9);
       expect(hit.height).toBeGreaterThanOrEqual(bH - 1e-9);
     }
+  });
+});
+
+describe("containInBox (PR 083 — the occupant photo is contained, not cropped)", () => {
+  const BOX = { x: -30, y: -10, w: 60, h: 20 }; // wide and shallow, like a desk's top surface
+
+  it("binds on HEIGHT for a square source in a wide box, and centres it", () => {
+    const r = containInBox(100, 100, BOX);
+    expect(r.h).toBeCloseTo(20, 9); // the short axis
+    expect(r.w).toBeCloseTo(20, 9); // square in → square out
+    expect(r.x).toBeCloseTo(-10, 9); // centred: -30 + (60-20)/2
+    expect(r.y).toBeCloseTo(-10, 9);
+  });
+
+  it("binds on WIDTH for a source wider than the box, leaving equal gaps above and below", () => {
+    const r = containInBox(400, 100, BOX); // aspect 4 > box aspect 3
+    expect(r.w).toBeCloseTo(60, 9);
+    expect(r.h).toBeCloseTo(15, 9);
+    expect(r.y).toBeCloseTo(-7.5, 9); // -10 + (20-15)/2
+    expect(r.x).toBeCloseTo(-30, 9);
+  });
+
+  it("never exceeds the box, and preserves the source aspect, across shapes", () => {
+    for (const [nW, nH] of [
+      [100, 100],
+      [400, 100],
+      [100, 400],
+      [1200, 1600],
+      [3, 2],
+    ] as const) {
+      const r = containInBox(nW, nH, BOX);
+      expect(r.w / r.h).toBeCloseTo(nW / nH, 6);
+      expect(r.w).toBeLessThanOrEqual(BOX.w + 1e-9);
+      expect(r.h).toBeLessThanOrEqual(BOX.h + 1e-9);
+      expect(r.x).toBeGreaterThanOrEqual(BOX.x - 1e-9);
+      expect(r.y).toBeGreaterThanOrEqual(BOX.y - 1e-9);
+      expect(r.x + r.w).toBeLessThanOrEqual(BOX.x + BOX.w + 1e-9);
+      expect(r.y + r.h).toBeLessThanOrEqual(BOX.y + BOX.h + 1e-9);
+      // Contain touches at least one axis — it is a fit, not an arbitrary shrink.
+      expect(r.w === BOX.w || Math.abs(r.h - BOX.h) < 1e-9).toBe(true);
+    }
+  });
+
+  it("unknown natural dimensions fall back to the token aspect, not to filling the box", () => {
+    // The generated fallbacks (initials, "Guest") pass 0 deliberately; an image that never decoded
+    // takes the same path, so the degenerate case still matches its neighbours.
+    const r = containInBox(0, 0, BOX);
+    expect(r.w / r.h).toBeCloseTo(occupantTileAspect, 9);
+    expect(r.w).toBeLessThan(BOX.w);
+  });
+
+  it("a square source and a zero source land on the SAME rect (initials match photos)", () => {
+    expect(containInBox(0, 0, BOX)).toEqual(containInBox(512, 512, BOX));
   });
 });
