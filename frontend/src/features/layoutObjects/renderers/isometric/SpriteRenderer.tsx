@@ -19,7 +19,7 @@ export function SpriteRenderer(props: LayoutObjectRendererProps) {
     props;
   const mapping = SINGLE_SPRITE_MAP[object.object_type];
   const baseType = mapping ? resolveBaseType(mapping, Math.abs(width * height)) : undefined;
-  const key = baseType ? pickVariantKey(object.id, getIsoAssetsByBaseType(baseType)) : undefined;
+  const key = baseType ? pickVariantKey(object.floor, getIsoAssetsByBaseType(baseType)) : undefined;
   const src = key ? spriteUrl(key) : undefined;
   const { image, status } = useKonvaImage(src);
 

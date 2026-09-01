@@ -40,7 +40,7 @@ describe("pickDeskSpriteKey", () => {
   });
 
   it("free/available desks draw the clean Desk+System 'Less' variant", () => {
-    const key = pickDeskSpriteKey(1, "available");
+    const key = pickDeskSpriteKey(1, "available"); // 1 = FLOOR id (PR 082)
     expect(freePool.map((a) => a.key)).toContain(key);
   });
 
@@ -51,13 +51,22 @@ describe("pickDeskSpriteKey", () => {
     }
   });
 
-  it("is deterministic: the same desk id + state always yields the same sprite", () => {
+  it("is deterministic: the same FLOOR + state always yields the same sprite", () => {
+    // PR 082: the argument is the floor id, not the desk id — so this is also the guarantee that
+    // every free desk on floor 7 renders identically.
     expect(pickDeskSpriteKey(7, "available")).toBe(pickDeskSpriteKey(7, "available"));
     expect(pickDeskSpriteKey(7, "reserved")).toBe(pickDeskSpriteKey(7, "reserved"));
   });
 
-  it("treats variants as aesthetic (state, not id, moves between pools)", () => {
-    // Same id: free vs booked must come from different pools, so the keys differ.
+  it("different floors do not all collapse to one desk variant (PR 082)", () => {
+    const keys = new Set(
+      Array.from({ length: 30 }, (_, i) => pickDeskSpriteKey(i + 1, "available"))
+    );
+    expect(keys.size).toBeGreaterThan(1);
+  });
+
+  it("treats variants as aesthetic (state, not floor, moves between pools)", () => {
+    // Same floor: free vs booked come from different families, so the keys differ.
     const free = pickDeskSpriteKey(3, "available");
     const booked = pickDeskSpriteKey(3, "reserved");
     expect(free).not.toBe(booked);

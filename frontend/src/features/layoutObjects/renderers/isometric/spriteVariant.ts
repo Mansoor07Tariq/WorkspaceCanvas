@@ -11,16 +11,27 @@ export function fnv1a(str: string): number {
 }
 
 /**
- * Deterministically pick one asset key from a family for an object (PR 080 B4): the pool is
- * sorted by key (stable, order-independent of manifest emission) and indexed by `fnv1a(id) % n`,
- * so the same object id always renders the same aesthetic variant. Returns undefined for an empty
- * pool (caller then falls back to the styled box — never blank).
+ * Deterministically pick one asset key from a family, **scoped to the FLOOR** (PR 082).
  *
- * `salt` lets one object place several independent pieces (e.g. a room's shelf + table) that each
- * pick their own stable variant.
+ * REVERSES the PR 080 rule that hashed the *object's own id*. Per-object hashing gave every desk on a
+ * floor a different variant, which reads as chaos rather than variety — real offices buy furniture in
+ * bulk and it matches. Scoping to the floor means all objects of one family on one floor share a
+ * variant, while different floors still differ.
+ *
+ * The scope key is `floorId : family : salt`:
+ * - **family** is taken from the pool itself (`baseType` of the sorted head), so desks choosing a style
+ *   can never force sofas onto the matching index of *their* family — each family resolves independently
+ *   and the family can never drift out of sync with the pool it describes;
+ * - **salt** is preserved so one object can still place several independent pieces (a room's shelf and
+ *   table); floor scoping must not collapse those onto one index.
+ *
+ * The pool is sorted by key first (stable, independent of manifest emission order). Returns undefined for
+ * an empty pool — the caller then falls back to the styled box, never blank. Nothing is stored: the same
+ * floor renders identically across reloads and across users.
  */
-export function pickVariantKey(objectId: number, assets: IsoAsset[], salt = 0): string | undefined {
+export function pickVariantKey(floorId: number, assets: IsoAsset[], salt = 0): string | undefined {
   if (assets.length === 0) return undefined;
   const ordered = [...assets].sort((a, b) => a.key.localeCompare(b.key));
-  return ordered[fnv1a(`${objectId}:${salt}`) % ordered.length].key;
+  const family = ordered[0].baseType;
+  return ordered[fnv1a(`${floorId}:${family}:${salt}`) % ordered.length].key;
 }

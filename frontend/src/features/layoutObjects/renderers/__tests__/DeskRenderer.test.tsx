@@ -105,10 +105,13 @@ describe("DeskRenderer", () => {
     expect(screen.getByTestId("konva-image")).toBeInTheDocument();
   });
 
-  it("picks the sprite from the desk id and booking state", () => {
+  it("picks the sprite from the FLOOR id and booking state (PR 082 — floor-scoped variants)", () => {
+    // Changed in PR 082: was `toHaveBeenCalledWith(42, "reserved")` (the desk's own id). Variants are
+    // now scoped to the floor so every desk on a floor matches, so the desk id must NOT reach the picker.
     mockUseKonvaImage.mockReturnValue(loaded());
-    renderDesk(42, "reserved");
-    expect(mockPick).toHaveBeenCalledWith(42, "reserved");
+    renderDesk(42, "reserved"); // desk id 42, on floor 2
+    expect(mockPick).toHaveBeenCalledWith(2, "reserved");
+    expect(mockPick).not.toHaveBeenCalledWith(42, "reserved");
   });
 
   it("falls back to the styled box while the sprite is loading", () => {
