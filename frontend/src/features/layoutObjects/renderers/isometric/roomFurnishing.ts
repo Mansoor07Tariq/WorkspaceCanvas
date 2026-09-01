@@ -42,22 +42,26 @@ function sizedTableBaseType(type: LayoutObjectType, area: number): string {
 }
 
 function piece(
-  objectId: number,
+  floorId: number,
   baseType: string,
   place: InteriorPiece["place"],
   salt: number
 ): InteriorPiece | null {
-  const key = pickVariantKey(objectId, getIsoAssetsByBaseType(baseType), salt);
+  const key = pickVariantKey(floorId, getIsoAssetsByBaseType(baseType), salt);
   return key ? { key, place } : null;
 }
 
 /**
  * Plan the interior furniture for a room-like object. Returns [] (→ shell only) when the type
  * isn't furnished or the room is too small for even the smallest set.
+ *
+ * Takes the **floor** id, not the object id (PR 082): the family of furniture is chosen by the room's own
+ * AREA, but the aesthetic variant within that family is floor-scoped, so every kitchen on a floor furnishes
+ * identically while a different floor gets a different look.
  */
 export function planRoomInterior(
   type: LayoutObjectType,
-  objectId: number,
+  floorId: number,
   width: number,
   height: number
 ): InteriorPiece[] {
@@ -65,10 +69,10 @@ export function planRoomInterior(
   if (area < ROOM_MIN_FURNISH_AREA) return [];
 
   if (type === "meeting_room" || ROOM_LIKE_SIZED.has(type)) {
-    return [piece(objectId, sizedTableBaseType(type, area), CENTER, 0)].filter(isPiece);
+    return [piece(floorId, sizedTableBaseType(type, area), CENTER, 0)].filter(isPiece);
   }
   if (type === "lobby") {
-    return [piece(objectId, "Lounge", CENTER, 0)].filter(isPiece);
+    return [piece(floorId, "Lounge", CENTER, 0)].filter(isPiece);
   }
   if (type === "kitchen") {
     return [
@@ -77,15 +81,15 @@ export function planRoomInterior(
       // top it had almost no room to rise and the shell clamp shrank it hard (in a 300x100 kitchen it kept
       // only ~16% more width than the pre-081 contain-fit). Dropping it to y+h = 0.46 lets it rise freely.
       // It is the only piece that was top-pinned — every other placement already sits at y+h >= 0.78.
-      piece(objectId, "Kitchen Shelf", { x: 0.06, y: 0.16, w: 0.88, h: 0.3 }, 1),
+      piece(floorId, "Kitchen Shelf", { x: 0.06, y: 0.16, w: 0.88, h: 0.3 }, 1),
       // Table moved down in step so it does not climb into the counter.
-      piece(objectId, "Kitchen Table", { x: 0.16, y: 0.5, w: 0.68, h: 0.44 }, 2),
+      piece(floorId, "Kitchen Table", { x: 0.16, y: 0.5, w: 0.68, h: 0.44 }, 2),
     ].filter(isPiece);
   }
   if (type === "bathroom") {
     return [
-      piece(objectId, "Toilet", { x: 0.08, y: 0.18, w: 0.4, h: 0.64 }, 1),
-      piece(objectId, "Toilet Sink", { x: 0.54, y: 0.2, w: 0.38, h: 0.58 }, 2),
+      piece(floorId, "Toilet", { x: 0.08, y: 0.18, w: 0.4, h: 0.64 }, 1),
+      piece(floorId, "Toilet Sink", { x: 0.54, y: 0.2, w: 0.38, h: 0.58 }, 2),
     ].filter(isPiece);
   }
   // phone_booth (and any other room-like type): too small / no sensible fit → shell only.

@@ -38,7 +38,7 @@ export function DeskRenderer(props: LayoutObjectRendererProps) {
     occupantAvatarUrl,
     occupantColorKey,
   } = props;
-  const key = pickDeskSpriteKey(object.id, availabilityStatus);
+  const key = pickDeskSpriteKey(object.floor, availabilityStatus);
   const src = key ? spriteUrl(key) : undefined;
   const { image, status } = useKonvaImage(src);
 

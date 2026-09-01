@@ -13,7 +13,7 @@ import { RoomInteriorSprite } from "./RoomInteriorSprite";
  */
 export function RoomRenderer(props: LayoutObjectRendererProps) {
   const { object, width, height } = props;
-  const pieces = planRoomInterior(object.object_type, object.id, width, height);
+  const pieces = planRoomInterior(object.object_type, object.floor, width, height);
   return (
     <>
       <DefaultLayoutObjectRenderer {...props} />
