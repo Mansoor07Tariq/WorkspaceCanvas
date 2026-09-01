@@ -2,10 +2,13 @@
 /**
  * Isometric asset pipeline (PR 080, Phase A).
  *
- * Reads the owner's source library at `assets-src/iso/*.svg` — each file is a base64-encoded
- * PNG wrapped in a thin SVG shell (`data:img/png;base64,…`, note the non-standard `img/png`;
- * the payload is a real PNG). For each source it:
- *   1. unwraps the base64 PNG,
+ * Reads the owner's source library at `assets-src/iso/*.svg`. Each file is an SVG shell wrapping
+ * one or MORE base64-encoded PNG layers (`data:img/png;base64,…`, note the non-standard `img/png`;
+ * the payload is a real PNG). A layered source stacks its `<image>` elements in document order,
+ * each positioned in the shell's coordinate space — a bare desk, then a monitor, then a keyboard.
+ * For each source it:
+ *   1. rasterises the source (see `pickRasterInput`: layered sources render through the SVG so every
+ *      layer composites; single-layer sources unwrap the lone PNG directly, as before),
  *   2. trims transparent margins (sharp `.trim()`),
  *   3. emits optimized WebP at two widths (256 + 640, downscale-only) into
  *      `frontend/src/assets/iso/` (this OUTPUT is committed; the sources are gitignored),
@@ -14,6 +17,11 @@
  *
  * Idempotent + incremental: a source whose content hash is unchanged and whose outputs
  * exist is skipped. Re-run any time the owner drops new art. `--force` reprocesses all.
+ *
+ * PR 084: `sourceHash` hashes the WHOLE source file. It used to hash only the first extracted PNG,
+ * so it could not see a change in any later layer — and it collided across genuinely different
+ * sources (14 of 86 keys shared a hash), which silently disabled the incremental cache's one
+ * correctness check. Every asset's hash therefore changes on the PR-084 run; that is expected.
  *
  * Pure parsing helpers are exported (and unit-tested in build-iso-assets.test.mjs); `sharp`
  * is imported lazily inside `main()` so importing this module for the tests never loads the
@@ -100,6 +108,55 @@ export function extractBase64Png(svgText) {
   return Buffer.from(b64, "base64");
 }
 
+/** How many base64 payloads (image layers) the shell embeds. >1 ⇒ the source is LAYERED. */
+export function countBase64Payloads(svgText) {
+  return svgText.split("base64,").length - 1;
+}
+
+/**
+ * Choose what to hand `sharp` for a source (PR 084).
+ *
+ * **Layered** (2+ payloads) → the SVG itself, so librsvg composites every layer at its declared
+ * position. This is the bug fix: `extractBase64Png` takes only the FIRST payload, so a layered
+ * source shipped as its bare base layer and the monitors, keyboards, sink and maps were discarded.
+ *
+ * **Single-layer** → the unwrapped PNG, exactly as before. This is not a shortcut: 62 of the 66
+ * single-layer sources declare their lone `<image>` at full canvas with no offset, so unwrapping is
+ * *equivalent* to rendering, and the remaining 4 differ only by a pixel of shell padding that
+ * `.trim()` handles. Routing them through librsvg would resample every one for no gain — it
+ * perturbs all 86 outputs instead of the 20 that are actually broken. It also avoids a hard limit:
+ * `Lounge-3.svg` carries a single 15,990,536-byte base64 attribute, past libxml2's 10,000,000-byte
+ * `XML_MAX_TEXT_LENGTH`, so librsvg refuses it ("XML parse error"). It is single-layer, so this
+ * path never asks librsvg to parse it. No other source comes close (next largest: 9,754,584).
+ *
+ * `limitInputPixels: false` is needed only for the SVG path — these sources rasterise to ~4400x3800,
+ * over sharp's default guard.
+ */
+export function pickRasterInput(svgText, png) {
+  return countBase64Payloads(svgText) > 1
+    ? { input: Buffer.from(svgText, "utf8"), options: { limitInputPixels: false } }
+    : { input: png, options: {} };
+}
+
+/**
+ * The same SVG shell carrying ONLY its first `<image>` layer (PR 084 continuation).
+ *
+ * The shell and its viewBox are preserved, so layer zero renders on the identical canvas at the
+ * identical position — that is the whole point. A booked desk must be the SAME desk at the SAME
+ * size in the SAME place, and sprites are scaled to fill the object's width, so the drawn height
+ * follows the asset's aspect ratio. Any asset that trims to a different box is therefore a resize.
+ * Rendering layer zero on the full canvas and cropping it to the FULL render's trim rectangle (see
+ * `emitBareVariant`) guarantees an identical box, rather than hoping two assets happen to match.
+ */
+export function layerZeroOnly(svgText) {
+  const first = svgText.indexOf("<image");
+  if (first === -1) return svgText;
+  const firstEnd = svgText.indexOf(">", first) + 1;
+  const rest = svgText.slice(firstEnd);
+  const close = rest.lastIndexOf("</svg>");
+  return svgText.slice(0, firstEnd) + (close === -1 ? "</svg>" : rest.slice(close));
+}
+
 /** Intrinsic pixel dims declared on the `<svg>` shell (best-effort, for reference). */
 export function extractSvgDims(svgText) {
   const w = svgText.match(/<svg[^>]*\bwidth="(\d+(?:\.\d+)?)"/);
@@ -159,7 +216,9 @@ async function main() {
       const svgText = await readFile(join(SRC_DIR, file), "utf8");
       const png = extractBase64Png(svgText);
       if (!png) throw new Error("no base64 PNG payload found");
-      const hash = sha256(png);
+      // Hash the WHOLE source, so a change in ANY layer invalidates the cache (PR 084).
+      const hash = sha256(Buffer.from(svgText, "utf8"));
+      const { input: rasterInput, options: rasterOptions } = pickRasterInput(svgText, png);
 
       const outputs = WIDTHS.map((w) => ({ width: w, file: `${meta.key}-${w}.webp` }));
       const outputsExist = outputs.every((o) => existsSync(join(OUT_DIR, o.file)));
@@ -171,12 +230,12 @@ async function main() {
       if (!force && cached && cached.sourceHash === hash && outputsExist) {
         skipped += 1;
       } else {
-        const base = sharp(png).trim();
+        const base = sharp(rasterInput, rasterOptions).trim();
         const tMeta = await base.metadata();
         trimmed = { width: tMeta.width ?? null, height: tMeta.height ?? null };
         outSizes = [];
         for (const o of outputs) {
-          const buf = await sharp(png)
+          const buf = await sharp(rasterInput, rasterOptions)
             .trim()
             .resize({ width: o.width, withoutEnlargement: true })
             .webp({ quality: WEBP_QUALITY })
@@ -189,6 +248,57 @@ async function main() {
 
       for (const o of outSizes ?? []) totalOutBytes += o.bytes ?? 0;
       const ov = overrides[meta.key] ?? {};
+
+      // A "bare" counterpart: layer zero of a LAYERED source, cropped to the full render's trim
+      // rect so it is pixel-for-pixel the same box. Opt-in per key via `emitBare` in the overrides,
+      // because only a human can say whether a source's layer zero is a usable clear desk — the
+      // build cannot. (Bases 3 and 4 have their monitor in layer zero, so they are not marked.)
+      let bareAsset = null;
+      if (ov.emitBare && countBase64Payloads(svgText) > 1) {
+        const bareKey = `${meta.key}-bare`;
+        const bareOutputs = WIDTHS.map((w) => ({ width: w, file: `${bareKey}-${w}.webp` }));
+        const bareExist = bareOutputs.every((o) => existsSync(join(OUT_DIR, o.file)));
+        const bareCached = prevByKey.get(bareKey);
+        let bareSizes = bareCached?.outputs;
+        if (force || !bareCached || bareCached.sourceHash !== hash || !bareExist) {
+          const full = await sharp(rasterInput, rasterOptions)
+            .trim()
+            .toBuffer({ resolveWithObject: true });
+          const box = {
+            left: -full.info.trimOffsetLeft,
+            top: -full.info.trimOffsetTop,
+            width: full.info.width,
+            height: full.info.height,
+          };
+          const l0 = Buffer.from(layerZeroOnly(svgText), "utf8");
+          bareSizes = [];
+          for (const o of bareOutputs) {
+            const buf = await sharp(l0, { limitInputPixels: false })
+              .extract(box) // the FULL render's box — never an independent trim
+              .resize({ width: o.width, withoutEnlargement: true })
+              .webp({ quality: WEBP_QUALITY })
+              .toBuffer();
+            await writeFile(join(OUT_DIR, o.file), buf);
+            bareSizes.push({ width: o.width, file: o.file, bytes: buf.length });
+          }
+        }
+        for (const o of bareSizes ?? []) totalOutBytes += o.bytes ?? 0;
+        const bov = overrides[bareKey] ?? {};
+        bareAsset = {
+          ...meta,
+          key: bareKey,
+          descriptor: "Bare",
+          type: bov.type ?? null,
+          role: bov.role ?? null,
+          sourceHash: hash,
+          svgDims: extractSvgDims(svgText),
+          trimmed,
+          aspectRatio:
+            trimmed?.width && trimmed?.height ? +(trimmed.width / trimmed.height).toFixed(4) : null,
+          footprint: bov.footprint ?? defaultFootprint(),
+          outputs: bareSizes,
+        };
+      }
       assets.push({
         ...meta,
         type: ov.type ?? null, // LayoutObject type mapping (filled in Phase B / overrides)
@@ -201,6 +311,7 @@ async function main() {
         footprint: ov.footprint ?? defaultFootprint(),
         outputs: outSizes,
       });
+      if (bareAsset) assets.push(bareAsset);
     } catch (err) {
       failures.push({ sourceName, error: String(err.message ?? err) });
     }

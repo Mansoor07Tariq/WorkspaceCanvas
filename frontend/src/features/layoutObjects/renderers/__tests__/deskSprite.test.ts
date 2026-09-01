@@ -1,7 +1,14 @@
 import { describe, it, expect } from "vitest";
 import type { DeskAvailabilityStatus } from "@/features/bookings/utils/bookingAvailability";
-import { getIsoAssetsByBaseType } from "../isometric/isoManifest";
-import { fnv1a, isBookedStatus, pickDeskSpriteKey } from "../isometric/deskSprite";
+import { getIsoAsset } from "../isometric/isoManifest";
+import {
+  BARE_DESCRIPTOR,
+  fnv1a,
+  isBookedStatus,
+  pickDeskSpriteKey,
+  selectableDeskDesigns,
+} from "../isometric/deskSprite";
+import { VERIFIED_DESKTOP_RECT_KEYS, getDesktopRect } from "../isometric/spriteGeometry";
 
 describe("fnv1a", () => {
   it("is deterministic for the same input", () => {
@@ -30,45 +37,96 @@ describe("isBookedStatus", () => {
   });
 });
 
-describe("pickDeskSpriteKey", () => {
-  const freePool = getIsoAssetsByBaseType("Desk+System").filter((a) => a.descriptor === "Less");
-  const bookedPool = getIsoAssetsByBaseType("Desk+Chair");
+describe("pickDeskSpriteKey — booking clears the desk, it does not replace it (PR 084)", () => {
+  const FLOORS = Array.from({ length: 40 }, (_, i) => i + 1);
+  const designs = selectableDeskDesigns();
 
-  it("has non-empty sprite pools (manifest sanity)", () => {
-    expect(freePool.length).toBeGreaterThan(0);
-    expect(bookedPool.length).toBeGreaterThan(0);
-  });
-
-  it("free/available desks draw the clean Desk+System 'Less' variant", () => {
-    const key = pickDeskSpriteKey(1, "available"); // 1 = FLOOR id (PR 082)
-    expect(freePool.map((a) => a.key)).toContain(key);
-  });
-
-  it("booked desks draw the bare Desk+Chair (empty top for the identity tile)", () => {
-    for (const status of ["reserved", "bookedByMe"] as DeskAvailabilityStatus[]) {
-      const key = pickDeskSpriteKey(1, status);
-      expect(bookedPool.map((a) => a.key)).toContain(key);
+  it("every selectable design is a BARE variant with a real emitted asset", () => {
+    expect(designs.length).toBeGreaterThan(0);
+    for (const d of designs) {
+      expect(d.descriptor).toBe(BARE_DESCRIPTOR);
+      expect(d.outputs.length).toBeGreaterThan(0);
     }
   });
 
-  it("is deterministic: the same FLOOR + state always yields the same sprite", () => {
-    // PR 082: the argument is the floor id, not the desk id — so this is also the guarantee that
-    // every free desk on floor 7 renders identically.
+  it("a booked desk resolves to the BARE variant of the design", () => {
+    // Replaces "booked desks draw the bare Desk+Chair". `Desk+Chair` is no longer used for desks:
+    // it is a different desk at different dimensions, so swapping to it resized the sprite.
+    const bare = new Set(designs.map((d) => d.key));
+    for (const f of FLOORS) {
+      for (const status of ["reserved", "bookedByMe"] as DeskAvailabilityStatus[]) {
+        expect(bare).toContain(pickDeskSpriteKey(f, status));
+      }
+    }
+  });
+
+  it("a free desk resolves to the SAME design, differing only by clutter", () => {
+    // The heart of the PR: free and booked share `variantIndex` (same desk) and differ only in
+    // `descriptor` (the stuff on it).
+    for (const f of FLOORS) {
+      const free = getIsoAsset(pickDeskSpriteKey(f, "available")!)!;
+      const booked = getIsoAsset(pickDeskSpriteKey(f, "reserved")!)!;
+      expect(free.variantIndex).toBe(booked.variantIndex); // same desk
+      expect(free.baseType).toBe(booked.baseType);
+      expect(booked.descriptor).toBe(BARE_DESCRIPTOR);
+      expect(free.descriptor).not.toBe(BARE_DESCRIPTOR); // …only the clutter differs
+      expect(free.key).not.toBe(booked.key);
+    }
+  });
+
+  it("free and booked are DIMENSIONALLY IDENTICAL — booking must not resize or move the desk", () => {
+    // Criterion 1, and the one most likely to be missed. `fitFootprint` fills the object's width
+    // and anchors the bottom, so the drawn height and anchor follow the asset's aspect ratio: two
+    // assets with different trimmed boxes draw at different sizes. Asserting equal outputs at every
+    // width is what makes "the same desk in the same place" a fact rather than an intention.
+    for (const f of FLOORS) {
+      const free = getIsoAsset(pickDeskSpriteKey(f, "available")!)!;
+      const booked = getIsoAsset(pickDeskSpriteKey(f, "reserved")!)!;
+      expect(free.aspectRatio).toBe(booked.aspectRatio);
+      expect(free.trimmed).toEqual(booked.trimmed);
+      expect(free.outputs.map((o) => o.width)).toEqual(booked.outputs.map((o) => o.width));
+    }
+  });
+
+  it("the booked key's desktopRect is MEASURED, not inherited (the review/47 guard)", () => {
+    // review/47 found four rects measured against the wrong art, sitting on a monitor, harmless
+    // only because nothing used them. This fails the moment a booked desk resolves to art whose
+    // rect nobody has verified.
+    for (const f of FLOORS) {
+      const key = pickDeskSpriteKey(f, "reserved")!;
+      expect(VERIFIED_DESKTOP_RECT_KEYS).toContain(key);
+      const rect = getDesktopRect(key);
+      expect(rect).not.toEqual(getDesktopRect(undefined)); // a real override, not the default
+      expect(rect.w).toBeGreaterThan(0);
+      expect(rect.h).toBeGreaterThan(0);
+    }
+  });
+
+  it("no design is selectable without a bare counterpart (criterion 5)", () => {
+    // Desk+System 3 and 4 bake the monitor into layer zero, so they can never show a clear desktop
+    // and must not be reachable at all — a floor that picked one could not render a booked desk.
+    const selectable = new Set(designs.map((d) => d.variantIndex));
+    for (const f of FLOORS) {
+      expect(selectable).toContain(getIsoAsset(pickDeskSpriteKey(f, "available")!)!.variantIndex);
+    }
+    expect(selectable).not.toContain(3);
+    expect(selectable).not.toContain(4);
+  });
+
+  it("the `Less` filter is GONE, not retuned", () => {
+    // review/47 measured the old premise as false: `Less` has MORE on the desktop than the plain
+    // variant. Free desks must no longer be pinned to that descriptor.
+    const freeDescriptors = new Set(
+      FLOORS.map((f) => getIsoAsset(pickDeskSpriteKey(f, "available")!)!.descriptor)
+    );
+    expect(freeDescriptors.size).toBeGreaterThan(0);
+    expect([...freeDescriptors].every((d) => d === "Less")).toBe(false);
+  });
+
+  it("stays floor-scoped and deterministic (PR 082 unchanged)", () => {
     expect(pickDeskSpriteKey(7, "available")).toBe(pickDeskSpriteKey(7, "available"));
     expect(pickDeskSpriteKey(7, "reserved")).toBe(pickDeskSpriteKey(7, "reserved"));
-  });
-
-  it("different floors do not all collapse to one desk variant (PR 082)", () => {
-    const keys = new Set(
-      Array.from({ length: 30 }, (_, i) => pickDeskSpriteKey(i + 1, "available"))
-    );
-    expect(keys.size).toBeGreaterThan(1);
-  });
-
-  it("treats variants as aesthetic (state, not floor, moves between pools)", () => {
-    // Same floor: free vs booked come from different families, so the keys differ.
-    const free = pickDeskSpriteKey(3, "available");
-    const booked = pickDeskSpriteKey(3, "reserved");
-    expect(free).not.toBe(booked);
+    const keys = new Set(FLOORS.map((f) => pickDeskSpriteKey(f, "available")));
+    expect(keys.size).toBeGreaterThan(1); // floors do not all collapse to one design
   });
 });
