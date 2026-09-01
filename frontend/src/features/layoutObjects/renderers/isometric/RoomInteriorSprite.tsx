@@ -2,7 +2,7 @@ import { Image as KonvaImage } from "react-konva";
 
 import type { InteriorPiece } from "./roomFurnishing";
 import { spriteUrl } from "./isoManifest";
-import { fitContainInSubRect } from "./spriteGeometry";
+import { fitFootprintInSubRect } from "./spriteGeometry";
 import { useKonvaImage } from "./useKonvaImage";
 
 /**
@@ -22,7 +22,7 @@ export function RoomInteriorSprite({
   const { image, status } = useKonvaImage(spriteUrl(piece.key));
   if (status !== "loaded" || !image) return null;
 
-  const fit = fitContainInSubRect(
+  const fit = fitFootprintInSubRect(
     image.naturalWidth || 0,
     image.naturalHeight || 0,
     boxW,

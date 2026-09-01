@@ -1,9 +1,9 @@
 import { render, screen } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import type { LayoutObjectNodeStyle } from "../../utils/layoutObjectNodeStyle";
+import type { DeskAvailabilityStatus } from "@/features/bookings/utils/bookingAvailability";
 import { getLayoutObjectRenderConfig } from "../../utils/layoutObjectRenderConfig";
 
-// Capture Konva shape props as data attributes (no real Konva stage).
 vi.mock("react-konva", () => ({
   Image: (props: Record<string, unknown>) => (
     <div
@@ -39,6 +39,7 @@ function renderBody(
     style?: LayoutObjectNodeStyle;
     isSaving?: boolean;
     isBookingMode?: boolean;
+    availabilityStatus?: DeskAvailabilityStatus;
   } = {}
 ) {
   const [nw, nh] = opts.natural ?? [0, 0];
@@ -52,6 +53,7 @@ function renderBody(
       height={50}
       isSaving={opts.isSaving ?? false}
       isBookingMode={opts.isBookingMode ?? false}
+      availabilityStatus={opts.availabilityStatus}
     />
   );
 }
@@ -59,9 +61,19 @@ function renderBody(
 function img() {
   return JSON.parse(screen.getByTestId("konva-image").getAttribute("data-props") ?? "{}");
 }
-function rect(i: number) {
-  return JSON.parse(screen.getAllByTestId("konva-rect")[i].getAttribute("data-props") ?? "{}");
+function rects() {
+  return screen
+    .queryAllByTestId("konva-rect")
+    .map((el) => JSON.parse(el.getAttribute("data-props") ?? "{}"));
 }
+// The invisible hit target: opacity 0, a fill, no stroke. Its size is now the UNION of the floor
+// rect and the drawn sprite bounds, so it is NOT keyed to the box size.
+const hitRect = () => rects().find((r) => r.opacity === 0 && !r.stroke);
+// The border: stroked, fill disabled.
+const border = () => rects().find((r) => r.fillEnabled === false && r.stroke);
+// The availability fill: has a fill + a visible opacity, no stroke.
+const availFill = () =>
+  rects().find((r) => r.fill && !r.stroke && r.opacity !== undefined && r.opacity > 0);
 
 describe("AssetSpriteBody", () => {
   it("fills the box when natural dimensions are unknown", () => {
@@ -72,37 +84,76 @@ describe("AssetSpriteBody", () => {
     expect(img().y).toBe(-25);
   });
 
-  it("contain-fits the artwork without distortion and centres it", () => {
-    // 100x100 into 80x50 → scale 0.5 → 50x50 centred.
+  it("footprint-fits the artwork: fills width (up to the overflow bound), bottom-anchored (PR 081)", () => {
+    // 100x100 into 80x50: width-fill 80x80 (overflow 30) trimmed to overflow ≤ 0.25*80=20 → 70x70.
     renderBody({ natural: [100, 100] });
-    expect(img().width).toBe(50);
-    expect(img().height).toBe(50);
-    expect(img().x).toBe(-25);
-    expect(img().y).toBe(-25);
-    // The border still covers the full object box.
-    expect(rect(1).width).toBe(80);
-    expect(rect(1).height).toBe(50);
+    expect(img().width).toBe(70);
+    expect(img().height).toBe(70);
+    expect(img().x).toBe(-35); // centred
+    expect(img().y).toBe(-45); // bottom edge at 25 (= boxH/2), overflowing up
   });
 
-  it("keeps the image non-interactive; the full-box tint is the hit target", () => {
-    renderBody({
-      style: { fill: "#FECACA", stroke: "#DC2626", strokeWidth: 3, opacity: 1, dash: undefined },
-    });
+  it("hit target is the UNION of floor rect and sprite bounds — no dead strip (fix-up 2)", () => {
+    // 100x100 into 80x50 → sprite 70x70 spanning y -45..25, x -35..35. Floor rect: 80x50, y -25..25.
+    // Union = x -40..40 (floor rect is WIDER than the capped sprite) and y -45..25 (sprite is TALLER).
+    renderBody({ natural: [100, 100], availabilityStatus: "bookedByMe" });
+    const hit = hitRect()!;
+    expect(hit.listening).not.toBe(false); // still hit-testable
+    expect(hit.x).toBe(-40);
+    expect(hit.y).toBe(-45); // extends UP to the sprite top — the old dead strip is now clickable
+    expect(hit.width).toBe(80); // keeps the floor rect's width (the sprite is only 70 wide)
+    expect(hit.height).toBe(70); // floor-rect bottom (25) up to sprite top (-45)
+    // It covers the full drawn sprite bounds...
+    expect(hit.x).toBeLessThanOrEqual(-35);
+    expect(hit.x + hit.width).toBeGreaterThanOrEqual(35);
+    expect(hit.y).toBeLessThanOrEqual(-45);
+    expect(hit.y + hit.height).toBeGreaterThanOrEqual(25);
+    // ...AND the full floor rect.
+    expect(hit.x).toBeLessThanOrEqual(-40);
+    expect(hit.x + hit.width).toBeGreaterThanOrEqual(40);
+    expect(hit.y).toBeLessThanOrEqual(-25);
+    // Availability fill + border are at the SPRITE bounds (70x70), not the 80x50 box.
+    // (the coloured region and the hit region are different shapes BY DESIGN)
+    const fill = availFill();
+    expect(fill!.width).toBe(70);
+    expect(fill!.height).toBe(70);
+    expect(fill!.listening).toBe(false);
+    expect(border()!.width).toBe(70);
+    expect(border()!.listening).toBe(false);
+  });
+
+  it("a NON-overflowing sprite leaves the hit target exactly equal to the floor rect", () => {
+    // 200x50 (wide) into 80x50 → scale .4 → 80x20, sitting inside the box (y 5..25). No overflow.
+    renderBody({ natural: [200, 50] });
+    const hit = hitRect()!;
+    expect(hit.x).toBe(-40);
+    expect(hit.y).toBe(-25);
+    expect(hit.width).toBe(80);
+    expect(hit.height).toBe(50);
+  });
+
+  it("ONLY the hit target listens — sprite, fill and border stay non-listening", () => {
+    renderBody({ natural: [100, 100], availabilityStatus: "reserved" });
     expect(img().listening).toBe(false);
-    const tint = rect(0);
-    expect(tint.fill).toBe("#FECACA");
-    expect(tint.width).toBe(80);
-    expect(tint.height).toBe(50);
-    expect(tint.listening).not.toBe(false); // clickable
-    const border = rect(1);
-    expect(border.stroke).toBe("#DC2626");
-    expect(border.strokeWidth).toBe(3);
-    expect(border.listening).toBe(false);
+    expect(availFill()!.listening).toBe(false);
+    expect(border()!.listening).toBe(false);
+    // exactly one hit-testable rect (the others all opt out)
+    const listening = rects().filter((r) => r.listening !== false);
+    expect(listening).toHaveLength(1);
+    expect(listening[0].opacity).toBe(0);
   });
 
-  it("uses a stronger availability tint in booking mode", () => {
-    renderBody({ isBookingMode: true });
-    expect(rect(0).opacity).toBe(0.45);
+  it("a bookable desk gets a strong availability wash over the sprite", () => {
+    renderBody({ natural: [100, 100], isBookingMode: true, availabilityStatus: "reserved" });
+    expect(availFill()!.opacity).toBe(0.4);
+  });
+
+  it("non-bookable furniture on the booking map is NOT washed (stool no longer a flat blob)", () => {
+    renderBody({ natural: [100, 100], isBookingMode: true }); // no availabilityStatus
+    expect(availFill()).toBeUndefined(); // no visible fill rect at all
+    // the sprite + hit target + border still render
+    expect(screen.getByTestId("konva-image")).toBeInTheDocument();
+    expect(hitRect()).toBeTruthy();
   });
 
   it("dims the sprite while saving", () => {
