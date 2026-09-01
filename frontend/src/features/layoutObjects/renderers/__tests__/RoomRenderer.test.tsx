@@ -56,6 +56,7 @@ function renderRoom(type: LayoutObjectType, area: number) {
       width={s}
       height={s}
       isSelected={false}
+      showBorder={false}
       isSaving={false}
       isBookingMode={false}
     />

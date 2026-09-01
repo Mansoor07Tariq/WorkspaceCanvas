@@ -174,7 +174,7 @@ export function FloorMapCanvas({
   });
 
   // Notes tooltip on hover (enhanced/booking views).
-  const { setHoveredObjectId, notesTooltip } = useNotesTooltip({
+  const { hoveredObjectId, setHoveredObjectId, notesTooltip } = useNotesTooltip({
     enabled: notesTooltipEnabled,
     objects,
     viewport,
@@ -248,6 +248,7 @@ export function FloorMapCanvas({
             occupantByLayoutObjectId={occupantByLayoutObjectId}
             selectedAvailabilityLayoutObjectId={selectedAvailabilityLayoutObjectId}
             notesTooltipEnabled={notesTooltipEnabled}
+            hoveredObjectId={hoveredObjectId}
             selectedIsWallMounted={selectedIsWallMounted}
             scale={viewport.scale}
             nodeRefs={nodeRefs}

@@ -103,6 +103,20 @@ export const shadowTokens = {
 export const occupantTileInset = 0.025;
 
 /**
+ * Aspect ratio (width ÷ height) of the occupant identity block (PR 083). The photo itself is
+ * CONTAINED in the desk's top surface — never cropped — so it keeps its own aspect; this is the
+ * shape used for the generated fallbacks (initials, "Guest"), which have no intrinsic aspect.
+ *
+ * Square, because provider photos are square: `avatar_url` comes from allauth's Microsoft/Google
+ * accounts, whose thumbnail endpoints return square images. Hosted uploads (`user.avatar`) are an
+ * unprocessed ImageField and can be any shape, but they are the minority path. Matching the modal
+ * photo shape is what makes an initials desk and a photo desk read as one design at map scale —
+ * the alternative (letting initials fill the wide surface) puts a wide block beside a square photo
+ * and looks like two different systems.
+ */
+export const occupantTileAspect = 1;
+
+/**
  * Deterministic avatar palette. A person's tile colour is picked by
  * `avatarColor(userId)` so the same colleague is always the same colour across the map,
  * near-you list, and week strip (matches the prototype's per-person colours).

@@ -75,7 +75,8 @@ const stable = {
 function layerProps(
   objects: LayoutObject[],
   selectedObjectId: number | null = null,
-  occupantByLayoutObjectId?: ReadonlyMap<number, OccupantIdentity>
+  occupantByLayoutObjectId?: ReadonlyMap<number, OccupantIdentity>,
+  hoveredObjectId: number | null = null
 ) {
   return {
     objects,
@@ -88,6 +89,7 @@ function layerProps(
     notesTooltipEnabled: false,
     selectedIsWallMounted: false,
     scale: 1,
+    hoveredObjectId,
     occupantByLayoutObjectId,
     ...stable,
   };
@@ -202,5 +204,50 @@ describe("FloorObjectsLayer — memoised nodes (FE-3)", () => {
     const firstFront = Math.min(renderOrder.indexOf(20), renderOrder.indexOf(21));
     expect(lastBack).toBeLessThan(firstFront);
     for (const id of [10, 11, 20, 21]) expect(renderCounts.get(id)).toBe(1);
+  });
+
+  // ─── PR 083 Part A: hover drives the border, and must stay cheap ───────────────
+
+  it("moving the pointer between objects re-renders ONLY the two nodes whose hover changed", () => {
+    // Hover fires continuously as the pointer crosses a floor, so this is the guarantee that
+    // matters: `isHovered` is a flat compared scalar, NOT the hovered id, so a hover change is
+    // O(2) re-renders regardless of floor size — never O(n).
+    const objs = [
+      obj(1, { object_type: "desk", y: "400.00" }),
+      obj(2, { object_type: "meeting_room", y: "80.00", width: "220", height: "180" }),
+      obj(3, { object_type: "sofa", y: "250.00" }),
+      obj(4, { object_type: "plant", y: "250.00", x: "600.00" }),
+      obj(5, { object_type: "desk", x: "700.00", y: "400.00" }),
+    ];
+    const { rerender } = render(<FloorObjectsLayer {...layerProps(objs, null, undefined, null)} />);
+    for (const id of [1, 2, 3, 4, 5]) expect(renderCounts.get(id)).toBe(1);
+
+    // Pointer ENTERS object 3 (nothing was hovered before) → only node 3 re-renders.
+    renderCounts.clear();
+    rerender(<FloorObjectsLayer {...layerProps(objs, null, undefined, 3)} />);
+    expect(renderCounts.get(3)).toBe(1);
+    for (const id of [1, 2, 4, 5]) expect(renderCounts.get(id)).toBeUndefined();
+
+    // Pointer MOVES 3 → 5: exactly the node being left and the node being entered.
+    renderCounts.clear();
+    rerender(<FloorObjectsLayer {...layerProps(objs, null, undefined, 5)} />);
+    expect(renderCounts.get(3)).toBe(1); // left
+    expect(renderCounts.get(5)).toBe(1); // entered
+    for (const id of [1, 2, 4]) expect(renderCounts.get(id)).toBeUndefined();
+
+    // Pointer LEAVES the floor → only the node being left.
+    renderCounts.clear();
+    rerender(<FloorObjectsLayer {...layerProps(objs, null, undefined, null)} />);
+    expect(renderCounts.get(5)).toBe(1);
+    for (const id of [1, 2, 3, 4]) expect(renderCounts.get(id)).toBeUndefined();
+  });
+
+  it("re-hovering the SAME object re-renders nothing", () => {
+    const objs = [obj(1), obj(2, { x: "300.00" })];
+    const { rerender } = render(<FloorObjectsLayer {...layerProps(objs, null, undefined, 1)} />);
+    renderCounts.clear();
+    rerender(<FloorObjectsLayer {...layerProps(objs, null, undefined, 1)} />);
+    expect(renderCounts.get(1)).toBeUndefined();
+    expect(renderCounts.get(2)).toBeUndefined();
   });
 });

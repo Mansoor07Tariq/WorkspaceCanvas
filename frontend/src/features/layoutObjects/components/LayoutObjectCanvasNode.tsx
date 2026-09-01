@@ -62,6 +62,12 @@ interface Props {
   /** Reports hover (object id) / un-hover (null) so the canvas can show a tooltip. */
   onHover?: (objectId: number | null) => void;
   /**
+   * True when the pointer is over THIS object (PR 083 Part A). A flat compared scalar, not the
+   * hovered id: changing which object is hovered therefore re-renders only the node being left
+   * and the node being entered, leaving the rest of the floor untouched (the PR-068 guarantee).
+   */
+  isHovered?: boolean;
+  /**
    * Registers this node's Konva group with the canvas (for transformer attach and
    * post-drag settle). STABLE (PR 068): the node keeps its OWN internal ref and
    * reports it up via this callback in an effect, so the parent never passes a
@@ -100,6 +106,7 @@ function LayoutObjectCanvasNodeInner({
   occupantAvatarUrl,
   occupantColorKey,
   onHover,
+  isHovered = false,
   registerNode,
 }: Props) {
   const w = parseFloat(obj.width);
@@ -148,6 +155,11 @@ function LayoutObjectCanvasNodeInner({
     isAvailabilitySelected,
   });
   const renderStyle = shapeProps;
+
+  // A border means "you are interacting with this" (PR 083 Part A): hover, editor selection, or the
+  // booking-mode availability selection — the two selections being separate because booking mode
+  // forces `isSelected` false and carries its own selected desk.
+  const showBorder = isHovered || isSelected || isAvailabilitySelected;
 
   // Group origin at center of bounding box — correct for rotation and drag
   const cx = x + w / 2;
@@ -269,6 +281,7 @@ function LayoutObjectCanvasNodeInner({
         width={w}
         height={h}
         isSelected={isSelected}
+        showBorder={showBorder}
         isSaving={isSaving}
         isBookingMode={isBookingMode}
         availabilityStatus={availabilityStatus}
@@ -327,6 +340,7 @@ function arePropsEqual(prev: Props, next: Props): boolean {
   return (
     prev.obj === next.obj &&
     prev.isSelected === next.isSelected &&
+    prev.isHovered === next.isHovered &&
     prev.draggable === next.draggable &&
     prev.isSaving === next.isSaving &&
     prev.hasDesk === next.hasDesk &&
