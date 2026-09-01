@@ -15,7 +15,8 @@ import { useKonvaImage } from "./useKonvaImage";
  * sprite is missing / still loading (jsdom tests always hit this fallback), so nothing is ever blank.
  */
 export function SpriteRenderer(props: LayoutObjectRendererProps) {
-  const { object, style, config, width, height, isSaving, isBookingMode } = props;
+  const { object, style, config, width, height, isSaving, isBookingMode, availabilityStatus } =
+    props;
   const mapping = SINGLE_SPRITE_MAP[object.object_type];
   const baseType = mapping ? resolveBaseType(mapping, Math.abs(width * height)) : undefined;
   const key = baseType ? pickVariantKey(object.id, getIsoAssetsByBaseType(baseType)) : undefined;
@@ -35,6 +36,7 @@ export function SpriteRenderer(props: LayoutObjectRendererProps) {
       height={height}
       isSaving={isSaving}
       isBookingMode={isBookingMode}
+      availabilityStatus={availabilityStatus}
     />
   );
 }

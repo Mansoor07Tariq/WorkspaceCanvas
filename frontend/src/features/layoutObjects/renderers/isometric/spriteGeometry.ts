@@ -1,7 +1,7 @@
 import overridesJson from "@/assets/iso/manifest.overrides.json";
 import { occupantTileInset } from "@/theme/tokens";
 
-/** Where the contain-fit sprite lands inside the object box, in group-centred coords. */
+/** Where the fitted sprite lands relative to the object box, in group-centred coords. */
 export interface SpriteFit {
   x: number;
   y: number;
@@ -10,33 +10,92 @@ export interface SpriteFit {
 }
 
 /**
- * Contain-fit a sprite of natural size into the object box: the largest size that fits
- * without distortion, centred (group origin is the box centre, so x/y are negative-half).
- * When natural dimensions are unknown (0), fills the box. Shared by `AssetSpriteBody` (the
- * drawn sprite) and the desk renderer (to place the occupant tile on the same sprite).
+ * Maximum upward overflow, as a fraction of the object's **WIDTH** (PR 081 fix-up, Fix 3). The drawn
+ * sprite may rise at most `height ≤ boxH + SPRITE_MAX_OVERFLOW_RATIO × boxW` above its floor rect;
+ * beyond that it is scaled down (giving up some width — graceful, not giant).
+ *
+ * Why bound overflow by WIDTH, not depth: depth is the axis width-fill deliberately ignores (§ below),
+ * so a depth-relative cap let the unreliable axis strangle a wide-but-shallow object — e.g. a sofa in a
+ * 220×40 rect lost its width on exactly the shallow case this feature fixes. Width is the reliable axis
+ * width-fill already uses: bounding overflow by it keeps wide furniture (sofas) at full width even on
+ * shallow rects, while still trimming the overflow of tall, near-square art (desks). Named + exported
+ * so it is tunable in one place; tune by eye against a real floor.
  */
-export function fitContain(
+export const SPRITE_MAX_OVERFLOW_RATIO = 0.25;
+
+/**
+ * Footprint fit (PR 081, TD-068): an isometric sprite is taller than the ground it occupies (a
+ * sofa's back rises above its floor), so we fit its **width** to the object's floor rect, anchor its
+ * **bottom** edge to the rect's bottom, and let the **height overflow UPWARD** — instead of the old
+ * contain-fit that squeezed the whole image (full height) into the rect and left tall art tiny.
+ *
+ * Consequence, by design: the object rect's **depth (height) does NOT affect the sprite scale** — two
+ * objects of equal width render at equal size regardless of depth. This is deliberate. Depth-priority
+ * would let a narrow, deep object blow out **sideways**, and sideways overflow is far worse than
+ * upward overflow because the back-to-front y-sort cannot correct it. Overflow is bounded by
+ * {@link SPRITE_MAX_OVERFLOW_RATIO} (a WIDTH fraction). When natural dimensions are unknown (0) we fall
+ * back to filling the box.
+ */
+export function fitFootprint(
   naturalW: number,
   naturalH: number,
   boxW: number,
   boxH: number
 ): SpriteFit {
   if (naturalW > 0 && naturalH > 0) {
-    const scale = Math.min(boxW / naturalW, boxH / naturalH);
-    const width = naturalW * scale;
-    const height = naturalH * scale;
-    return { x: -width / 2, y: -height / 2, width, height };
+    const scale = boxW / naturalW; // fill the floor-rect width
+    let width = naturalW * scale;
+    let height = naturalH * scale;
+    const maxHeight = boxH + SPRITE_MAX_OVERFLOW_RATIO * boxW; // bound overflow by WIDTH
+    if (height > maxHeight) {
+      const s = maxHeight / height; // scale down (gives up width) rather than overflow more
+      width *= s;
+      height = maxHeight;
+    }
+    // Horizontally centred; bottom edge on the rect's bottom (+boxH/2), the rest overflows up.
+    return { x: -width / 2, y: boxH / 2 - height, width, height };
   }
   return { x: -boxW / 2, y: -boxH / 2, width: boxW, height: boxH };
 }
 
 /**
- * Contain-fit a sprite into a NORMALIZED sub-rectangle of the object box (group-centred coords).
- * Used to place room-interior furniture (PR 080 B4) within a room shell: `place` is 0..1 of the
- * box (padding already baked in), the sprite is aspect-fit and centred inside it. When natural
- * dimensions are unknown (0), it fills the sub-rect.
+ * The clickable region for an enhanced object (PR 081 fix-up 2): the **UNION** of the object's floor rect
+ * and the drawn sprite bounds.
+ *
+ * This REVERSES the earlier "hit area = the floor rect" decision. That was defensible while the colour and
+ * the hit area were the same shape; once the availability affordance moved onto the sprite bounds it left a
+ * strip of visible, coloured, apparently-clickable art (for a 100x60 desk: 25px tall, ~29% of the visible
+ * desk and ~48% of the occupant photo) where a click fell through to the Stage and CLEARED the selection.
+ *
+ * Union — not simply the sprite bounds — because a width-capped sprite is NARROWER than its floor rect, so
+ * swapping one shape for the other would shrink the clickable width. Because the sprite is bottom-anchored,
+ * in practice this is the floor rect extended upward by the overflow, never narrower than the floor rect.
+ *
+ * Overlap between neighbours is intentional and needs no tie-breaking: Konva builds its hit graph in draw
+ * order and the y-sort already draws front objects last, so a front object's hit shape wins — the same rule
+ * that governs what you see. Accepted trade-off: a sprite's bounding box includes transparent corners, so a
+ * click in a front object's transparent corner selects that front object even if a neighbour's art shows
+ * through. That is the standard cost of rectangular hit areas and is far cheaper than the dead zone it
+ * replaces; pixel-perfect hit detection would break the performance story.
  */
-export function fitContainInSubRect(
+export function computeHitRect(fit: SpriteFit, boxW: number, boxH: number): SpriteFit {
+  const left = Math.min(-boxW / 2, fit.x);
+  const top = Math.min(-boxH / 2, fit.y);
+  const right = Math.max(boxW / 2, fit.x + fit.width);
+  const bottom = Math.max(boxH / 2, fit.y + fit.height);
+  return { x: left, y: top, width: right - left, height: bottom - top };
+}
+
+/**
+ * Footprint-fit a sprite into a NORMALIZED sub-rectangle of the object box, then **contain it to the
+ * room shell** (PR 081 fix-up, Fix 1). Room-interior furniture (PR 080 B4) must read as being *inside*
+ * its room, not floating above it, so after the width-fill + bottom-anchor within the sub-rect the
+ * result is clamped so the sprite's TOP never crosses the shell's top edge (`-boxH/2`) — shrinking it
+ * (aspect-preserving, keeping the bottom-anchor + horizontal centre) when a shallow room lacks the
+ * headroom. Free-standing objects (via {@link fitFootprint}) still overflow past their rect; only
+ * shell-contained interiors are clamped.
+ */
+export function fitFootprintInSubRect(
   naturalW: number,
   naturalH: number,
   boxW: number,
@@ -47,13 +106,20 @@ export function fitContainInSubRect(
   const subTop = -boxH / 2 + place.y * boxH;
   const subW = place.w * boxW;
   const subH = place.h * boxH;
-  const inner = fitContain(naturalW, naturalH, subW, subH); // centred at origin, sized to sub-rect
-  return {
-    x: subLeft + subW / 2 + inner.x,
-    y: subTop + subH / 2 + inner.y,
-    width: inner.width,
-    height: inner.height,
-  };
+  const inner = fitFootprint(naturalW, naturalH, subW, subH); // bottom-anchored within the sub-rect
+  const cx = subLeft + subW / 2; // horizontal centre of the sub-rect
+  const bottom = subTop + subH; // the sub-rect bottom (where the piece is anchored)
+  let width = inner.width;
+  let height = inner.height;
+  let top = bottom - height;
+  const shellTop = -boxH / 2;
+  if (top < shellTop && height > 0) {
+    const s = (bottom - shellTop) / height; // shrink so the top sits on the shell edge
+    width *= s;
+    height = bottom - shellTop;
+    top = shellTop;
+  }
+  return { x: cx - width / 2, y: top, width, height };
 }
 
 /**

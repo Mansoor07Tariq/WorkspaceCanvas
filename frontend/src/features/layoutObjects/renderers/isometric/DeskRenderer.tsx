@@ -4,7 +4,7 @@ import { AssetSpriteBody } from "./AssetSpriteBody";
 import { OccupantTile } from "./OccupantTile";
 import { pickDeskSpriteKey } from "./deskSprite";
 import { spriteUrl } from "./isoManifest";
-import { fitContain, getDesktopRect } from "./spriteGeometry";
+import { fitFootprint, getDesktopRect } from "./spriteGeometry";
 import { useKonvaImage } from "./useKonvaImage";
 
 /**
@@ -46,7 +46,9 @@ export function DeskRenderer(props: LayoutObjectRendererProps) {
     return <DefaultLayoutObjectRenderer {...props} />;
   }
 
-  const fit = fitContain(image.naturalWidth || 0, image.naturalHeight || 0, width, height);
+  // The occupant tile is positioned from this SAME fit, so it tracks the (now bottom-anchored,
+  // overflowing) desk sprite and stays on the desktop surface (PR 081 acceptance criterion 4).
+  const fit = fitFootprint(image.naturalWidth || 0, image.naturalHeight || 0, width, height);
 
   return (
     <>
@@ -58,6 +60,7 @@ export function DeskRenderer(props: LayoutObjectRendererProps) {
         height={height}
         isSaving={isSaving}
         isBookingMode={isBookingMode}
+        availabilityStatus={availabilityStatus}
       />
       {occupantKind && (
         <OccupantTile

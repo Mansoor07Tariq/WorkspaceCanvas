@@ -7,9 +7,16 @@ import type { SpriteFit } from "../isometric/spriteGeometry";
 // Capture Konva shapes as data nodes (no real stage).
 vi.mock("react-konva", () => ({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  Group: ({ children }: any) => <div data-testid="konva-group">{children}</div>,
+  Group: ({ children, ...p }: any) => (
+    <div data-testid="konva-group" data-props={JSON.stringify({ listening: p.listening })}>
+      {children}
+    </div>
+  ),
   Image: (props: Record<string, unknown>) => (
-    <div data-testid="konva-image" data-props={JSON.stringify({ width: props.width })} />
+    <div
+      data-testid="konva-image"
+      data-props={JSON.stringify({ width: props.width, listening: props.listening })}
+    />
   ),
   Rect: (props: Record<string, unknown>) => (
     <div data-testid="konva-rect" data-props={JSON.stringify(props)} />
@@ -90,6 +97,21 @@ describe("OccupantTile", () => {
     );
     expect(screen.getByTestId("konva-image")).toBeInTheDocument();
     expect(texts()).not.toContain(initialsFromName("Jane Smith"));
+  });
+
+  it("EVERY tile shape is non-listening, so the desk's own hit target is unaffected (fix-up 2)", () => {
+    render(<OccupantTile fit={FIT} desktopRect={RECT} kind="me" name="Me Myself" colorKey={7} />);
+    const nodes = [
+      ...screen.queryAllByTestId("konva-group"),
+      ...screen.queryAllByTestId("konva-rect"),
+      ...screen.queryAllByTestId("konva-text"),
+      ...screen.queryAllByTestId("konva-image"),
+    ];
+    expect(nodes.length).toBeGreaterThan(0);
+    for (const el of nodes) {
+      const p = JSON.parse(el.getAttribute("data-props") ?? "{}");
+      expect(p.listening).toBe(false);
+    }
   });
 
   it("the tile stays within the desktop rect (never onto the chair)", () => {

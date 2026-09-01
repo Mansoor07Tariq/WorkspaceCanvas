@@ -23,8 +23,12 @@ vi.mock("react-konva", () => ({
 // it renders exactly when (and only when) that node renders. React.memo skipping a
 // node means its renderer does not run.
 const renderCounts = new Map<number, number>();
+// Records the order in which nodes paint (React renders children in array order, and the layer
+// maps its y-sorted `orderedObjects`), so we can assert the back-to-front draw order (PR 081).
+const renderOrder: number[] = [];
 function SpyRenderer({ object }: { object: LayoutObject }) {
   renderCounts.set(object.id, (renderCounts.get(object.id) ?? 0) + 1);
+  renderOrder.push(object.id);
   return null;
 }
 vi.mock("@/features/layoutObjects/renderers", () => ({
@@ -98,7 +102,10 @@ const occ = (over: Partial<OccupantIdentity> = {}): OccupantIdentity => ({
 });
 
 describe("FloorObjectsLayer — memoised nodes (FE-3)", () => {
-  beforeEach(() => renderCounts.clear());
+  beforeEach(() => {
+    renderCounts.clear();
+    renderOrder.length = 0;
+  });
 
   it("re-renders ONLY the changed object's node when one object updates", () => {
     const a = obj(1);
@@ -180,5 +187,20 @@ describe("FloorObjectsLayer — memoised nodes (FE-3)", () => {
     expect(renderCounts.get(2)).toBeUndefined(); // room skipped
     expect(renderCounts.get(3)).toBeUndefined(); // sofa skipped
     expect(renderCounts.get(4)).toBeUndefined(); // plant skipped
+  });
+
+  it("desks in rows paint BACK-TO-FRONT by bottom edge, so a front desk's overflow covers the one behind (PR 081)", () => {
+    // Two rows of desks at typical spacing; array order is deliberately scrambled.
+    const backRow = [obj(10, { y: "100.00" }), obj(11, { x: "300.00", y: "100.00" })];
+    const frontRow = [obj(20, { y: "300.00" }), obj(21, { x: "300.00", y: "300.00" })];
+    render(
+      <FloorObjectsLayer {...layerProps([frontRow[1], backRow[0], frontRow[0], backRow[1]])} />
+    );
+    // Each node paints once, and every back-row id (bottom edge 150) paints before every front-row
+    // id (bottom edge 350) — so upward-overflowing front sprites draw on top of the row behind.
+    const lastBack = Math.max(renderOrder.indexOf(10), renderOrder.indexOf(11));
+    const firstFront = Math.min(renderOrder.indexOf(20), renderOrder.indexOf(21));
+    expect(lastBack).toBeLessThan(firstFront);
+    for (const id of [10, 11, 20, 21]) expect(renderCounts.get(id)).toBe(1);
   });
 });

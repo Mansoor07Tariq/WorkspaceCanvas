@@ -72,8 +72,14 @@ export function planRoomInterior(
   }
   if (type === "kitchen") {
     return [
-      piece(objectId, "Kitchen Shelf", { x: 0.06, y: 0.05, w: 0.88, h: 0.32 }, 1),
-      piece(objectId, "Kitchen Table", { x: 0.16, y: 0.42, w: 0.68, h: 0.5 }, 2),
+      // The shelf is LOWERED (was y 0.05) to give it headroom (PR 081 fix-up 2, Fix 3). Width-fill makes a
+      // sprite's height proportional to its WIDTH, so a full-width counter is tall; pinned against the shell
+      // top it had almost no room to rise and the shell clamp shrank it hard (in a 300x100 kitchen it kept
+      // only ~16% more width than the pre-081 contain-fit). Dropping it to y+h = 0.46 lets it rise freely.
+      // It is the only piece that was top-pinned — every other placement already sits at y+h >= 0.78.
+      piece(objectId, "Kitchen Shelf", { x: 0.06, y: 0.16, w: 0.88, h: 0.3 }, 1),
+      // Table moved down in step so it does not climb into the counter.
+      piece(objectId, "Kitchen Table", { x: 0.16, y: 0.5, w: 0.68, h: 0.44 }, 2),
     ].filter(isPiece);
   }
   if (type === "bathroom") {
