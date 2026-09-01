@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 
 import {
+  countBase64Payloads,
+  pickRasterInput,
   deriveMeta,
   slugify,
   extractBase64Png,
@@ -106,5 +108,62 @@ describe("extractBase64Png — unwraps the SVG shell (data:img/png)", () => {
 describe("defaultFootprint", () => {
   it("is a normalized bottom band", () => {
     expect(defaultFootprint()).toEqual({ x: 0, y: 0.5, width: 1, height: 0.5 });
+  });
+});
+
+// ─── PR 084: layered sources must composite, not ship as their first layer ────
+
+const LAYERED = `<svg xmlns="http://www.w3.org/2000/svg" width="100" height="80" viewBox="0 0 100 80">
+  <image id="Layer_0" width="100" height="80" xlink:href="data:img/png;base64,QUFB"/>
+  <image x="10" y="20" width="40" height="30" xlink:href="data:img/png;base64,QkJC"/>
+</svg>`;
+const SINGLE = `<svg xmlns="http://www.w3.org/2000/svg" width="100" height="80" viewBox="0 0 100 80">
+  <image id="Layer_0" width="100" height="80" xlink:href="data:img/png;base64,QUFB"/>
+</svg>`;
+
+describe("countBase64Payloads — how many layers a source carries", () => {
+  it("counts every embedded payload, not just the first", () => {
+    expect(countBase64Payloads(LAYERED)).toBe(2);
+    expect(countBase64Payloads(SINGLE)).toBe(1);
+    expect(countBase64Payloads("<svg/>")).toBe(0);
+  });
+});
+
+describe("pickRasterInput — the PR 084 fix", () => {
+  it("hands a LAYERED source to sharp as the SVG, so every layer composites", () => {
+    // The defect: rasterising the first payload alone silently discarded the monitor/keyboard/sink
+    // layers. A layered source must go through the SVG renderer, which knows the layer positions.
+    const png = extractBase64Png(LAYERED);
+    const { input, options } = pickRasterInput(LAYERED, png);
+    expect(input.toString("utf8")).toBe(LAYERED); // the SVG, NOT the extracted first layer
+    expect(input.equals(png)).toBe(false);
+    expect(options.limitInputPixels).toBe(false); // these rasterise past sharp's default guard
+  });
+
+  it("hands a SINGLE-layer source the unwrapped PNG, exactly as before", () => {
+    // Equivalent for these sources (the lone <image> is full-canvas), avoids resampling all 66,
+    // and keeps `Lounge-3` — whose single 15.9 MB attribute exceeds libxml2's 10 MB text limit —
+    // away from librsvg entirely.
+    const png = extractBase64Png(SINGLE);
+    const { input, options } = pickRasterInput(SINGLE, png);
+    expect(input.equals(png)).toBe(true);
+    expect(options.limitInputPixels).toBeUndefined();
+  });
+
+  it("distinguishes two sources that share a first layer but differ later", () => {
+    // This is the exact shape of the shipped bug: `desk-chair-2` and all four `desk-system-2*`
+    // keys shared a first layer, so all five shipped as one image AND shared one sourceHash.
+    const a = pickRasterInput(SINGLE, extractBase64Png(SINGLE));
+    const b = pickRasterInput(LAYERED, extractBase64Png(LAYERED));
+    expect(a.input.equals(b.input)).toBe(false);
+  });
+});
+
+describe("sourceHash inputs — a later-layer change must invalidate the cache", () => {
+  it("the whole file differs even when the first payload is identical", () => {
+    // `sourceHash` now hashes the source file. Hashing the first payload (the old behaviour) gave
+    // these two sources the SAME hash, so the incremental cache could never notice the difference.
+    expect(extractBase64Png(SINGLE).equals(extractBase64Png(LAYERED))).toBe(true); // same layer 1
+    expect(SINGLE).not.toBe(LAYERED); // …but genuinely different sources
   });
 });

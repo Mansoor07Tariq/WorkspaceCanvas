@@ -8,8 +8,13 @@ import {
 } from "../isometric/isoManifest";
 
 describe("isoManifest (PR 080 B1)", () => {
-  it("loads the generated manifest with all 86 assets", () => {
-    expect(isoManifest.assets.length).toBe(86);
+  it("loads the generated manifest: 86 sources + 2 emitted bare variants", () => {
+    // 88, not 86, since PR 084: the pipeline emits a `-bare` counterpart for each source marked
+    // `emitBare` in the overrides (desk-system-1, desk-system-2). Those are additional ASSETS
+    // derived from an existing source, not additional sources.
+    expect(isoManifest.assets.length).toBe(88);
+    expect(isoManifest.assets.filter((a) => a.descriptor === "Bare")).toHaveLength(2);
+    expect(isoManifest.assets.filter((a) => a.descriptor !== "Bare")).toHaveLength(86);
     expect(isoManifest.widths).toEqual([256, 640]);
   });
 
@@ -33,8 +38,15 @@ describe("isoManifest (PR 080 B1)", () => {
 
   it("groups assets by base type (aesthetic variants of one desk)", () => {
     const deskSystem = getIsoAssetsByBaseType("Desk+System");
-    // 4 plain + 4 ALL + 4 Less + 4 Plant
-    expect(deskSystem.length).toBe(16);
+    // 4 plain + 4 ALL + 4 Less + 4 Plant + 2 Bare (PR 084 — bases 1 and 2 only; 3 and 4 bake the
+    // monitor into layer zero, so no clear desktop can be emitted for them).
+    expect(deskSystem.length).toBe(18);
+    expect(
+      deskSystem
+        .filter((a) => a.descriptor === "Bare")
+        .map((a) => a.variantIndex)
+        .sort()
+    ).toEqual([1, 2]);
     expect(getIsoAssetsByBaseType("Desk+Chair").length).toBe(2);
     expect(getIsoAssetsByBaseType("nope")).toEqual([]);
   });

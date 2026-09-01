@@ -143,6 +143,22 @@ export const DEFAULT_DESKTOP_RECT: DesktopRect = { x: 0.06, y: 0.05, w: 0.88, h:
 const overrides = overridesJson as Record<string, { desktopRect?: DesktopRect } | undefined>;
 
 /**
+ * Keys whose `desktopRect` has been **measured against clear desktop art** — the desk slab bounds
+ * of the emitted bare variant, inset 4% of the short side, verified by rendering the rect over the
+ * art (PR 084).
+ *
+ * This exists to be a **guard, not a comment**. review/47 found four `desktopRect` values that had
+ * been measured against the wrong images and sat, silently wrong, on top of a monitor — harmless
+ * only because nothing happened to use them. A booked desk resolving to a key that is not in this
+ * set means the occupant photo is about to be drawn on unverified art; `deskSprite.test.ts` fails
+ * if that ever becomes reachable. Add a key here only after rendering its rect and looking at it.
+ */
+export const VERIFIED_DESKTOP_RECT_KEYS: ReadonlySet<string> = new Set([
+  "desk-system-1-bare",
+  "desk-system-2-bare",
+]);
+
+/**
  * The desktop rect for a sprite key, read LIVE from `manifest.overrides.json` so retuning a
  * rect is a one-line data edit with no code change and no asset rebuild. Falls back to
  * {@link DEFAULT_DESKTOP_RECT} for any key without one.

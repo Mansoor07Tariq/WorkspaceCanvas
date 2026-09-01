@@ -4,7 +4,7 @@
     256,
     640
   ],
-  "count": 86,
+  "count": 88,
   "assets": [
     {
       "key": "big-sofa-1",
@@ -14,7 +14,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "84dc88918c9ce72a2c8cbbb1cda65eeccac9c861b9579e20a949d00021323123",
+      "sourceHash": "37ab66d5fbfe1bd477b4fd42ae6d2a83084d3df1ae990fe22c66c1ea96075ee5",
       "svgDims": {
         "width": 2457,
         "height": 1083
@@ -51,7 +51,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "0d79f6699e4a84e446438bf26ee90a3bb55e843cb3792db60e37b534b2b663b7",
+      "sourceHash": "215972f6d47f6a97a1e37258177de068f729a51ea0cfbf8ec9c7eaa30ab6940f",
       "svgDims": {
         "width": 2564,
         "height": 1165
@@ -88,7 +88,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "4d81aec437bbb21f7aae3e65d90e992b7d094d08bdcbdbaf8c393427c06d5bd7",
+      "sourceHash": "8dd7a099ccf53bf1361cac8c9a261198d0b6a5e7e1add68b3204ba9ab2c078c1",
       "svgDims": {
         "width": 2769,
         "height": 1228
@@ -125,7 +125,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "392ca7617211f762246b8a4a15afd09fd1c452655ef6c16517c8307198ecc3ab",
+      "sourceHash": "b45dbbfd2e2457e9a437252ce5aa500ea345d365785068884082c92f2ff1ee89",
       "svgDims": {
         "width": 2145,
         "height": 2151
@@ -162,7 +162,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "5bdee83d6c7fcab6bd63c9677b9f5ecdcd152f9709f2e8f9748653778785ad28",
+      "sourceHash": "898e5cf711fec2454838cade46c972f22b8fee53e2dd50cc57c5d78ebb958523",
       "svgDims": {
         "width": 3817,
         "height": 3763
@@ -199,16 +199,16 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "27e7351cf12caa2d431604838e1bca608b9f4374eab8b4707b8e50b02d3a8135",
+      "sourceHash": "d631056e8ca3e4a88ca1a6a7c0e07b743808664ccb6c8de6d392aef68a6780be",
       "svgDims": {
         "width": 3819,
         "height": 3830
       },
       "trimmed": {
         "width": 3819,
-        "height": 3829
+        "height": 3830
       },
-      "aspectRatio": 0.9974,
+      "aspectRatio": 0.9971,
       "footprint": {
         "x": 0,
         "y": 0.5,
@@ -219,12 +219,12 @@
         {
           "width": 256,
           "file": "desk-system-1-256.webp",
-          "bytes": 5954
+          "bytes": 6816
         },
         {
           "width": 640,
           "file": "desk-system-1-640.webp",
-          "bytes": 23960
+          "bytes": 26018
         }
       ]
     },
@@ -236,16 +236,16 @@
       "descriptor": "ALL",
       "type": null,
       "role": null,
-      "sourceHash": "27e7351cf12caa2d431604838e1bca608b9f4374eab8b4707b8e50b02d3a8135",
+      "sourceHash": "c7d0d02cabb3c0fcb90958f79375490d264643efbe1ecf96305a1caf4085f073",
       "svgDims": {
         "width": 3819,
         "height": 3830
       },
       "trimmed": {
         "width": 3819,
-        "height": 3829
+        "height": 3830
       },
-      "aspectRatio": 0.9974,
+      "aspectRatio": 0.9971,
       "footprint": {
         "x": 0,
         "y": 0.5,
@@ -256,12 +256,49 @@
         {
           "width": 256,
           "file": "desk-system-1-all-256.webp",
-          "bytes": 5954
+          "bytes": 8558
         },
         {
           "width": 640,
           "file": "desk-system-1-all-640.webp",
-          "bytes": 23960
+          "bytes": 31750
+        }
+      ]
+    },
+    {
+      "key": "desk-system-1-bare",
+      "sourceName": "Desk+System-1",
+      "baseType": "Desk+System",
+      "variantIndex": 1,
+      "descriptor": "Bare",
+      "type": null,
+      "role": null,
+      "sourceHash": "d631056e8ca3e4a88ca1a6a7c0e07b743808664ccb6c8de6d392aef68a6780be",
+      "svgDims": {
+        "width": 3819,
+        "height": 3830
+      },
+      "trimmed": {
+        "width": 3819,
+        "height": 3830
+      },
+      "aspectRatio": 0.9971,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "desk-system-1-bare-256.webp",
+          "bytes": 5934
+        },
+        {
+          "width": 640,
+          "file": "desk-system-1-bare-640.webp",
+          "bytes": 23922
         }
       ]
     },
@@ -273,16 +310,16 @@
       "descriptor": "Less",
       "type": null,
       "role": null,
-      "sourceHash": "27e7351cf12caa2d431604838e1bca608b9f4374eab8b4707b8e50b02d3a8135",
+      "sourceHash": "0adf563ecdaf5e5ccd5013b5eba01cd16509042dd60271c864990af10c1c3dfa",
       "svgDims": {
         "width": 3819,
         "height": 3830
       },
       "trimmed": {
         "width": 3819,
-        "height": 3829
+        "height": 3830
       },
-      "aspectRatio": 0.9974,
+      "aspectRatio": 0.9971,
       "footprint": {
         "x": 0,
         "y": 0.5,
@@ -293,12 +330,12 @@
         {
           "width": 256,
           "file": "desk-system-1-less-256.webp",
-          "bytes": 5954
+          "bytes": 8116
         },
         {
           "width": 640,
           "file": "desk-system-1-less-640.webp",
-          "bytes": 23960
+          "bytes": 30658
         }
       ]
     },
@@ -310,16 +347,16 @@
       "descriptor": "Plant",
       "type": null,
       "role": null,
-      "sourceHash": "27e7351cf12caa2d431604838e1bca608b9f4374eab8b4707b8e50b02d3a8135",
+      "sourceHash": "6f03a601fbe868d05cb36fd0abf4616cf00de14fd5757d81a60c0da67e9c46e8",
       "svgDims": {
         "width": 3819,
         "height": 3830
       },
       "trimmed": {
         "width": 3819,
-        "height": 3829
+        "height": 3830
       },
-      "aspectRatio": 0.9974,
+      "aspectRatio": 0.9971,
       "footprint": {
         "x": 0,
         "y": 0.5,
@@ -330,12 +367,12 @@
         {
           "width": 256,
           "file": "desk-system-1-plant-256.webp",
-          "bytes": 5954
+          "bytes": 7514
         },
         {
           "width": 640,
           "file": "desk-system-1-plant-640.webp",
-          "bytes": 23960
+          "bytes": 28852
         }
       ]
     },
@@ -347,7 +384,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "5bdee83d6c7fcab6bd63c9677b9f5ecdcd152f9709f2e8f9748653778785ad28",
+      "sourceHash": "01ea06af6000cbd8056f291febb7ad4771e16e796b3f1735d8b9f958b7187a98",
       "svgDims": {
         "width": 3817,
         "height": 3763
@@ -367,12 +404,12 @@
         {
           "width": 256,
           "file": "desk-system-2-256.webp",
-          "bytes": 4924
+          "bytes": 5874
         },
         {
           "width": 640,
           "file": "desk-system-2-640.webp",
-          "bytes": 15612
+          "bytes": 18536
         }
       ]
     },
@@ -384,7 +421,7 @@
       "descriptor": "ALL",
       "type": null,
       "role": null,
-      "sourceHash": "5bdee83d6c7fcab6bd63c9677b9f5ecdcd152f9709f2e8f9748653778785ad28",
+      "sourceHash": "c9760949ea381ba386b884568eb0db3a27fb43befccd3852bb939bcc52bc1f67",
       "svgDims": {
         "width": 3817,
         "height": 3763
@@ -404,12 +441,49 @@
         {
           "width": 256,
           "file": "desk-system-2-all-256.webp",
-          "bytes": 4924
+          "bytes": 7772
         },
         {
           "width": 640,
           "file": "desk-system-2-all-640.webp",
-          "bytes": 15612
+          "bytes": 25224
+        }
+      ]
+    },
+    {
+      "key": "desk-system-2-bare",
+      "sourceName": "Desk+System-2",
+      "baseType": "Desk+System",
+      "variantIndex": 2,
+      "descriptor": "Bare",
+      "type": null,
+      "role": null,
+      "sourceHash": "01ea06af6000cbd8056f291febb7ad4771e16e796b3f1735d8b9f958b7187a98",
+      "svgDims": {
+        "width": 3817,
+        "height": 3763
+      },
+      "trimmed": {
+        "width": 3817,
+        "height": 3763
+      },
+      "aspectRatio": 1.0144,
+      "footprint": {
+        "x": 0,
+        "y": 0.5,
+        "width": 1,
+        "height": 0.5
+      },
+      "outputs": [
+        {
+          "width": 256,
+          "file": "desk-system-2-bare-256.webp",
+          "bytes": 4940
+        },
+        {
+          "width": 640,
+          "file": "desk-system-2-bare-640.webp",
+          "bytes": 15660
         }
       ]
     },
@@ -421,7 +495,7 @@
       "descriptor": "Less",
       "type": null,
       "role": null,
-      "sourceHash": "5bdee83d6c7fcab6bd63c9677b9f5ecdcd152f9709f2e8f9748653778785ad28",
+      "sourceHash": "c2de44ca57fa9cca37279c8ddefefa51b3bd7c403fa6e0c136eb01fd74e3725b",
       "svgDims": {
         "width": 3817,
         "height": 3763
@@ -441,12 +515,12 @@
         {
           "width": 256,
           "file": "desk-system-2-less-256.webp",
-          "bytes": 4924
+          "bytes": 7282
         },
         {
           "width": 640,
           "file": "desk-system-2-less-640.webp",
-          "bytes": 15612
+          "bytes": 23726
         }
       ]
     },
@@ -458,7 +532,7 @@
       "descriptor": "Plant",
       "type": null,
       "role": null,
-      "sourceHash": "5bdee83d6c7fcab6bd63c9677b9f5ecdcd152f9709f2e8f9748653778785ad28",
+      "sourceHash": "c3ed94bbcb46c7ac382f8aa6f652754be046cbe2c5b0916f1d220c6198cf0579",
       "svgDims": {
         "width": 3817,
         "height": 3763
@@ -478,12 +552,12 @@
         {
           "width": 256,
           "file": "desk-system-2-plant-256.webp",
-          "bytes": 4924
+          "bytes": 6712
         },
         {
           "width": 640,
           "file": "desk-system-2-plant-640.webp",
-          "bytes": 15612
+          "bytes": 22030
         }
       ]
     },
@@ -495,7 +569,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "5fe4a801c6434e81709e060be2db0eb11418944e54a92b1f8ef3877542b08593",
+      "sourceHash": "f9908c80bfaacb620b7e7d702275e594e3f529a4df10a4f935e649060d56e04e",
       "svgDims": {
         "width": 4417,
         "height": 3149
@@ -532,7 +606,7 @@
       "descriptor": "ALL",
       "type": null,
       "role": null,
-      "sourceHash": "5fe4a801c6434e81709e060be2db0eb11418944e54a92b1f8ef3877542b08593",
+      "sourceHash": "ddbf836bfaed89e69309b353e44919d4d5f43f4a603246a577617846aa5d9f89",
       "svgDims": {
         "width": 4417,
         "height": 3149
@@ -552,12 +626,12 @@
         {
           "width": 256,
           "file": "desk-system-3-all-256.webp",
-          "bytes": 5088
+          "bytes": 6584
         },
         {
           "width": 640,
           "file": "desk-system-3-all-640.webp",
-          "bytes": 14452
+          "bytes": 19996
         }
       ]
     },
@@ -569,7 +643,7 @@
       "descriptor": "Less",
       "type": null,
       "role": null,
-      "sourceHash": "5fe4a801c6434e81709e060be2db0eb11418944e54a92b1f8ef3877542b08593",
+      "sourceHash": "b8abc1367bd7ba553cc8d2934e7c6db9fa2bbf55554e8941af5d01d66ab9ff6a",
       "svgDims": {
         "width": 4417,
         "height": 3149
@@ -589,12 +663,12 @@
         {
           "width": 256,
           "file": "desk-system-3-less-256.webp",
-          "bytes": 5088
+          "bytes": 6180
         },
         {
           "width": 640,
           "file": "desk-system-3-less-640.webp",
-          "bytes": 14452
+          "bytes": 18846
         }
       ]
     },
@@ -606,7 +680,7 @@
       "descriptor": "Plant",
       "type": null,
       "role": null,
-      "sourceHash": "5fe4a801c6434e81709e060be2db0eb11418944e54a92b1f8ef3877542b08593",
+      "sourceHash": "ca7933ad8df0649e4037949ea0884d8cc262486ef5fe8f09fdecede7fd7bd330",
       "svgDims": {
         "width": 4417,
         "height": 3149
@@ -626,12 +700,12 @@
         {
           "width": 256,
           "file": "desk-system-3-plant-256.webp",
-          "bytes": 5088
+          "bytes": 5746
         },
         {
           "width": 640,
           "file": "desk-system-3-plant-640.webp",
-          "bytes": 14452
+          "bytes": 17484
         }
       ]
     },
@@ -643,7 +717,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "6225b2086013524e702d1aa22cc752baa73d184793b6ae88e61dbd211cf4ea30",
+      "sourceHash": "6936e6976ab6af8135d7823f6b50e3c4a34acab3b43f684af0ef131710a8fba2",
       "svgDims": {
         "width": 4424,
         "height": 3543
@@ -680,7 +754,7 @@
       "descriptor": "ALL",
       "type": null,
       "role": null,
-      "sourceHash": "6225b2086013524e702d1aa22cc752baa73d184793b6ae88e61dbd211cf4ea30",
+      "sourceHash": "21939eefcb749a476840ea0799d3ee1ee03aa626d32915dd850085eec76ccd5c",
       "svgDims": {
         "width": 4424,
         "height": 3543
@@ -700,12 +774,12 @@
         {
           "width": 256,
           "file": "desk-system-4-all-256.webp",
-          "bytes": 5984
+          "bytes": 7434
         },
         {
           "width": 640,
           "file": "desk-system-4-all-640.webp",
-          "bytes": 22588
+          "bytes": 27292
         }
       ]
     },
@@ -717,7 +791,7 @@
       "descriptor": "Less",
       "type": null,
       "role": null,
-      "sourceHash": "6225b2086013524e702d1aa22cc752baa73d184793b6ae88e61dbd211cf4ea30",
+      "sourceHash": "3fa01f3e9ebdbb30c087b96039d8dcb6dea8599a46fdcb49881f1491e8c9b4c9",
       "svgDims": {
         "width": 4424,
         "height": 3543
@@ -737,12 +811,12 @@
         {
           "width": 256,
           "file": "desk-system-4-less-256.webp",
-          "bytes": 5984
+          "bytes": 7042
         },
         {
           "width": 640,
           "file": "desk-system-4-less-640.webp",
-          "bytes": 22588
+          "bytes": 26216
         }
       ]
     },
@@ -754,7 +828,7 @@
       "descriptor": "Plant",
       "type": null,
       "role": null,
-      "sourceHash": "6225b2086013524e702d1aa22cc752baa73d184793b6ae88e61dbd211cf4ea30",
+      "sourceHash": "af20de15d2b6cc6e8b478835574492fff18cd8e14f11e41beee806966aa7f7f7",
       "svgDims": {
         "width": 4424,
         "height": 3543
@@ -774,12 +848,12 @@
         {
           "width": 256,
           "file": "desk-system-4-plant-256.webp",
-          "bytes": 5984
+          "bytes": 6582
         },
         {
           "width": 640,
           "file": "desk-system-4-plant-640.webp",
-          "bytes": 22588
+          "bytes": 24824
         }
       ]
     },
@@ -791,7 +865,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "cb6e61b2dfa6e029ffcf03eb0f398db239bca99ea85f6a9c7b6e8e962e076371",
+      "sourceHash": "4b8efef7293a18538b5d6333eeb82b3d624c795f84c292b0becac4ff404c7dc9",
       "svgDims": {
         "width": 360,
         "height": 58
@@ -828,7 +902,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "e0eb131ec355fd19d15f11b5d28b24082335446218a1b0804a63e4508077d06b",
+      "sourceHash": "2924d48abd52491f6db33aedcf9f5e5d7511612468c99f75acf6040771540125",
       "svgDims": {
         "width": 770,
         "height": 103
@@ -865,7 +939,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "5913a0c9e1927dc55ffb2fd56692167dea917e2c8e4532a03749d3ea30ac8704",
+      "sourceHash": "6b25cbdc2e7ac2a72d1aedd30f75b9e146705f043afddb6592331d643a6fc21a",
       "svgDims": {
         "width": 45,
         "height": 318
@@ -902,7 +976,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "9a6be44e0f558fe25ec3de89e124b96200cddc9792b2448235dc2d78fda6ef09",
+      "sourceHash": "45ac5f5ff0b58f2a4730e5965982ef782164d9cee7e665f48a9793fd635c8a71",
       "svgDims": {
         "width": 725,
         "height": 251
@@ -939,7 +1013,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "570ef5c646ab04c8c1f9e7db940be68ac13d140a57c8876a13a4040b3deff705",
+      "sourceHash": "39f8deb17d41811bfcb164289cfc13ba58db6fd8fe3c2f25b1dce8407a22568e",
       "svgDims": {
         "width": 3805,
         "height": 1075
@@ -976,7 +1050,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "db6dde44dcab1358a201a9e7ed9f66f27767bfff1fc063cd30ce1e2a6d6f2afa",
+      "sourceHash": "7c377e69367b4f78c86ca5e96244cbc366ed1ab6521347aee976112ffd47a5cc",
       "svgDims": {
         "width": 3805,
         "height": 1075
@@ -1013,7 +1087,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "20c08cacf172848261b5c4c17edbfb62f43e8a1d2252842d59b05abdd5f043cf",
+      "sourceHash": "728edc026c7d86bc0a825ee8258b407f12958e12d09a375bf3b0eb3100857055",
       "svgDims": {
         "width": 2565,
         "height": 1612
@@ -1050,7 +1124,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "736795ebdca1cb94deb83f9cf272318a31383c3ccb21c9204d2776f2285f0a26",
+      "sourceHash": "5cba8dce19557f5a4cda9cade2fdf95008b2bc3d4787deaf3c0457f05cdde9e7",
       "svgDims": {
         "width": 2341,
         "height": 1806
@@ -1087,7 +1161,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "c6698f528ece7f81ff3e1aebff01e686fcbf9e5e67d48e7cceacae8c10a2223c",
+      "sourceHash": "c71b0f1e124352f0f1305a831fb0a5c7b0596cb62a9bcda31e0b92667f5a3d76",
       "svgDims": {
         "width": 3932,
         "height": 1577
@@ -1124,7 +1198,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "c63df50c408ff4bdedb7b440ab29c57886e31c05c3b83a55b12c70692c32a830",
+      "sourceHash": "ee7f4931f3a45a0fa6a16f81f302ac528443ad77a0ebb51cfd0cc04f48c5b3f4",
       "svgDims": {
         "width": 3932,
         "height": 2357
@@ -1161,7 +1235,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "e751e8a2f364d198c1dc219d1c7343aa22938a038dc43115c1d6245c403900c2",
+      "sourceHash": "8977a1bd9b3108953e27b10748c1136d204cf35b1de4793ac938d4a33d3e6427",
       "svgDims": {
         "width": 3932,
         "height": 3080
@@ -1198,7 +1272,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "a708adb5c8dfc3b509cd05b449c929093379e2844dc663010d1e57ce2e3e617d",
+      "sourceHash": "e2cd68964dba4ef07d485bc955af0af143417860fdfdf368188c9c09e9a42600",
       "svgDims": {
         "width": 3904,
         "height": 3257
@@ -1235,7 +1309,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "44d076bc4e46906195b52a2297bb5c6b24ea8a008481737a2db558e79fba4cb3",
+      "sourceHash": "7057427a84844fde20500a59217f23e35c9d4c0718865f7bec98805047632c72",
       "svgDims": {
         "width": 4170,
         "height": 3541
@@ -1272,7 +1346,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "9583feaf3e78f10b26eb174f300ac458364b07236610c473d9346557725a8ed3",
+      "sourceHash": "d7a690a0017733dd9ceff6670067212d6a6885c53f0dfe141d7ac89a04678347",
       "svgDims": {
         "width": 4713,
         "height": 3680
@@ -1309,7 +1383,7 @@
       "descriptor": null,
       "type": null,
       "role": "unused",
-      "sourceHash": "aa135591ea79a6191588a628c2837319c4040ab7d2da6eaf9c7d7fc8601dbc13",
+      "sourceHash": "dc21130b990e155fe75abc2d7fe3857793c2a927d7126197344164d707fff999",
       "svgDims": {
         "width": 3000,
         "height": 2112
@@ -1329,12 +1403,12 @@
         {
           "width": 256,
           "file": "map-1-256.webp",
-          "bytes": 150
+          "bytes": 8516
         },
         {
           "width": 640,
           "file": "map-1-640.webp",
-          "bytes": 590
+          "bytes": 26660
         }
       ]
     },
@@ -1346,16 +1420,16 @@
       "descriptor": null,
       "type": null,
       "role": "unused",
-      "sourceHash": "419c30bb1f49930953a7f375da931298a69d4f8757d29ca57119664f77c04824",
+      "sourceHash": "9a5c5166b038daf141d5c1e2e4456339f0f523146ab7d30844989889f9240514",
       "svgDims": {
         "width": 3000,
         "height": 2083
       },
       "trimmed": {
-        "width": 199,
-        "height": 103
+        "width": 3000,
+        "height": 2083
       },
-      "aspectRatio": 1.932,
+      "aspectRatio": 1.4402,
       "footprint": {
         "x": 0,
         "y": 0.5,
@@ -1366,12 +1440,12 @@
         {
           "width": 256,
           "file": "map-2-256.webp",
-          "bytes": 218
+          "bytes": 6808
         },
         {
           "width": 640,
           "file": "map-2-640.webp",
-          "bytes": 218
+          "bytes": 19598
         }
       ]
     },
@@ -1383,7 +1457,7 @@
       "descriptor": null,
       "type": null,
       "role": "unused",
-      "sourceHash": "37c071d83b76f844b912de6e271875db22c7813dc662b9476a490bf5eccac725",
+      "sourceHash": "02823ed202eb825780e6286a0fd72728af79dc156d6e7281eddd5f123c17e067",
       "svgDims": {
         "width": 4500,
         "height": 3000
@@ -1403,12 +1477,12 @@
         {
           "width": 256,
           "file": "map-3-256.webp",
-          "bytes": 142
+          "bytes": 8932
         },
         {
           "width": 640,
           "file": "map-3-640.webp",
-          "bytes": 554
+          "bytes": 26454
         }
       ]
     },
@@ -1420,7 +1494,7 @@
       "descriptor": null,
       "type": null,
       "role": "unused",
-      "sourceHash": "37c071d83b76f844b912de6e271875db22c7813dc662b9476a490bf5eccac725",
+      "sourceHash": "cdd17759874b60da37bb07aa569c55a2646869c7419080317fb2a1d5cd5f2252",
       "svgDims": {
         "width": 4500,
         "height": 3000
@@ -1440,12 +1514,12 @@
         {
           "width": 256,
           "file": "map-4-256.webp",
-          "bytes": 142
+          "bytes": 12184
         },
         {
           "width": 640,
           "file": "map-4-640.webp",
-          "bytes": 554
+          "bytes": 38562
         }
       ]
     },
@@ -1457,7 +1531,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "e86921d585f116dac1090d18f71bb7216ce8b89ddf8852399a06666a80600d95",
+      "sourceHash": "94279aaf484c530a9dcb05b54316ffa8b07b808f61b93c76ca34f53fb7cdd406",
       "svgDims": {
         "width": 4500,
         "height": 3409
@@ -1494,7 +1568,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "d0edddd493c2d8047f1f4475ab71f62193b6c2d3d8ed4bc070aa7e39dcd6e987",
+      "sourceHash": "33994b8277a3b9367a821a6c98570e90449f8208f9d76c3ccb86f85296dd4990",
       "svgDims": {
         "width": 4422,
         "height": 3418
@@ -1531,7 +1605,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "4ba267f1688674509cb90788fbf19f2c085a487486c0d5d556e8bc413b08af60",
+      "sourceHash": "432789b9a088defc478882d5c08e3aaf35b0a7f4b20f372bbb32f2a47de02dd1",
       "svgDims": {
         "width": 4647,
         "height": 3409
@@ -1568,7 +1642,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "2f0640ecf11eb6b21f0b5a4f035505dfb0288d7003769fede37cc3cb17a69e97",
+      "sourceHash": "516a87848817cae4fbf43b65fee4271806ae0e05d480a16a92a8f89609e77376",
       "svgDims": {
         "width": 4655,
         "height": 3239
@@ -1605,7 +1679,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "31274eb8589034206578d4d317ca99bc94a99831a5a4bd27a64e6bc1eaf9ff5e",
+      "sourceHash": "e5a9ab7aabca6bf2df6d432b4e51cd99b8ebd489700e910c73d1412066f509f8",
       "svgDims": {
         "width": 1196,
         "height": 1135
@@ -1642,7 +1716,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "c5a885fe572aff61a2e84c24e52f6352e7f4dd2419e9ae46d8fc74558c0b8896",
+      "sourceHash": "5a13c50e25b7ca36575a75d517aacddc030bc3d590b867dd24a8805842212c04",
       "svgDims": {
         "width": 1069,
         "height": 1047
@@ -1679,7 +1753,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "4c235c4f9f5e209e84ddc290051ded1f0fce0cadfb84de3812032c6e8dc6f49f",
+      "sourceHash": "e048b79b0a6043f3f00aa65561cd4364a9a24dd334e6bbee9212e24dd2e6c8b3",
       "svgDims": {
         "width": 1077,
         "height": 1095
@@ -1716,7 +1790,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "f37c9b1fd733ed8cb02cf3dc2f668970baa02ca995ae209e0fdcd0bb4de45c35",
+      "sourceHash": "66fb1e2cd9196357797c081401091fa1f64d0c86a2b12c1db6b85266cd363cc8",
       "svgDims": {
         "width": 1098,
         "height": 1065
@@ -1753,7 +1827,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "56259fdc5bcc2f69b45b4304cff6b25bce7089792f498729671380a701dc2067",
+      "sourceHash": "021f44b78914b3e22b318b7214f7b6a55a192feac26bc925312044660db3abe2",
       "svgDims": {
         "width": 1229,
         "height": 1138
@@ -1790,7 +1864,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "68eb130943d4231a338390af1298869eeac3d5b17af413c48e12aa369f6a4c82",
+      "sourceHash": "e5e8211f07c628919ef1da0b31a50081d21b1703b045cd9325b21589de762fa0",
       "svgDims": {
         "width": 564,
         "height": 582
@@ -1827,7 +1901,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "92f3ec4b530f251464213a16ca16ab5eb4f681d62c76df8ad469a9a820760160",
+      "sourceHash": "696af25fe6a150c901af4996173ddf89ded9da19adb788c8114de40cd98498ec",
       "svgDims": {
         "width": 596,
         "height": 645
@@ -1864,7 +1938,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "a420323d27e27f314af71ed2abab76980b4dd4b5c09fef920fc1f4d3e86f4afb",
+      "sourceHash": "9ffa09a1d3873364f76450fca787ee979a8b0e05a6a84e5164d39d2209dbf566",
       "svgDims": {
         "width": 654,
         "height": 787
@@ -1901,7 +1975,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "fd195008ea74fb7b3bd8ecf2632c6d9b80ecfdbf10795301664d7a6ba08c5ae6",
+      "sourceHash": "de977f22d57e8c0ba70655c78656da5a389f6a44c9924dad5bf544169a4f17c9",
       "svgDims": {
         "width": 1966,
         "height": 1576
@@ -1938,7 +2012,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "b110cad31f369df12fe85f132a67e9266b51f51d96af00ed4144cb92f52f0237",
+      "sourceHash": "cc6c5d057c8f33b8bfec1d93db8fc3d9ba9489530ae258696466669884db48f3",
       "svgDims": {
         "width": 1966,
         "height": 3080
@@ -1975,7 +2049,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "fbb0d462cef026898db980d3f297ad3007abbe0377db73ea19cec236b2792749",
+      "sourceHash": "25a893e1baf1fafebcce9a8862af6b78a0190b530e99bbb784e82d147c3ec9d2",
       "svgDims": {
         "width": 1966,
         "height": 2299
@@ -2012,7 +2086,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "ed404a93d652957b11851aa57e91a25c8f36999c108dceb8d29dab8d00592636",
+      "sourceHash": "65360777e496e9e79af688992aad6be388a29935c5e10c3302c8051e89f6cecc",
       "svgDims": {
         "width": 786,
         "height": 987
@@ -2049,7 +2123,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "6f544b9887dd53a9bbf0392915da36f8c0f8036c828e62959f255dad63eda48c",
+      "sourceHash": "360c600cae3190117a05c0dfd54b97c477e58b69a99823291daa4db261555c34",
       "svgDims": {
         "width": 799,
         "height": 986
@@ -2086,7 +2160,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "96917faab06b6bfe990b01641fb9bf83d9342812db756a91167503c2f76094d1",
+      "sourceHash": "fee52b5e42e86bbae94cd0b76618946f6682660acf4a9b78f7e827184c8c954f",
       "svgDims": {
         "width": 881,
         "height": 1123
@@ -2123,7 +2197,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "7b9647db59ce5b35e636f5c8c806246d29b6f81d6ad0f1a4bc704c71017498ea",
+      "sourceHash": "5f82bd89b1a88e846d66bc10ed788b4801023e839d9d7aa05b0df8428cae063f",
       "svgDims": {
         "width": 909,
         "height": 1125
@@ -2160,7 +2234,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "5146f03bd58feb76df79015e5d620510556e55078082f5bf7003d1be84191940",
+      "sourceHash": "a3e3036c8c565c99b0c4cf8a3f20cd1305478a32707412e7519aad84b9c43c28",
       "svgDims": {
         "width": 966,
         "height": 1233
@@ -2197,7 +2271,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "842334174e8471e6b429991d7c7b904eb9ee7f7eebb47f008e9eec10bac44fc8",
+      "sourceHash": "e6b156af1c2b1936b5dbbe69f4b06472526e2f0aeb276c54c17abcdff5468321",
       "svgDims": {
         "width": 979,
         "height": 1234
@@ -2234,7 +2308,7 @@
       "descriptor": null,
       "type": "staircase",
       "role": "structural",
-      "sourceHash": "6964788416d634734941fc6b36e260b1742b60e496ecced45f55c2bfed01a4f4",
+      "sourceHash": "dba51df8f9b404a150e262d067661b7031ccbff969d2f4c21e4a58a107f470fb",
       "svgDims": {
         "width": 1876,
         "height": 3907
@@ -2271,7 +2345,7 @@
       "descriptor": null,
       "type": "staircase",
       "role": "structural",
-      "sourceHash": "1ea9c85082f6ce6822da95831e26a916649578317780033a4f0832c01f259e38",
+      "sourceHash": "acb8480fa76c9088ee73863403d379bab01bd0dcd172dda061cacf6a50951356",
       "svgDims": {
         "width": 1850,
         "height": 3988
@@ -2308,7 +2382,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "83050d5f409252191c3e9c28229c53739a50197bc954f5707c2300e76bed30cb",
+      "sourceHash": "56446a9f78a1bf9ab33a2673f521b249779c5d9c387c68c3499f88ba5fa3a401",
       "svgDims": {
         "width": 572,
         "height": 659
@@ -2345,7 +2419,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "ae5404e31f9db72731827aff1de3e104ed3f23b94276a973392cc5239796795c",
+      "sourceHash": "bdd8799cc8e1fe10138a6d2065c57450fdb8e601abc18bb821880aa67c798cc0",
       "svgDims": {
         "width": 572,
         "height": 654
@@ -2382,7 +2456,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "ef80fd9368c719b687e23c9005728639831e915104ce71db30e6b314c3fc8d46",
+      "sourceHash": "4c997364ffcb2fe2323a8820f8c70cbebd1cad95c4ecef15f11527d17a907a7f",
       "svgDims": {
         "width": 640,
         "height": 717
@@ -2419,7 +2493,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "d7a34da3ee167439f843cc201b42d4a04fe0e93f8936d4f4f194eae69a9a026f",
+      "sourceHash": "2e2d102b7b4f7aa5e8a4c81eb2b30d2052bc7e376933373ead966fc88a892ce0",
       "svgDims": {
         "width": 640,
         "height": 719
@@ -2456,7 +2530,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "2e22385f7019c2741cbd85e41eacd5f85cdf31805917646fc8cdbadc56ade8d2",
+      "sourceHash": "73b94040282a550d2e33e17f03ab439fc65b8017a6b0435df032464208e87b96",
       "svgDims": {
         "width": 743,
         "height": 827
@@ -2493,7 +2567,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "2caac01f3c443b73e5dd524dd8e7b1b6711046fee421ed3a13dfdc46bac18f2b",
+      "sourceHash": "c5c3d848a82ee67dc8b5862167867dbfe1eb56a29ec6793626578ac040962226",
       "svgDims": {
         "width": 743,
         "height": 818
@@ -2530,7 +2604,7 @@
       "descriptor": null,
       "type": null,
       "role": "standalone-desk",
-      "sourceHash": "5ae88e8ad6d65e92e354544206241dd56f0ec768ea863d1aa7eb4efa04b9f100",
+      "sourceHash": "83da0a34ceba174bc0763192fb4afcccf8a7a3a790f70e0ddbea461328e50bf7",
       "svgDims": {
         "width": 4391,
         "height": 2718
@@ -2567,7 +2641,7 @@
       "descriptor": null,
       "type": null,
       "role": "standalone-desk",
-      "sourceHash": "2bd98d8f97d755862ecd420c6f2da7f6a8c28d891a4b5d2492020fb56d798617",
+      "sourceHash": "7c44547ea9c2c2c423c65832e88f3e0ad1d1862f85e02856c149b876e668d2cc",
       "svgDims": {
         "width": 4671,
         "height": 2754
@@ -2604,7 +2678,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "79e63b3d2b5fcf1984114e403351b5ed1e1637c404f9c329bf667aa180a86e75",
+      "sourceHash": "20b99e23af4395ebfd8b642f52501dafe102e7172fc6acb3c924b09cbf96734e",
       "svgDims": {
         "width": 1424,
         "height": 915
@@ -2641,7 +2715,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "215cadd9b3ab8fa0f4a7240dcfe4e4222c0537f2f2baa74801ab9787d2993ffc",
+      "sourceHash": "2276c4d45125869afd9ec137381a5a41118d3fefe62b8d7921317aa5b6ed4fd2",
       "svgDims": {
         "width": 1576,
         "height": 988
@@ -2678,7 +2752,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "7a976eb0e2b25f7e4fdd4e8b1dc3c95fee3699325bc4a66f546f4db0344ebf13",
+      "sourceHash": "7b0d1ae59d8c1fc78efdc8fe3b71023e838ac16c1f9bf1a5130e982a542a253f",
       "svgDims": {
         "width": 2493,
         "height": 1667
@@ -2715,7 +2789,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "dc62355f17ac59e876121d10c72bb2f889ba4985031559c3dfb63f73bbe2fc5c",
+      "sourceHash": "4cb0f10dc2b7cfff7b7ee71793de8d6cccbfd5565d61d005529c3cfdb7769462",
       "svgDims": {
         "width": 2190,
         "height": 1676
@@ -2752,7 +2826,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "add2c67b8b022879d457994337fa449f84d8d091809b56e81f183fc301fcc5ed",
+      "sourceHash": "592edd58b0b99a124a996bb624e58677652343e0f0b4a41ed839da437edcb02d",
       "svgDims": {
         "width": 1849,
         "height": 1358
@@ -2789,7 +2863,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "7d8eed984c9fcf871e78dcd3cb77c2b5284b54b7ae62a91c5a0981d6e34eb641",
+      "sourceHash": "16f0feb915c2b82d3cc42d479c94eefd63fff5d4dc50a1ccf047c5674e95d8c5",
       "svgDims": {
         "width": 2006,
         "height": 1205
@@ -2809,12 +2883,12 @@
         {
           "width": 256,
           "file": "toilet-sink-1-256.webp",
-          "bytes": 134
+          "bytes": 1864
         },
         {
           "width": 640,
           "file": "toilet-sink-1-640.webp",
-          "bytes": 498
+          "bytes": 6026
         }
       ]
     },
@@ -2826,7 +2900,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "1c065ae019a583d197bbe9a685cfcbd8602d8cea513ee4febfb61c3f228d10cf",
+      "sourceHash": "55414f8196c9f9ed9e94483067a12bd045e2d4bf3bad6b43ba5c821f005320d5",
       "svgDims": {
         "width": 1843,
         "height": 1004
@@ -2863,7 +2937,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "dc6d69eaa21e2a495990689a2ce08013c42614382664221f7a22af19b959f6c9",
+      "sourceHash": "9e75344674304818f837b1c548d215993d2a1c38ebcfbb6e81ee988efb82c5eb",
       "svgDims": {
         "width": 1382,
         "height": 98
@@ -2900,7 +2974,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "01eb0c4b53573d605d4a2ac4e38e200d30cb1803f3efb4da6b604123774c260f",
+      "sourceHash": "32274e785c747795382e06958cc350dd8db3cd98e76b10036efcdfacef06081a",
       "svgDims": {
         "width": 1384,
         "height": 99
@@ -2937,7 +3011,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "4fed572ee0befc3ba06c795ffdbe9c532e97ed2f73be2771a62515d7623a8312",
+      "sourceHash": "2a44ac557d94b1d38fc071331118ca5be749d89874ca4ab94b44661bc88621b6",
       "svgDims": {
         "width": 1384,
         "height": 86
@@ -2974,7 +3048,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "a5e07cc92de2ebe2963dae937e64ac59c84d511ed9dcd517222c513981865f89",
+      "sourceHash": "374f5a6a030a1a45d8cad1eb6a303103a60540cc75f4920c0ad242b4998456a9",
       "svgDims": {
         "width": 991,
         "height": 92
@@ -3011,7 +3085,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "e5cfb813fcb9e0b545403a5f8cd48bc1797d9954abf198795d2a2659b686d2f5",
+      "sourceHash": "f52ba300314bf81a1f818e6355fd50fcbb8859adac72072927eaa3bfaf31f3d8",
       "svgDims": {
         "width": 1713,
         "height": 156
@@ -3048,7 +3122,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "987ab545d7f7683613d56d5f1b02b56df02e5fb331884bbe62a6b7d758b0cd29",
+      "sourceHash": "af189104c97c58b23ea2a2d8ad638f80b201eacb5948bd37cae72fdef5283d9c",
       "svgDims": {
         "width": 492,
         "height": 78
@@ -3085,7 +3159,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "63e6073e8d5e313dd97b0f2cc9a955ec1b24ec9bc6075ace677d2e54c9f0e1bd",
+      "sourceHash": "fc77ccdb59058679af04ea1859c34418cea9e7dadf94e5592eeb770df209f79f",
       "svgDims": {
         "width": 490,
         "height": 82
@@ -3105,12 +3179,12 @@
         {
           "width": 256,
           "file": "window-2-256.webp",
-          "bytes": 82
+          "bytes": 594
         },
         {
           "width": 640,
           "file": "window-2-640.webp",
-          "bytes": 146
+          "bytes": 1414
         }
       ]
     },
@@ -3122,7 +3196,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "480bb193837f4ba807a60297c3be6d857485e3a1f781bb306a14fc51a5f19459",
+      "sourceHash": "5ad54908619f6178e2ef6703aa59128cb55b8359cd23475846a1a50921a617a0",
       "svgDims": {
         "width": 1116,
         "height": 101
@@ -3159,7 +3233,7 @@
       "descriptor": null,
       "type": null,
       "role": null,
-      "sourceHash": "e331934bad67e4ced6a1fe9fb4a7140fa761e2e794cbfb3a69be27304a7e0d77",
+      "sourceHash": "f997983dc2f60218e808b003c8b196f0373c431d3c60d654ebf45da724f650b5",
       "svgDims": {
         "width": 1191,
         "height": 111
